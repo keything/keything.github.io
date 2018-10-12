@@ -1,0 +1,87 @@
+---
+title: es_映射学习.md
+date: 2017-11-06 17:48:18
+tags: elasticsearch
+---
+
+## 索引管理
+
+
+1. 创建一个索引，其格式是
+
+        PUT /my_index
+        {
+            "settings": { ... any settings ... },
+            "mappings": {
+                "type_one": { ... any mappings ... },
+                "type_two": { ... any mappings ... },
+                ...
+            }
+        }
+        
+2. 删除一个索引
+
+        DELETE /my_index
+        DELETE /_all
+        DELETE /*
+        
+        action.destructive_requires_name: true
+        
+    通过这个设置，删除只限于特定名称指向的数据。
+
+
+3. 索引设置
+
+    + `number_of_shards` 每个索引的主分片
+    + `number_of_replicas` 每个主分片的副本数
+
+    
+4. [创建一个自定义的分析器](https://www.elastic.co/guide/cn/elasticsearch/guide/current/custom-analyzers.html)
+
+5. 根对象
+
+映射的最高一层称为根对象，可能包含下面几项：
++ 一个properties节点：列出文档中可能包含的每个字段的映射
++ 各种元数据字段：以一个下划线开头，如 `_type, _id, _source`
++ 设置项，控制如何动态处理新的字段，例如`analyzer,dynamic_date_formats,dynamic_templates`
+
+
+### 属性
+
+介绍过文档字段和属性的三个最重要的设置：
+
++ type：字段的数据类型，如string或date
++ index：字段是否应当被当成全文来搜索analyzed, 或被当成一个准确的值 not_analyzed, 或者完全不可被搜索 no
++ analyzer: 确定在索引和搜索时全文字段使用的analyzer
+
+元数据:`_all`字段
+
+通过`include_in_all` 设置来逐个控制字段是否要包含在 _all 字段中
+
+元数据：文档标识
+
+`_id`:文档的ID字符串
+`_type`:文档的类型名
+`_index`:文档所在的索引
+`_uid`:
+`_type` 和 `_id` 连接在一起构造成 type#id
+
+默认_uid字段是被存储（可取回）和索引（可搜索的）。
+
+
+### 动态映射
+
+可以用dynamic配置来控制这种行为，可接受的选项如下：
+
++ true： 动态添加新的字段--缺省
++ false：忽略新的字段
++ strict：如果遇到新的字段抛出异常
+
+
+配置参数 dynamic 可以用在根 object 或任何 object 类型的字段上。你可以将 dynamic 的默认值设置为 strict , 而只在指定的内部对象中开启它。
+
+
+
+
+
+
