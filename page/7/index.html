@@ -62,6 +62,209 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-内核参数-tcp-syncookies" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/09/内核参数-tcp-syncookies/" class="article-date">
+  <time datetime="2016-07-09T13:05:09.000Z" itemprop="datePublished">2016-07-09</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/07/09/内核参数-tcp-syncookies/">内核参数 tcp_syncookies-- 默认开启tcp_syncookies</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>提问：<br>基于下面的信息，是否可以默认开启<code>/proc/sys/net/ipv4/tcp_syncookies</code>。缺点呢？</p>
+<p>一种流行的服务攻击是给你的服务器发送许多（可能伪造的）的SYN包，但从不通过三次握手完成TCP请求。这样很快用尽内核中半打开队列（unp中叫 incompelete connection queue), 阻止了合法连接的完成。因为一个连接不需要完成，那么被攻击机器上就不需要资源，那么这就很容易处理和维护了。</p>
+<p>如果设置了<code>tcp_syncookies</code>变量（需要内核使用<code>CONFIG_SYNCOOKIES</code>编译），那么在队列满的时候，内核也能够处理TCP SYN包了，这就是SYN cookie功能的关键所在。</p>
+<p>SYN cookie完全不使用SYN队列就能工作。正常的情况，内核会发送SYN|ACK作为对SYN包的响应，但是，SYN cookie是发送一个特定的TCP 序号，这个序号是对<code>源地址</code>，<code>目的地址</code>，<code>源端口</code>，<code>目的端口</code>和<code>发送包的时间</code>的编码。一个执行SYN 洪水的攻击者拿不到这个包，也就没法响应。一个合法的连接将会包含这个序号来发送三次握手中的第三个包，服务器将会确认这个包是对合法SYN cookie的响应，并允许建立连接，即使在SYN队列中没有对应的位置了。</p>
+<p>开启SYN cookie是一种抵御SYN洪水攻击的简单方式，只是多了一点建立cookie和确认cookie的CPU时间。相比拒绝所有到来的连接，开始SYNcookie是一种明智的选择。</p>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="https://www.redhat.com/archives/rhl-devel-list/2005-January/msg00447.html" target="_blank" rel="noopener">https://www.redhat.com/archives/rhl-devel-list/2005-January/msg00447.html</a><br><a href="https://ckdake.com/content/2007/disadvantages-of-tcp-syn-cookies.html" target="_blank" rel="noopener">https://ckdake.com/content/2007/disadvantages-of-tcp-syn-cookies.html</a><br><a href="http://coolshell.cn/articles/11564.html" target="_blank" rel="noopener">http://coolshell.cn/articles/11564.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="cjsr5cjlm004trxs6atbuwicc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tcp/">tcp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php的memcache客户端的几点说明" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/03/php的memcache客户端的几点说明/" class="article-date">
+  <time datetime="2016-07-03T12:55:17.000Z" itemprop="datePublished">2016-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/07/03/php的memcache客户端的几点说明/">php的memcache客户端的几点说明</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="一-超时时间"><a href="#一-超时时间" class="headerlink" title="一. 超时时间"></a>一. 超时时间</h2><ol>
+<li><p>对于php的memcache客户端，当客户端认为memcached服务器端超时的时候，客户端会主动断开与memcached服务器之间的连接。</p>
+</li>
+<li><p>对于php的mecache客户端，这个超时时间并不是最低只能是1秒。<a href="http://php.net/manual/zh/memcache.addserver.php" target="_blank" rel="noopener">http://php.net/manual/zh/memcache.addserver.php</a> 中写到timeout的单位是秒，默认是1秒。可是我们可以通过修改变量来调整超时时间。 【<a href="http://tech.uc.cn/?p=326" target="_blank" rel="noopener">http://tech.uc.cn/?p=326</a> 文章中的关于超时时间的论断是错误的】</p>
+<pre><code>ini_set(&quot;memcache.default_timeout_ms&quot;, 1000);
+</code></pre></li>
+</ol>
+<h2 id="二-失败重连机制"><a href="#二-失败重连机制" class="headerlink" title="二. 失败重连机制"></a>二. 失败重连机制</h2><p>先提出两个问题，第一个问题：</p>
+<pre><code>有n个memcache服务器的时候，某一个server失败了，
+那么还会重试下一个server么？
+哪些操作会重试下一个server？
+</code></pre><p>第二个问题：</p>
+<pre><code>当n个server都失败的时候，
+会影响到之后的其他操作么？
+</code></pre><p>这两个问题，稍后会给出详细的解释。</p>
+<h2 id="三-实践前基础知识"><a href="#三-实践前基础知识" class="headerlink" title="三. 实践前基础知识"></a>三. 实践前基础知识</h2><ol>
+<li>tc命令控制网络延时</li>
+</ol>
+<pre><code> tc qdisc add dev eth0 root netem delay 100ms 所有请求都延时100ms
+
+tc qdisc del dev eth0 root netem delay 100ms 删除所有请求都延时100ms的限制
+</code></pre><ol start="2">
+<li><p>实践的php代码</p>
+<p> 有两台memcache服务器，分别是10.16.57.128和10.16.57.191. </p>
+<pre><code>// test_mc.php
+&lt;?php
+function catchErrHandler($level, $msg, $file, $line)
+{
+    switch ($level)
+    {
+    case E_NOTICE:
+        $hhh = __METHOD__.__LINE__.&apos;|pid=&apos;.getmypid().&apos;notice&apos;.&apos;|msg=&apos;.$msg.microtime(true).&quot;\n&quot;;
+        echo $hhh;
+        error_log($hhh,3,&apos;/tmp/yk.log&apos;);
+        //exit;
+        break;
+    default:
+        error_log(&apos;default&apos;.__METHOD__.__LINE__.&apos;|pid=&apos;.getmypid().&apos;notice&apos;.&apos;|msg=&apos;.$msg.microtime(true).&quot;\n&quot;,3,&apos;/tmp/yk.log&apos;);
+        break;
+    }
+}
+ini_set(&quot;memcache.default_timeout_ms&quot;, 99);
+ini_set(&apos;memcache.allow_failover&apos;, 1);
+set_error_handler(&apos;catchErrHandler&apos;);
+$mcobj = new Memcache();
+$mcobj-&gt;addServer(&apos;10.16.57.191&apos;, 11211);
+$mcobj-&gt;addServer(&apos;10.16.57.128&apos;, 11211);
+$pid = getmypid();
+$max_qid = 1;
+for ($qid = 0; $qid &lt; $max_qid; $qid++)
+{
+    $start = microtime(true);
+    $key = &apos;task_lock&apos; . $qid;
+    echo $key . &quot;\n&quot;;
+    $value = $mcobj-&gt;set($key, 1, 300);
+    $end = microtime(true);
+    $consume = $end - $start;
+}
+</code></pre></li>
+</ol>
+<h2 id="四-实践"><a href="#四-实践" class="headerlink" title="四. 实践"></a>四. 实践</h2><ol>
+<li><p>当一个server失败了，会尝试下一个server么？</p>
+<p> memcache客户端关于重试failover有两个设置：</p>
+<pre><code>memcache.allow_failover boolean 是否在发生错误时（对用户）透明的转移到其他服务器。
+memcache.max_failover_attempts integer 定义在写入和获取数据时最多尝试的服务器次数（即：故障转移最大尝试数），仅和 memcache.allow_failover结合使用。
+</code></pre><p> 如果设置 <code>ini_set(&#39;memcache.allow_failover&#39;, 1);</code>那么会重试下一个server。</p>
+</li>
+<li><p>哪些操作会去重试下一个呢？</p>
+<p> 从源码来看，php的memcache客户端发送<code>set/add/replace</code>指令的时候会先判断server可用不，如果不可用则走failover，如果只有一台memcache服务器，那么这个逻辑就忽略。<br>因为server不可用，那么在之后的逻辑就不会发送请求。</p>
+<p> 从实践来看，<code>get</code>操作也会走failover，这也就是 <a href="http://tech.uc.cn/?p=326" target="_blank" rel="noopener">http://tech.uc.cn/?p=326</a> 文章中提到的memcache的分布式问题。</p>
+<p> 实践步骤：</p>
+<p> a. 两台memcache机器，10.16.57.128，10.16.57.191。<br> 10.16.57.191这台机器延时100ms 命令：<code>sudo tc qdisc add dev eth0 root netem delay 100ms</code>。</p>
+<p> b. 执行test_mc.php代码</p>
+<p> 通过wireshark抓包可以看到，10.16.57.191在三次握手的时候，客户端直接发了RST。然后failover，跟10.16.57.128进行三次握手，之后发送set请求，memcache服务器对其进行处理并返回STORED。add, replace, get操作也是一样的会进行failover。</p>
+<p> <img src="/images/php_memcache/set.png" alt="set"><br> <img src="/images/php_memcache/replace.png" alt="replace"><br> <img src="/images/php_memcache/get.png" alt="get"></p>
+</li>
+</ol>
+<ol start="3">
+<li><p>当两个memcache服务器都失败的时候呢？？</p>
+<p> retry_interval是服务器连接失败时重试的间隔时间，默认值15秒。一旦一个连接失败，他将会被成功重新连接，或者被标记为失败连接并等待retry_interval秒后再践行一次重连。即，当memcache客户端将server的连接标识为失败以后，在retry_interval时间内都不会再次建立连接，而是直接返回false。</p>
+<p> 实践步骤：</p>
+<p> a. 两台memcache机器， 10.16.57.128，10.16.57.191。<br> 10.16.57.191和10.16.57.128两台机器延时100ms 命令：<code>sudo tc qdisc add dev eth0 root netem delay 100ms</code>。</p>
+<p> b. 执行test_mc.php代码</p>
+<p> 通过wireshark抓包可以看到，客户端分别对两个memcache服务器发送RST，之后并没有请求再发出，而是直接返回了false</p>
+<p> <img src="/images/php_memcache/all_failed.png" alt="不会进行重试"></p>
+</li>
+</ol>
+<h2 id="五-连接twemproxy和连接memcache"><a href="#五-连接twemproxy和连接memcache" class="headerlink" title="五. 连接twemproxy和连接memcache"></a>五. 连接twemproxy和连接memcache</h2><p>连接twemproxy和直接连接memcache时的failover情况：</p>
+<ol>
+<li><p>php直连memcache时</p>
+<p> 三次握手时间超过设置的超时时间，使用pconnect、addserver和connect三种方式都能准确failover</p>
+<p> 即直连memcache时，长短连接都能够准确failover。</p>
+</li>
+<li><p>php连接twemproxy时，</p>
+</li>
+</ol>
+<p>如果只有一台twemproxy（或者通过lvs连接twemproxy集群），即addServer的时候只有一个ip:port，那么不会走failover。</p>
+<p>a. PHP设定的timeout 大于 twemproxy的timeout，memcache故障实体机可以及时剔除，connect不出现false，但是pconnect和addserver进程队列里的将继续false很久后才恢复到true；原因：</p>
+<pre><code>虽然twemproxy已经剔除故障机，但是只有一个ip:port, 对于php的memcache客户端而言，他就认为这个ip:port的连接不可用，那么需要在retry_interval时间以后才会发送请求。
+
+对于短连接connect而言，则是新建连接，则不存在这个问题。
+</code></pre><p>b. PHP设定的timeout &lt; twemproxy的timeout，mc故障实体机不一定及时剔除，pconnect、addserver和connect都将继续false很久后才恢复到true。</p>
+<h2 id="六-出现问题"><a href="#六-出现问题" class="headerlink" title="六. 出现问题"></a>六. 出现问题</h2><ol>
+<li><p>当切换到twemproxy的时候，发现大量的key写入失败，原因是前端机（跑着php的memcache客户端的机器）的TIME_WAIT非常高，twemproxy机器的TIME_WAIT和CLOSE_WAIT都非常高。</p>
+</li>
+<li><p>twemproxy机器的TIME_WAIT达到18W， CLOSE_WAIT（被动关闭）也非常高。</p>
+<p> TIME_WAIT高的原因是，twemproxy没有收到memcache服务器的响应，主动断开连接。<br>CLOSE_WAIT高的原因是，php的memcache客户端没有收到twemproxy服务器的响应，断开连接，造成twemproxy服务器的CLOSE_WAIT过高， 就是客户端主动关闭，服务器端没有快速响应，因此处于CLOSE_WAIT。</p>
+</li>
+</ol>
+<h2 id="七-解决方案"><a href="#七-解决方案" class="headerlink" title="七. 解决方案"></a>七. 解决方案</h2><ol>
+<li><p>调整内核参数解决TIME_WAIT过高的问题</p>
+<pre><code>net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_tw_recycle = 0
+net.ipv4.tcp_max_tw_buckets = 5000
+</code></pre></li>
+<li><p>CLOSE_WAIT过高的问题，没有解决</p>
+</li>
+<li><p>对于twemproxy，可能是我们的使用方式有问题，在使用的过程中出现了twemproxy机器的TIME_WAIT和CLOSE_WAIT都过高，影响服务，因此我们没有使用twemproxy。</p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="cjsr5cjlh004jrxs6xs8wb0ck" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Index-Condition-Pushdown-优化" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/06/26/Index-Condition-Pushdown-优化/" class="article-date">
@@ -123,7 +326,7 @@ AND address LIKE &apos;%Main Street%&apos;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="cjn5m02jz0004mbs6izauo5ea" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="cjsr5cjgq0008rxs6k9c4icrs" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -204,7 +407,7 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjn5m02kx000xmbs68461z153" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjsr5cjhj0013rxs6eteq4pz7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -375,7 +578,7 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjn5m02ny0043mbs68ouife7h" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjsr5cjl30042rxs66mxbr4rx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -597,7 +800,7 @@ location /baz {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjn5m02nq003tmbs6pivyn5x4" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjsr5cjkv003srxs6b5p6lioc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -844,105 +1047,7 @@ location /third {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjn5m02ns003vmbs6wsaxez0g" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
-  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
-<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
-
-location [ = | ~ | ~* | ^~ ] uri { ... }
-location @name { ... }
-
-Default:
-
-—
-
-Context:
-
-server, location
-</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
-<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
-<ol>
-<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
-<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
-<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
-<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
-<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
-<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
-<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
-</ol>
-<p>location检查的策略：</p>
-<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
-2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
-对于匹配正则location并不是所有情况都进行，有两种情况是例外：
-1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
-2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
-
-   简要概述：
-    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
-如下图所示：
-</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
-<p>举例说明：</p>
-<pre><code>location = / {
-    [ configuration A ]
-}
-
-location / {
-    [ configuration B ]
-}
-
-location /documents/ {
-    [ configuration C ]
-}
-
-location ^~ /images/ {
-    [ configuration D ]
-}
-
-location ~* \.(gif|jpg|jpeg)$ {
-    [ configuration E ]
-}
-
-请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
-</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
-<p>参考文章</p>
-<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjn5m02nk003lmbs6xctaisrf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjsr5cjkq003orxs6tw1otfbm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -1042,7 +1147,105 @@ server {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjn5m02np003qmbs6r9a8k048" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjsr5cjl2003zrxs6k29ozths" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
+<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
+
+location [ = | ~ | ~* | ^~ ] uri { ... }
+location @name { ... }
+
+Default:
+
+—
+
+Context:
+
+server, location
+</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
+<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
+<ol>
+<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
+<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
+<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
+<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
+<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
+<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
+<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
+</ol>
+<p>location检查的策略：</p>
+<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
+2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
+对于匹配正则location并不是所有情况都进行，有两种情况是例外：
+1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
+2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
+
+   简要概述：
+    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
+如下图所示：
+</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
+<p>举例说明：</p>
+<pre><code>location = / {
+    [ configuration A ]
+}
+
+location / {
+    [ configuration B ]
+}
+
+location /documents/ {
+    [ configuration C ]
+}
+
+location ^~ /images/ {
+    [ configuration D ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration E ]
+}
+
+请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
+</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
+<p>参考文章</p>
+<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjsr5cjkm003lrxs6fkoqcnh0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -1138,128 +1341,10 @@ passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjn5m02og004pmbs6cqahwcut" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjsr5cjll004qrxs6wpyoa65v" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Lvs学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/26/Lvs学习笔记/" class="article-date">
-  <time datetime="2016-04-26T09:02:01.000Z" itemprop="datePublished">2016-04-26</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/26/Lvs学习笔记/">Lvs学习笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在使用lvs的过程中，我一直担心一个问题：lvs能够抗住最大的并发是多少？当并发非常大的时候，lvs这一台机器的性能会不会变得很差？</p>
-<p>我去查看了章文嵩的文章<a href="http://www.linuxvirtualserver.org/zh/lvs1.html" target="_blank" rel="noopener">http://www.linuxvirtualserver.org/zh/lvs1.html</a><br>发现以下几个点：</p>
-<h2 id="1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"><a href="#1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式" class="headerlink" title="1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"></a>1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式</h2><h2 id="2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。"><a href="#2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。" class="headerlink" title="2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。"></a>2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。</h2><p>基于IP负载调度技术中，当一个TCP连接的初始SYN报文到达时，调度器就选择一台服务器，将报文转发给它。此后通过查发报文的IP和TCP报文头地址，保证此连接的后继报文被转发到该服务器。这样，IPVS无法检查到请求的内容再选择服务器，这就要求后端服务器组提供相同的服务，不管请求被发送到哪 一台服务器，返回结果都是一样的</p>
-<h2 id="3-VS-NT-virtual-server-via-Network-Address-Translation"><a href="#3-VS-NT-virtual-server-via-Network-Address-Translation" class="headerlink" title="3. VS/NT virtual server via Network Address Translation"></a>3. VS/NT virtual server via Network Address Translation</h2><p>通过网络地址转换，调度器重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文通过调度器时，报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p>
-<p>假如结构如下图所示，client要与服务器端建立连接，在lvs层ip包的目的地址被改为node1，那么该TCP连接的初始SYN报文送到node1，node1返回ACK报文给lvs层，lvs将ACK报文的源地址修改为lvs。以后通过查找发报文的IP和TCP报文头地址，保证此连接的后续报文被转发到node1。 如果我们在client通过tcpdump抓包的话，看到的都是client和lvs之间的交互。</p>
-<pre><code>                 _ _ _ node1
-                /
-client---&gt; lvs ------  node2
-                \_ _ _ _ node3
-</code></pre><h2 id="4-LVS集群的性能"><a href="#4-LVS集群的性能" class="headerlink" title="4. LVS集群的性能"></a>4. LVS集群的性能</h2><p>LVS服务器集群系统具有良好的伸缩性，可支持几百万个并发连接。配置100M网卡，采用VS/TUN或VS/DR调度技术，集群系统的吞吐量可高达1Gbits/s；如配置千兆网卡，则系统的最大吞吐量可接近10Gbits/s。</p>
-<p>因为工作在IP层，只用作分发，因此没有流量产生，内存和CPU资源消耗很低，IO性能不会受到大流量的影响</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjn5m02ke000cmbs62rnww740" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcache获取所有的key及value" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/18/memcache获取所有的key及value/" class="article-date">
-  <time datetime="2016-04-18T01:32:56.000Z" itemprop="datePublished">2016-04-18</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/18/memcache获取所有的key及value/">6. memcache获取所有的key及value</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-特别注意："><a href="#0-特别注意：" class="headerlink" title="0. 特别注意："></a>0. 特别注意：</h2><pre><code>通过cachedump命令只能获取1M的数据，无法获取更多的数据。
-</code></pre><h2 id="1-命令行来查看memcache的key及取值"><a href="#1-命令行来查看memcache的key及取值" class="headerlink" title="1. 命令行来查看memcache的key及取值"></a>1. 命令行来查看memcache的key及取值</h2><ol>
-<li><p>stats slabs  查看有哪些slab</p>
-<p> STAT 18:chunk_size 4544<br> STAT 18:chunks_per_page 230<br> STAT 18:total_pages 1<br> STAT 18:total_chunks 230<br> STAT 18:used_chunks 0<br> STAT 18:free_chunks 7<br> STAT 18:free_chunks_end 223<br> STAT 18:mem_requested 18446744073709551411<br> STAT 18:get_hits 777<br> STAT 18:cmd_set 103<br> STAT 18:delete_hits 0<br> STAT 18:incr_hits 0<br> STAT 18:decr_hits 0<br> STAT 18:cas_hits 0<br> STAT 18:cas_badval 0</p>
-</li>
-<li><p>stats cachedump slab_id limit</p>
-<p> 将slab为slab_id的数据展示出来。 limit是展示的个数，如果取值为0， 则不作限制（其实是限制了1m）</p>
-</li>
-</ol>
-<p><a href="http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/" target="_blank" rel="noopener">http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/</a><br><a href="http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats" target="_blank" rel="noopener">http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats</a></p>
-<h2 id="2-php代码来获取"><a href="#2-php代码来获取" class="headerlink" title="2. php代码来获取"></a>2. php代码来获取</h2><pre><code>&lt;?php
-$mcobj = new Memcache();
-$mcobj-&gt;addServer(&apos;xxx&apos;,9150);
-
-$to_mcobj = new Memcache();
-$to_mcobj-&gt;addServer(&apos;xxx&apos;, 21212);
-
-$allSlabs = $mcobj-&gt;getExtendedStats(&apos;slabs&apos;);
-$items    = $mcobj-&gt;getExtendedStats(&apos;items&apos;);
-foreach ($allSlabs as $server =&gt; $slabs) {
-    foreach ($slabs as $slabId =&gt; $slabMeta) {
-        $cdump = $mcobj-&gt;getExtendedStats(&apos;cachedump&apos;, (int)$slabId, 0);
-        foreach ($cdump as $keys =&gt; $vals) {
-            foreach ((array)$vals as $k =&gt; $v) {
-                $real_val = $mcobj-&gt;get($k);
-                $set_res = $to_mcobj-&gt;set($k, $real_val);
-                error_log(&apos;|slabId=&apos;.$slabId.&apos;set--&apos;.&apos;|key=&apos;.$k.&apos;|val=&apos;.json_encode($real_val).&apos;|res=&apos;.$set_res.&quot;\n&quot;,3,&apos;/tmp/yk.log&apos;);
-            }
-        }
-   }
-                                                                                            }
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjn5m02nh003hmbs62blg87tg" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
 
     </footer>
   </div>
@@ -1296,7 +1381,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 12.5px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 13.75px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
     </div>
   </div>
 
@@ -1305,7 +1390,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1318,6 +1403,14 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       <ul>
         
           <li>
+            <a href="/2019/03/02/golang-面向对象编程/">golang-面向对象编程</a>
+          </li>
+        
+          <li>
+            <a href="/2019/02/04/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
             <a href="/2018/10/12/hello-world/">Hello World</a>
           </li>
         
@@ -1327,14 +1420,6 @@ foreach ($allSlabs as $server =&gt; $slabs) {
         
           <li>
             <a href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hive权威指南学习笔记/">hive权威指南学习笔记</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hadoop权威指南第四版学习笔记/">hadoop权威指南第四版学习笔记</a>
           </li>
         
       </ul>
@@ -1349,7 +1434,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2018 Keything<br>
+      &copy; 2019 Keything<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

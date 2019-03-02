@@ -62,6 +62,151 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-golang-面向对象编程" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/02/golang-面向对象编程/" class="article-date">
+  <time datetime="2019-03-02T07:08:34.000Z" itemprop="datePublished">2019-03-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/02/golang-面向对象编程/">golang-面向对象编程</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>理解golang面向对象</p>
+<p>面向对象编程的三个核心是：封装、继承、多态。</p>
+<ol>
+<li>封装(encapsulation)</li>
+</ol>
+<p>封装就是将抽象得到的数据和行为（或功能）相结合，形成一个有机的整体，也就是将数据与操作数据的源代码进行有机的结合，形成“类”，其中数据和函数都是类的成员。</p>
+<p>封装的目的是增强安全性和简化编程，使用者不必了解具体的实现细节，而只是要通过 外部接口，一特定的访问权限来使用类的成员。<br>即不直接暴露数据，而暴露的是接口.</p>
+<p>go封装是package层面的。小写开头的Names只能在包内可见。在一个private package可以隐藏所有东西，并只暴露特定类型、接口、工厂函数。</p>
+<ol start="2">
+<li>继承</li>
+</ol>
+<p>继承是指一个对象直接使用另一对象的属性和方法。事实上，我们遇到的很多实体都有继承的含义。例如，若把汽车看成一个实体，它可以分成多个子实体，如：卡车、公共汽车等。这些子实体都具有汽车的特性，因此，汽车是它们的“父亲”，而这些子实体则是汽车的“孩子”。</p>
+<p>现代语言认为实现继承更好的方式是组合(composition)。go采用这种理念，并且没有任何等级内容(hierarchy)。 这允许你使用组合来共享实现的细节。go是通过嵌入(embedding)的方式来实现匿名组合的(anonymous composition)。 </p>
+<p>通过嵌入一个匿名类型的组合实现了继承。 嵌入的结构体等同于基类(base class)。当然了也可以嵌入一个接口，但是必须注意，嵌入一个接口时，该结构体必须实现这个接口的方法，不然会报runtime error。</p>
+<p>报错：panic: runtime error: invalid memory address or nil pointer dereference</p>
+<ol start="3">
+<li>多态（polymorphism）</li>
+</ol>
+<p>多态是允许你将父对象设置成为和一个或更多的子对象相等的技术。赋值会后，父对象就可以根据当前赋值给它的子对象以不同的方式运作。简单来说，允许将子类类型的指针赋值给父类类型的指针。 在C++中都是通过虚函数(Virtual Function)实现的</p>
+<p>参考文章：</p>
+<p><a href="https://code.tutsplus.com/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540" target="_blank" rel="noopener">https://code.tutsplus.com/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjsr5cjjj002arxs69cw1irox" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-elasticsearch路由规则学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/02/04/elasticsearch路由规则学习/" class="article-date">
+  <time datetime="2019-02-04T04:36:10.000Z" itemprop="datePublished">2019-02-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>查询时是否查询所有分片。 </p>
+<p> 如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。<br> 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。<br> routing字段有两个位置：</p>
+<pre><code>a. query string中加入。 _search?routing=hello,mmm 的方式
+b. _msearch的header中加入 {&quot;index&quot;:&quot;myindex&quot;,&quot;routing&quot;:&quot;hello,mm&quot;}
+</code></pre><p> 打开trace日志，观察查询过程。可以清晰看到是query then fetch的执行过程。<br> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/search-multi-search.html" target="_blank" rel="noopener">链接</a></p>
+</li>
+<li><p>写入时路由规则指定。</p>
+<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/docs-bulk.html" target="_blank" rel="noopener">bulk接口文档</a></p>
+<p> bulk是用于创建、删除、更新索引使用。<br> 其中routing是要放在query string中才生效。 </p>
+<p> 写入举例：<br> <code>curl  -s -H &quot;Content-Type: application/x-ndjson&quot; -XPOST localhost:9201/_bulk -d &#39;
+ {&quot;index&quot;:{&quot;_index&quot;:&quot;index_sorting_2&quot;,&quot;_type&quot;:&quot;prod&quot;}, &quot;routing&quot;:&quot;hello&quot;}
+ {&quot;address&quot;:&quot;北京我爱你&quot;,&quot;address_nor_pre&quot;:&quot;北京我爱你&quot;,&quot;click_score&quot;:6}
+ &#39;</code></p>
+</li>
+<li><p>关于search_type解释</p>
+<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html" target="_blank" rel="noopener">search_type文档</a></p>
+<p> 注意：在es5.3版本后，已经移除search_type=query_and_fetch的选项。 </p>
+<p> 原因：query_and_fetch 主要是用来进行内部优化的，如果你只有一个分片，你完全不需要分两个阶段（记住，你只有一个分片，不用管其他分片的情况），先拿一次分片下的得分信息再拿具体的文档，不如一次性拿回来就好了。因此query_and_fetch从来不是直接给用户使用的。 </p>
+<p> search_type=QUERY_THEN_FETCH 从日志来看</p>
+<p> <code>[2019-02-04T09:50:43,512][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0]
+ [2019-02-04T09:50:43,513][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][1]
+ [2019-02-04T09:50:43,514][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [query] Moving to next phase: [fetch], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
+ [2019-02-04T09:50:43,517][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [fetch] Moving to next phase: [expand], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
+ [2019-02-04T09:50:43,518][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [expand] Moving to next phase: [response], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)</code></p>
+</li>
+<li><p>reroute操作</p>
+<p> <a href="">reroute接口文档</a></p>
+<p> 举例：<br> `<br> curl -XPOST -H”Content-Type: application/json” ‘localhost:9200/_cluster/reroute’ -d ‘{<br> “commands” : [ </p>
+<pre><code>{  
+    &quot;move&quot; :   {  
+          &quot;index&quot; : &quot;index_sorting_1&quot;, 
+          &quot;shard&quot; : 3,   
+          &quot;from_node&quot; : &quot;ToJiwmL&quot;, 
+          &quot;to_node&quot; : &quot;Febek5M&quot;  
+    }  
+}
+</code></pre><p> ]<br> }’<br> `</p>
+</li>
+<li><p>磁盘空间阈值的设置</p>
+<p> 在本地mac电脑执行reroute时报错：</p>
+<p> NO(the node is above the low watermark cluster setting [cluster.routing.allocation.disk.watermark.low=85%], using more disk space than the maximum allowed [85.0%]</p>
+</li>
+</ol>
+<pre><code>[文章](https://elasticsearch.cn/question/4911)中介绍了：
+1. 这个参数是对“未分配过的&quot;主分片无效，即新创建的索引的场景。 也就是说一个结点的磁盘空间消耗达到low watermark以后，新创建的索引不受限制，依然可以分配到上面
+2. 不能够分配上去的场景主要是以下两个:
+集群有结点挂掉或者用户更改了集群的复制片数量， 需要挑选某个结点复制分片的时候
+集群触发了rebalance的时候
+
+
+在我们的case中需要做的是：
+`
+curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cluster/settings&quot; -d &apos;
+{
+    &quot;transient&quot;:{
+        &quot;cluster.routing.allocation.disk.watermark.low&quot;:&quot;90%&quot;
+    }  
+}
+&apos;`
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjsr5cjip001mrxs6391ba7k9" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-hello-world" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2018/10/12/hello-world/" class="article-date">
@@ -97,7 +242,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/10/12/hello-world/" data-id="cjn5m02mg002ambs6zba4g025" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/10/12/hello-world/" data-id="cjsr5cjjo002grxs63myano0f" class="article-share-link">Share</a>
       
       
     </footer>
@@ -470,7 +615,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/10/03/RedisCluster详细说明[翻译]/" data-id="cjn5m02pj006jmbs6f7bbtllq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/10/03/RedisCluster详细说明[翻译]/" data-id="cjsr5cjml006qrxs63azwllzz" class="article-share-link">Share</a>
       
       
     </footer>
@@ -549,7 +694,7 @@ AS (thing1 INT, thing2 INT)</code></p>
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="cjn5m02mr002nmbs653i2g8yk" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="cjsr5cjjx002orxs6ltvoo5fx" class="article-share-link">Share</a>
       
       
     </footer>
@@ -722,7 +867,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="cjn5m02mn002imbs6s7y4cof6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="cjsr5cjju002lrxs682vicbez" class="article-share-link">Share</a>
       
       
     </footer>
@@ -791,7 +936,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="cjn5m02mk002fmbs6j9izv9us" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="cjsr5cjjq002irxs6zi1lnkb9" class="article-share-link">Share</a>
       
       
     </footer>
@@ -853,7 +998,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/22/spark的sql学习/" data-id="cjn5m02o6004dmbs678g3y5rq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/22/spark的sql学习/" data-id="cjsr5cjlb004erxs6h521luie" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -892,7 +1037,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/07/27/机器学习-chapter1-梯度下降/" data-id="cjn5m02oo0052mbs6xasm7i03" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/07/27/机器学习-chapter1-梯度下降/" data-id="cjsr5cjlp004yrxs6rxkxrghi" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine-learning</a></li></ul>
@@ -947,158 +1092,10 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="cjn5m02ll001gmbs6nguywfmc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="cjsr5cjim001krxs62e2ns5ge" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-faiss-tutorial" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/04/10/faiss-tutorial/" class="article-date">
-  <time datetime="2018-04-10T07:40:44.000Z" itemprop="datePublished">2018-04-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/04/10/faiss-tutorial/">faiss-tutorial</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="cjn5m02m3001tmbs60i7xad15" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-faiss-install" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/04/10/faiss-install/" class="article-date">
-  <time datetime="2018-04-10T06:48:07.000Z" itemprop="datePublished">2018-04-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/04/10/faiss-install/">faiss-install</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>一、clone faiss项目</p>
-<p>git clone <a href="https://github.com/facebookresearch/faiss.git" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss.git</a></p>
-<p>二、安装必要依赖和工具</p>
-<ul>
-<li><p>conda install openblas</p>
-</li>
-<li><p>brew install llvm</p>
-</li>
-<li><p>如果提示:dyld: Library not loaded: @rpath/libomp.dylib</p>
-<ul>
-<li>ln -s $HOME/anaconda2/lib/libopenblas.dylib /usr/lib/libopenblas.dylib</li>
-<li>export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/opt/llvm/lib/</li>
-</ul>
-</li>
-<li><p>make tests/test_blas</p>
-</li>
-</ul>
-<p>常见错误：</p>
-<ul>
-<li><p>fatal error: ‘stdio.h’ file not found</p>
-<ul>
-<li>解决：xcode-select –install</li>
-</ul>
-</li>
-<li><p>fatal error: ‘malloc.h’ file not found</p>
-<ul>
-<li>IndexScalarQuantizer.cpp 中 malloc.h 改成 sys/malloc.h</li>
-</ul>
-</li>
-</ul>
-<p>三、编译安装c++部分</p>
-<ul>
-<li>make all</li>
-<li>./demos/demo_ivfpq_indexing</li>
-</ul>
-<p>四、安装faiss的python部分</p>
-<ul>
-<li><p>which python</p>
-<ul>
-<li>/usr/local/Cellar/anaconda2/bin/python</li>
-<li>建议使用anaconda的python</li>
-</ul>
-</li>
-<li><p>make py</p>
-</li>
-<li><p>python -c “import faiss”</p>
-</li>
-</ul>
-<p>五、 centos按照</p>
-<ul>
-<li><p>安装依赖</p>
-<p>  sudo yum install -y openblas swig</p>
-</li>
-<li><p>获取 faiss 源代码</p>
-<p>  git clone <a href="https://github.com/facebookresearch/faiss.git" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss.git</a></p>
-</li>
-<li><p>编译 faiss</p>
-<p>  cd faiss<br>  cp example_makefiles/makefile.inc.Linux makefile.inc<br>  make all</p>
-</li>
-<li><p>编译 python 接口</p>
-<p>  make py</p>
-</li>
-<li><p>设置优化选项</p>
-<p>  export OMP_WAIT_POLICY=PASSIVE</p>
-</li>
-<li><p>运行 python 示例代码</p>
-<p> export PYTHONPATH=.<br> python tutorial/python/1-Flat.py<br> python tutorial/python/2-IVFFlat.py<br> python tutorial/python/3-IVFPQ.py</p>
-</li>
-</ul>
-<p>五、参考文章</p>
-<ul>
-<li><a href="https://github.com/facebookresearch/faiss/blob/master/INSTALL.md" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss/blob/master/INSTALL.md</a></li>
-<li><a href="https://www.mobibrw.com/2017/6235" target="_blank" rel="noopener">https://www.mobibrw.com/2017/6235</a></li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjn5m02lv001lmbs6agts6pss" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/faiss/">faiss</a></li></ul>
 
     </footer>
   </div>
@@ -1135,7 +1132,7 @@ int main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 12.5px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 13.75px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
     </div>
   </div>
 
@@ -1144,7 +1141,7 @@ int main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1157,6 +1154,14 @@ int main() {
       <ul>
         
           <li>
+            <a href="/2019/03/02/golang-面向对象编程/">golang-面向对象编程</a>
+          </li>
+        
+          <li>
+            <a href="/2019/02/04/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
             <a href="/2018/10/12/hello-world/">Hello World</a>
           </li>
         
@@ -1166,14 +1171,6 @@ int main() {
         
           <li>
             <a href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hive权威指南学习笔记/">hive权威指南学习笔记</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hadoop权威指南第四版学习笔记/">hadoop权威指南第四版学习笔记</a>
           </li>
         
       </ul>
@@ -1188,7 +1185,7 @@ int main() {
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2018 Keything<br>
+      &copy; 2019 Keything<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

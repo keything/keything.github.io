@@ -62,6 +62,124 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Lvs学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/26/Lvs学习笔记/" class="article-date">
+  <time datetime="2016-04-26T09:02:01.000Z" itemprop="datePublished">2016-04-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/26/Lvs学习笔记/">Lvs学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在使用lvs的过程中，我一直担心一个问题：lvs能够抗住最大的并发是多少？当并发非常大的时候，lvs这一台机器的性能会不会变得很差？</p>
+<p>我去查看了章文嵩的文章<a href="http://www.linuxvirtualserver.org/zh/lvs1.html" target="_blank" rel="noopener">http://www.linuxvirtualserver.org/zh/lvs1.html</a><br>发现以下几个点：</p>
+<h2 id="1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"><a href="#1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式" class="headerlink" title="1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"></a>1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式</h2><h2 id="2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。"><a href="#2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。" class="headerlink" title="2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。"></a>2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。</h2><p>基于IP负载调度技术中，当一个TCP连接的初始SYN报文到达时，调度器就选择一台服务器，将报文转发给它。此后通过查发报文的IP和TCP报文头地址，保证此连接的后继报文被转发到该服务器。这样，IPVS无法检查到请求的内容再选择服务器，这就要求后端服务器组提供相同的服务，不管请求被发送到哪 一台服务器，返回结果都是一样的</p>
+<h2 id="3-VS-NT-virtual-server-via-Network-Address-Translation"><a href="#3-VS-NT-virtual-server-via-Network-Address-Translation" class="headerlink" title="3. VS/NT virtual server via Network Address Translation"></a>3. VS/NT virtual server via Network Address Translation</h2><p>通过网络地址转换，调度器重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文通过调度器时，报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p>
+<p>假如结构如下图所示，client要与服务器端建立连接，在lvs层ip包的目的地址被改为node1，那么该TCP连接的初始SYN报文送到node1，node1返回ACK报文给lvs层，lvs将ACK报文的源地址修改为lvs。以后通过查找发报文的IP和TCP报文头地址，保证此连接的后续报文被转发到node1。 如果我们在client通过tcpdump抓包的话，看到的都是client和lvs之间的交互。</p>
+<pre><code>                 _ _ _ node1
+                /
+client---&gt; lvs ------  node2
+                \_ _ _ _ node3
+</code></pre><h2 id="4-LVS集群的性能"><a href="#4-LVS集群的性能" class="headerlink" title="4. LVS集群的性能"></a>4. LVS集群的性能</h2><p>LVS服务器集群系统具有良好的伸缩性，可支持几百万个并发连接。配置100M网卡，采用VS/TUN或VS/DR调度技术，集群系统的吞吐量可高达1Gbits/s；如配置千兆网卡，则系统的最大吞吐量可接近10Gbits/s。</p>
+<p>因为工作在IP层，只用作分发，因此没有流量产生，内存和CPU资源消耗很低，IO性能不会受到大流量的影响</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjsr5cjh5000mrxs6awhosr1i" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-memcache获取所有的key及value" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/18/memcache获取所有的key及value/" class="article-date">
+  <time datetime="2016-04-18T01:32:56.000Z" itemprop="datePublished">2016-04-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/18/memcache获取所有的key及value/">6. memcache获取所有的key及value</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-特别注意："><a href="#0-特别注意：" class="headerlink" title="0. 特别注意："></a>0. 特别注意：</h2><pre><code>通过cachedump命令只能获取1M的数据，无法获取更多的数据。
+</code></pre><h2 id="1-命令行来查看memcache的key及取值"><a href="#1-命令行来查看memcache的key及取值" class="headerlink" title="1. 命令行来查看memcache的key及取值"></a>1. 命令行来查看memcache的key及取值</h2><ol>
+<li><p>stats slabs  查看有哪些slab</p>
+<p> STAT 18:chunk_size 4544<br> STAT 18:chunks_per_page 230<br> STAT 18:total_pages 1<br> STAT 18:total_chunks 230<br> STAT 18:used_chunks 0<br> STAT 18:free_chunks 7<br> STAT 18:free_chunks_end 223<br> STAT 18:mem_requested 18446744073709551411<br> STAT 18:get_hits 777<br> STAT 18:cmd_set 103<br> STAT 18:delete_hits 0<br> STAT 18:incr_hits 0<br> STAT 18:decr_hits 0<br> STAT 18:cas_hits 0<br> STAT 18:cas_badval 0</p>
+</li>
+<li><p>stats cachedump slab_id limit</p>
+<p> 将slab为slab_id的数据展示出来。 limit是展示的个数，如果取值为0， 则不作限制（其实是限制了1m）</p>
+</li>
+</ol>
+<p><a href="http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/" target="_blank" rel="noopener">http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/</a><br><a href="http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats" target="_blank" rel="noopener">http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats</a></p>
+<h2 id="2-php代码来获取"><a href="#2-php代码来获取" class="headerlink" title="2. php代码来获取"></a>2. php代码来获取</h2><pre><code>&lt;?php
+$mcobj = new Memcache();
+$mcobj-&gt;addServer(&apos;xxx&apos;,9150);
+
+$to_mcobj = new Memcache();
+$to_mcobj-&gt;addServer(&apos;xxx&apos;, 21212);
+
+$allSlabs = $mcobj-&gt;getExtendedStats(&apos;slabs&apos;);
+$items    = $mcobj-&gt;getExtendedStats(&apos;items&apos;);
+foreach ($allSlabs as $server =&gt; $slabs) {
+    foreach ($slabs as $slabId =&gt; $slabMeta) {
+        $cdump = $mcobj-&gt;getExtendedStats(&apos;cachedump&apos;, (int)$slabId, 0);
+        foreach ($cdump as $keys =&gt; $vals) {
+            foreach ((array)$vals as $k =&gt; $v) {
+                $real_val = $mcobj-&gt;get($k);
+                $set_res = $to_mcobj-&gt;set($k, $real_val);
+                error_log(&apos;|slabId=&apos;.$slabId.&apos;set--&apos;.&apos;|key=&apos;.$k.&apos;|val=&apos;.json_encode($real_val).&apos;|res=&apos;.$set_res.&quot;\n&quot;,3,&apos;/tmp/yk.log&apos;);
+            }
+        }
+   }
+                                                                                            }
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjsr5cjkg003drxs60m4xsu94" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-memcache参考文章" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/04/17/memcache参考文章/" class="article-date">
@@ -97,7 +215,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjn5m02nc0039mbs6wykwvcj2" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjsr5cjkd0039rxs6rv9m72pp" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -210,7 +328,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjn5m02nf003dmbs6va44xcvp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjsr5cjki003grxs6eo7n057n" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -317,7 +435,7 @@ static unsigned int sizes[LARGEST_ID];
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjn5m02n90035mbs61qu5tkvt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjsr5cjk80035rxs6y90dczib" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -427,7 +545,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjn5m02ng003gmbs6ghqbje1o" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjsr5cjkf003brxs60qhvgqs9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -489,7 +607,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjn5m02ne003bmbs63ecp17vs" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjsr5cjkl003jrxs6xweo1ysp" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -572,7 +690,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjn5m02ma0022mbs6lmxjcvre" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjsr5cjj90023rxs6tjum3q6p" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -631,7 +749,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjn5m02o7004fmbs6ujh1pksy" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjsr5cjl9004brxs6ewoq4xuy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -683,390 +801,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjn5m02on004zmbs62l0yik29" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-mysql-锁的问题" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/01/09/mysql-锁的问题/" class="article-date">
-  <time datetime="2016-01-09T06:52:01.000Z" itemprop="datePublished">2016-01-09</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/01/09/mysql-锁的问题/">mysql 锁的问题</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 锁问题</h1><h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。</p>
-<h2 id="1-脏读"><a href="#1-脏读" class="headerlink" title="1. 脏读"></a>1. 脏读</h2><p>脏数据是指未提交的数据，如果读到了脏数据，即一个事务可以读到另外一个事务中未提交的数据，则显然违反了数据库的隔离性。脏读指的就是在不同的事务下，当前事务可以读到另外事务未提交的数据，简单来说就是可以读到脏数据。</p>
-<p>在下表中，事务的隔离级别由默认的可重复读（repeatable read)变成了未提交读( read uncommitted).SessionB读取了SessionA中没有提交的数据，违反了数据库的隔离性。</p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>set @@tx_isolation=’read-uncommitted’</td>
-<td>–</td>
-</tr>
-<tr>
-<td>2</td>
-<td>–</td>
-<td>set @@tx_isolation=’read-uncommitted’</td>
-</tr>
-<tr>
-<td>3</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>select mtime from learn2 where id = 9; <strong><em> 9.row </em></strong> mtime = 9000</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>–</td>
-<td>select * from learn2 where id = 9 mtime = 8900</td>
-</tr>
-</tbody>
-</table>
-<p>在MysqlInnoDb中虽然是脏读，但如果在sessionB中执行update learn2 set mtime = mtime - 100 where id = 9;依然需要等待，sessionA中为id=9这一行加锁了</p>
-<h2 id="2-不可重复读"><a href="#2-不可重复读" class="headerlink" title="2. 不可重复读"></a>2. 不可重复读</h2><ol>
-<li>在一个事务的两次查询之中数据不一致，这可能是两次查询过程中间插入了一个事务更新的原有的数据。在第一个书屋的两次读数据之间，由于第二个事务的修改并提交commit以后，那么第一个事务的两次读到的数据就可能不一样，这样在一个事务内两次读到的数据是不一样的情况，称为不可重复读。</li>
-<li>不可重复读和脏读区别    </li>
-</ol>
-<table>
-<thead>
-<tr>
-<th>脏读</th>
-<th>不可重复读</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>读取到没有提交的数据</td>
-<td>读取到其他事务已经提交的数据</td>
-</tr>
-<tr>
-<td>违反了隔离性</td>
-<td>违反了一致性</td>
-</tr>
-</tbody>
-</table>
-<p>举例</p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>set @@tx_isolation=’read-committed’</td>
-<td>–</td>
-</tr>
-<tr>
-<td>2</td>
-<td>–</td>
-<td>set @@tx_isolation=’read-ncommitted’</td>
-</tr>
-<tr>
-<td>3</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>select mtime from learn2 where id = 9; ### <strong><em> 9.row </em></strong> mtime = 8900</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>–</td>
-<td>select * from learn2 where id = 9 #mtime = 999</td>
-</tr>
-<tr>
-<td>7</td>
-<td>commit;</td>
-<td>—</td>
-</tr>
-<tr>
-<td>8</td>
-<td>—</td>
-<td>select * from learn2 where id = 9 #mtime = 8800</td>
-</tr>
-</tbody>
-</table>
-<p>在会话A step5更新后，会话B step6没有发生脏读现象。但在commit以后，会话B step8得到的mtime与会话B step6的mtime取值不同。</p>
-<p>在InnoDB存储引擎中，通过使用Next-Key Lock算法来避免不可重复读的问题。在MySQL官方文档中将不可重复读的问题定义为Phantom Problem即幻像问题。在Next-Key Lock算法下，对于索引的扫描，不仅是锁住扫描到的索引，而且还锁住这些索引覆盖的范围（gap）。因此在这个范围内的插入都是不允许的。这样就避免了另外的事务在这个范围内插入数据导致的不可重复读的问题。因此，InnoDB存储引擎的默认事务隔离级别是READ REPEATABLE，采用Next-Key Lock算法，避免了不可重复读的现象。 </p>
-<h2 id="3-更新丢失"><a href="#3-更新丢失" class="headerlink" title="3. 更新丢失"></a>3. 更新丢失</h2><p>case1 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9; mtime = 9999</td>
-<td>select * from learn2 where id = 9 mtime = 9999</td>
-</tr>
-<tr>
-<td>3</td>
-<td>update learn2 set mtime = mtime - 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 8900</td>
-<td>select * from learn2 where id = 9 mtime = 8900</td>
-</tr>
-</tbody>
-</table>
-<p>第3步update操作锁住id=9这一行（排它锁），第4步sessionB更新的时候进行等待，只有第5步commit以后第4步的update才更新成功。<br>由于排它锁的存在并且update基于是mtime的数据库取值，保证了不会存在<code>丢失更新</code>的问题。但如果update xx set mtime = some_value 这样的操作，那么就会出现<code>丢失更新</code>的现象。 </p>
-<p>case2 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9; mtime = 9999</td>
-<td>select * from learn2 where id = 9 mtime = 9999</td>
-</tr>
-<tr>
-<td>3</td>
-<td>update learn2 set mtime = 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 100</td>
-<td>select * from learn2 where id = 9 mtime = 100</td>
-</tr>
-</tbody>
-</table>
-<p>如何避免这种<code>丢失更新</code>的情况发生呢<br>case3 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9 for update; mtime = 9999</td>
-<td>—</td>
-</tr>
-<tr>
-<td>3</td>
-<td>—</td>
-<td>select * from learn2 where id = 9 for update; # 等待 其真正发生是在sessionA的commit以后</td>
-</tr>
-<tr>
-<td>4</td>
-<td>一系列操作</td>
-<td>一系列操作</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 100</td>
-<td>select * from learn2 where id = 9 mtime = 100</td>
-</tr>
-</tbody>
-</table>
-<p>在这个例子中，sessionB的select ..for update操作是在sessionA commit以后才会发生。commit之前，sessionB一直处于等待状态。sessionA提交以后，select的结果是mtime = 999;</p>
-<p>在上述的例子中为什么不直接允许UPDATE语句，而首先要进行SELECT…FOR UPDATE的操作。的确，直接使用UPDATE可以避免丢失更新的问题发生。在实际应用中，应用程序可能需要首先检测用户的余额信息，查看是否可以进行转账操作，然后再进行最后的UPDATE操作，因此在SELECT与UPDATE操作之间可能还存在一些其他的SQL操作。</p>
-<p>有用的mysql命令</p>
-<pre><code>查询隔离级别
-SELECT @@global.tx_isolation; 
-SELECT @@session.tx_isolation; 
-SELECT @@tx_isolation;
-设置隔离级别
-set @@tx_isolation=&apos;read-committed&apos;
-</code></pre><p>参考文章：<br>    <a href="http://techlog.cn/article/list/10182853" target="_blank" rel="noopener">http://techlog.cn/article/list/10182853</a><br>    姜承尧. “MySQL技术内幕：InnoDB存储引擎 第2版”</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjn5m02nj003jmbs6gqqu0avi" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-escape-character" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/01/04/escape-character/" class="article-date">
-  <time datetime="2016-01-04T14:00:01.000Z" itemprop="datePublished">2016-01-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/01/04/escape-character/">转义字符</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h2><p>转义字符标志着在一个字符序列中出现在它之后的后续几个字符是一种替代解释。</p>
-<p>判断某字符是否为转义字符由上下文确定。转义字符标志着转义序列escape sequence开始的那个字符。</p>
-<p>转义字符原本是指ASCII的十进制27，16进制1B，8进制033所定义的字符，对应标准键盘的ESC键，老式键盘”Ctrl+[“。</p>
-<p>后来将狭义的转义字符的含义引申开来，在各种计算机语言和协议中，标志着一个转义序列开始的那个字符，都叫做Escape character.</p>
-<pre><code>在C语言中 \是转义字符。
-在Shell语言中 \033是转义字符
-在URL协议中 %是转义字符
-</code></pre><h2 id="1-定义"><a href="#1-定义" class="headerlink" title="1. 定义"></a>1. 定义</h2><p>转义序列通常有两种功能。第一个是编码一个句法上的实体，如设备命令或者无法被字母表直接表示的特殊数据。第二种功能，也叫字符引用，用于表示无法在当前上下文中被键盘录入的字符（如字符串中的回车符），或者在当前上下文中会有不期望的含义的字符（如C语言字符串中的双引号字符”，不能直接出现，必须用转义序列表示</p>
-<p>控制字符与转义字符是两个不同的概念。转义字符不属于控制字符；控制字符也不属于转义字符。<br>大多数ASCII控制字符单独都具有控制功能，因此它们不是转义字符</p>
-<h2 id="2-举例"><a href="#2-举例" class="headerlink" title="2. 举例"></a>2. 举例</h2><ol>
-<li><p>shell 输出红色hello</p>
-<pre><code>echo -e &quot;\e[0;31mhello\e[0m&quot;
-</code></pre></li>
-<li><p>shell 将出现WARN这一行绿色字体显示；出现ERR这一行加上红色背景色</p>
-<pre><code>echo &quot;ERRhello&quot; &gt; aa.txt
-echo &quot;WARNdfajo&quot; &gt;&gt; aa.txt
-cat aa.txt | sed -e &apos;s/.*WARN.*/\x1b[0;36m&amp;\x1b[0m/i&apos; -e &apos;s/.*ERR.*/\x1b[93;41m&amp;\x1b[0m/i&apos;
-</code></pre></li>
-<li><p>url 中转义字符是%。其中%后面跟一个ASCII码，可以在<a href="http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg" target="_blank" rel="noopener">http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg</a> 图中找到该ASCII码对应的字符</p>
-<pre><code>http://www.baidu.com/helo=fw fwe&amp;str=sfa
-该urlurlencode后对应的是
-http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
-</code></pre></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="cjn5m02m2001qmbs6z1f6gr1x" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjsr5cjln004vrxs6trcrx779" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1106,7 +841,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 12.5px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 13.75px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
     </div>
   </div>
 
@@ -1115,7 +850,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1128,6 +863,14 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       <ul>
         
           <li>
+            <a href="/2019/03/02/golang-面向对象编程/">golang-面向对象编程</a>
+          </li>
+        
+          <li>
+            <a href="/2019/02/04/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
             <a href="/2018/10/12/hello-world/">Hello World</a>
           </li>
         
@@ -1137,14 +880,6 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
         
           <li>
             <a href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hive权威指南学习笔记/">hive权威指南学习笔记</a>
-          </li>
-        
-          <li>
-            <a href="/2018/09/23/hadoop权威指南第四版学习笔记/">hadoop权威指南第四版学习笔记</a>
           </li>
         
       </ul>
@@ -1159,7 +894,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2018 Keything<br>
+      &copy; 2019 Keything<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
