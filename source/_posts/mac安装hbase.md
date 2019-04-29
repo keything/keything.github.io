@@ -56,7 +56,7 @@ start-hbase.sh
 
     hbase(main):003:0> create 'test', 'cf'
     0 row(s) in 1.2200 seconds
-    hbase(main):003:0> list 'table'
+    hbase(main):003:0> list 'test'
     test
     1 row(s) in 0.0550 seconds
     hbase(main):004:0> put 'test', 'row1', 'cf:a', 'value1'
