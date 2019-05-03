@@ -62,6 +62,858 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-RedisCluster详细说明[翻译]" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/10/03/RedisCluster详细说明[翻译]/" class="article-date">
+  <time datetime="2018-10-03T08:24:25.000Z" itemprop="datePublished">2018-10-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>#RedisCluster详细说明<br>欢迎来到RedisCluster详细说明。在这儿你可以找到RedisCluster的算法和设计理念。这个文档将会随着Redis的实现而同步更新。</p>
+<p>为了下文中描述清楚，先讲一下脑裂(split brain) 。脑裂：如果发生通信故障，导致整个集群被分隔成多个无法互相通信的分区时，就是所谓的脑裂。既然是分区，分区就有大小之分，一个分区里面包含大多数的节点，那么就称之为majority partition；一个分区里面只有少量节点，那么就称之为minority partition。</p>
+<p>##主要属性和设计逻辑</p>
+<p>###RedisCluster的目标</p>
+<p>RedisCluster是Redis的分布式实现，有以下目标，按照设计中的重要性排序：</p>
+<ul>
+<li><p>高性能和最高可到1000个节点的线性扩展。不需要代理，使用异步复制，对于value不进行merge操作。</p>
+</li>
+<li><p>可接受的写安全：客户端连接majoritiy partition时，系统会尽可能维系写操作。通常会有少量通知成功的写操作会丢失。但当客户端连接的是minority partition的时候，通知成功但是失败的情况会更多。</p>
+</li>
+<li><p>可用性：大多数主节点可用并且不可用的主节点至少有一个可用的从节点时，RedisCluster能够部分使用的。此外，使用复制转移（replicas migration），不再被任何从节点复制的主节点，会变为从节点。</p>
+</li>
+</ul>
+<h2 id="已经实现的子集"><a href="#已经实现的子集" class="headerlink" title="已经实现的子集"></a>已经实现的子集</h2><p>RedisCluster实现了单节点版Redis的所有单个key的命令。只要key属于同一个节点，执行复杂多个key的操作如Set的unions或intersection也实现了。</p>
+<p>RedisCluster实现了一个叫做<code>hash tags</code>的概念，使用<code>hash tags</code>能够强迫这些keys存储在同一个节点上。但是，在手工重分片（resharding）中，单个key的操作都是可用的，而多个key的操作可能在某些时候不可用。（比如当分片时，多个key分布在两个节点上时则不可用）</p>
+<p>RedisCluster不支持单节点Redis的多数据库。只有一个数据库0，SELECT命令不被允许。</p>
+<p>##RedisCluster协议中Client和Server的角色</p>
+<p>在RedisCluster中，节点负责保存数据，记录集群的状态，包括将keys映射到正确的节点。集群节点能够自动发现其他节点，检测有问题的节点，当失败发生时推举从节点为主节点。为了执行这个任务，所有的集群节点通过TCP bus和二进制协议进行连接，称之为<code>Redis Cluster Bus</code>. 集群中每个节点通过<code>Redis Cluster Bus</code>进行连接。节点使用gossip 协议传播集群信息从而发现新的节点，发送ping包来确保所有其他节点都正常工作，发送集群消息来通知某些特定情况。使用Cluster Bus用于传播Pub/Sub消息，策划用户发出的手工错误转移。<br>因为集群节点不会转发请求，客户端使用重定向错误 -MOVED 和 -ASK，重定向到其他节点。理论上客户端可以向集群中任何一个节点发送请求，如果需要获取重定向，因此客户端不需要保存集群的状态。但是，客户端可以缓存节点和key的映射关系，从而改善性能。</p>
+<h2 id="Write-safety"><a href="#Write-safety" class="headerlink" title="Write safety"></a>Write safety</h2><p>RedisCluster节点间使用异步复制(replication)，最后的故障转移影响合并功能。这意味着最后推举的主节点的数据集 最后会取代其他所有的复制。在这个时间间隔中可能丢写。一个连接到大多数主节点和一个连接到少数主节点的客户端的窗口期是不同的。</p>
+<p>RedisCluster会尽力维持连接大多数主节点的客户端的写操作。下面的例子描述的是在失败的时候，大多数主节点的通知写失败的场景：</p>
+<ol>
+<li>一个写到达master，但是当master回复client以后，这次写并没有通过异步复制传播给slave。如果在写到达slave之前，master宕机了，如果master宕机过久从而其从节点被推举为新的master以后，那么这次写就永久丢失了。 很难复现，但这确实是真实世界的失败模式。</li>
+</ol>
+<ol start="2">
+<li>其他理论上可能写失败的情况如下：</li>
+</ol>
+<ul>
+<li>因为分隔，主节点不可达。</li>
+<li>从节点升为主</li>
+<li>过了一段时间，旧的主节点又可以了</li>
+<li>一个拥有过期路由表的客户端可能写到旧主节点，在旧主节点变为新主节点的从节点之前。</li>
+</ul>
+<p>第二个失败情况不可能发生，因为在NODE_TIMEOUT时间内主节点不能跟majority中其他主节点通信的话，这个主节点就不再接受写。并且在修复以后，需要通知其他节点配置改变以后，才能接受写。并且这种失败情况还需要：客户端的路由表没有更新。</p>
+<p>向minority partition写入时失败率很高。比如多个客户端向minority paritition写入，而majority partition认为minority partition已经失败，推举了minority的从节点为新的主节点，那么在这个过程中写入minority的写入就失败了。</p>
+<p>Specifically, for a master to be failed over it must be unreachable by the majority of masters for at least NODE_TIMEOUT, so if the partition is fixed before that time, no writes are lost. When the partition lasts for more than NODE_TIMEOUT, all the writes performed in the minority side up to that point may be lost. However the minority side of a Redis Cluster will start refusing writes as soon as NODE_TIMEOUT time has elapsed without contact with the majority, so there is a maximum window after which the minority becomes no longer available. Hence, no writes are accepted or lost after that time.</p>
+<p>特别地，在NODE_TIMEOUT内majority的主节点访问不到主节点时，该主节点被标记为failed，所以在NODE_TIMEOUT之前，被修复，那么写入不会丢失。当minority partition持续了NODE_TIMEOUT，所有写到minority的写入都会失败。但是，一旦过了NODE_TIMEOUT，那么RedisCluster会拒绝写入。因此，在那个时间以后，写入不被允许和丢失。【todo】</p>
+<p>##Availability 可用性</p>
+<p>对于minority partition， RedisCluster并不可用。对于majority partition（指的是主节点的大多数并且不可达的主节点都有一个从节点），在NODE_TIMEOUT+从节点推举以后，集群变得可用。</p>
+<p>这意味着当集群中少量节点失败的时候，RedisCluster可用。面对large net splits时，RedisCluster并不是合适的解决方案。</p>
+<p>In the example of a cluster composed of N master nodes where every node has a single slave, the majority side of the cluster will remain available as long as a single node is partitioned away, and will remain available with a probability of <code>1-(1/(N*2-1))</code> when two nodes are partitioned away (after the first node fails we are left with <code>N*2-1</code> nodes in total, and the probability of the only master without a replica to fail is <code>1/(N*2-1))</code>.</p>
+<p>例如，一个5主5从的集群，但过两个节点脱离集群后，可用性概率是<code>1/(5*2-1)</code> = 11.11%，集群变得不可用。</p>
+<p>多亏了RedisCluster的复制迁移特性，真实场景下，孤儿主节点（没有复制的主节点）的复制迁移改善了集群的可用性。对于每次失败事件的成功处理，集群都会重新配置从节点的布局。</p>
+<p>##Performance</p>
+<p>RedisCluster节点不会将请求代理到正确的节点，而是将客户端重定向到正确的节点。最后客户端获取了一份集群的最新描述，知道哪些节点服务哪些key的子集，所以对于普通操作客户端可以直接连接正确节点发送指定的命令。</p>
+<p>因为使用了异步复制，节点不会等待其他节点的写通知（如果没有使用WAIT命令指定）。</p>
+<p>因为操作多个key的命令限制为相近的key，除了resharding以外数据不会发生移动。</p>
+<p>单个Redis实例可以准确控制单个操作。这意味着在N个主节点的RedisCluster中，你可以期待的性能是 单个RedisCluster * N 。在单个round trip中可以完成一次查询，因为客户端与节点间保持长连接，所以等待时间与单个Redis实例是一样的。</p>
+<p>RedisCluster的主要目标是高性能和可扩展性，while preserving weak but reasonable forms of data safety and availability。</p>
+<p>##为什么避免merge操作</p>
+<p>Redis Cluster design avoids conflicting versions of the same key-value pair in multiple nodes as in the case of the Redis data model this is not always desirable. Values in Redis are often very large; it is common to see lists or sorted sets with millions of elements. Also data types are semantically complex. Transferring and merging these kind of values can be a major bottleneck and/or may require the non-trivial involvement of application-side logic, additional memory to store meta-data, and so forth.<br>There are no strict technological limits here. CRDTs or synchronously replicated state machines can model complex data types similar to Redis. However, the actual run time behavior of such systems would not be similar to Redis Cluster. Redis Cluster was designed in order to cover the exact use cases of the non-clustered Redis version.</p>
+<p>#Overview of Redis Cluster main components</p>
+<h3 id="keys分布模型"><a href="#keys分布模型" class="headerlink" title="keys分布模型"></a>keys分布模型</h3><p>key的空间被分为16384 2^14个槽位，最大主节点个数是16384，但是建议的最大节点数是1000个。集群中每个主节点负责16384个hash槽位的一个子集。当没有正在进行的集群重新配置时（如hash槽位从一个节点挪到另外一个），集群是稳定的。集群是稳定时，单个hash槽位被单个节点服务。 (however the serving node can have one or more slaves that will replace it in the case of net splits or failures, and that can be used in order to scale read operations where reading stale data is acceptable)。</p>
+<p>将keys映射到hash槽位的基本算法是（有hash tag的除外）：</p>
+<pre><code>```HASH_SLOT = CRC16(key) mod 16384```
+</code></pre><p>The CRC16 is specified as follows:</p>
+<pre><code>Name: XMODEM (also known as ZMODEM or CRC-16/ACORN)
+Width: 16 bit
+Poly: 1021 (That is actually x16 + x12 + x5 + 1)
+Initialization: 0000
+Reflect Input byte: False
+Reflect Output CRC: False
+Xor constant to output CRC: 0000
+Output for &quot;123456789&quot;: 31C3
+</code></pre><p>14 out of 16 CRC16 output bits are used (this is why there is a modulo 16384 operation in the formula above).<br>In our tests CRC16 behaved remarkably well in distributing different kinds of keys evenly across the 16384 slots.<br>Note: A reference implementation of the CRC16 algorithm used is available in the Appendix A of this document.</p>
+<h3 id="Keys-hash-tags"><a href="#Keys-hash-tags" class="headerlink" title="Keys hash tags"></a>Keys hash tags</h3><p>有hash tags时 hash槽位的计算不使用上面的公式。<code>Hash tags</code>确保多个key可以位于同一个hash槽位中。这用于在RedisCluster中实现多个key的操作。</p>
+<p>为了实现hash tags，在某些情况下，计算key的hash槽位有些不同。如果一个key包含了”{…}”模式，只有在{和}之间的子串被用来计算hash槽位。但是，因为{和}会多次出现，算法按照下面的规则指定：</p>
+<pre><code>如果一个key包含了{字符。
+并且如果在{的右侧有一个}字符
+并如果在第一个{和第一个}之间有一个或多个字符，
+那么只是第一个{和第一个}之间的字符被用来计算hash。
+</code></pre><p>举例：</p>
+<p>两个key{user1000}.following 和 {user1000}.followers将会被hash到相同的hash操作，因为只有子串user1000被用来计算hash槽位。</p>
+<p>对于key <code>foo{}{bar}</code>整个key都被用来计算hash，因为第一个{和}之间没有字符。<br>对于key<code>foo</code> 用来计算hash的是<code>{bar</code>。<br>对于key <code></code>foo{bar}{zap}子串bar被用来计算hash。因为算法在匹配到第一个{和}以后就停止匹配了。<br>因此如果key是以{}开始，那么保证这个key被hash到整个集群，对于使用二进制数据作为key的名字十分有用。</p>
+<p>Adding the hash tags exception, the following is an implementation of the HASH_SLOT function in Ruby and C language.<br>Ruby example code:</p>
+<pre><code>def HASH_SLOT(key)
+    s = key.index &quot;{&quot;
+    if s
+        e = key.index &quot;}&quot;,s+1
+        if e &amp;&amp; e != s+1
+            key = key[s+1..e-1]
+        end
+    end
+    crc16(key) % 16384
+end
+</code></pre><p>C example code:<br>unsigned int HASH_SLOT(char <em>key, int keylen) {<br>    int s, e; /</em> start-end indexes of { and } */</p>
+<pre><code>/* Search the first occurrence of &apos;{&apos;. */
+for (s = 0; s &lt; keylen; s++)
+    if (key[s] == &apos;{&apos;) break;
+
+/* No &apos;{&apos; ? Hash the whole key. This is the base case. */
+if (s == keylen) return crc16(key,keylen) &amp; 16383;
+
+/* &apos;{&apos; found? Check if we have the corresponding &apos;}&apos;. */
+for (e = s+1; e &lt; keylen; e++)
+    if (key[e] == &apos;}&apos;) break;
+
+/* No &apos;}&apos; or nothing between {} ? Hash the whole key. */
+if (e == keylen || e == s+1) return crc16(key,keylen) &amp; 16383;
+
+/* If we are here there is both a { and a } on its right. Hash
+ * what is in the middle between { and }. */
+return crc16(key+s+1,e-s-1) &amp; 16383;
+</code></pre><p>}</p>
+<h2 id="Cluster-nodes-attributes"><a href="#Cluster-nodes-attributes" class="headerlink" title="Cluster nodes attributes"></a>Cluster nodes attributes</h2><p>集群中每个节点有一个唯一的名字。这个节点的名字是一个160位随机数字的16进制表示，节点首次启动的时候获得。节点将其id保存在节点配置文件中，只要系统管理员不删除节点配置或者不使用CLUSTER RESET命令的话，将永远使用这个相同的ID。</p>
+<p>整个集群中使用节点ID来标识每一个节点。对于一个指定节点可以无需改变节点ID，即可改变其IP地址。集群可以检测到IP/PORT的改变并在cluster bus中使用gossip协议进行重新配置。</p>
+<p>每个节点的信息不仅仅是节点ID，但节点ID是唯一全局不变的。每个节点还有以下信息与之关联。如这个特定节点的集群配置细节，节点ping的最后时间。</p>
+<p>每个节点维护其他节点的以下信息：节点ID，IP，port，一组flags，是否是主节点，节点ping的最后时间，收到pong的最后时间，节点现在的configuration epoch（这点一会儿详细解释），连接状态，所服务的hash槽位的集合。</p>
+<p>所有节点字段的详细字段在<a href="http://redis.io/commands/cluster-nodes" target="_blank" rel="noopener">CLUSTER NODES</a>中详细描述。</p>
+<p><a href="http://redis.io/commands/cluster-nodes" target="_blank" rel="noopener">CLUSTER NODES</a>命令可以发送到集群中的任何一个节点，提供整个集群的状态和每个节点的信息。<br>下面是<a href="http://redis.io/commands/cluster-nodes" target="_blank" rel="noopener">CLUSTER NODES</a>命令的输出示例，集群中只有三个节点：</p>
+<pre><code>$ redis-cli cluster nodes
+d1861060fe6a534d42d8a19aeb36600e18785e04 127.0.0.1:6379 myself - 0 1318428930 1 connected 0-1364
+3886e65cc906bfd9b1f7e7bde468726a052d1dae 127.0.0.1:6380 master - 1318428930 1318428931 2 connected 1365-2729
+d289c575dcbc4bdd2931585fd4339089e461a27d 127.0.0.1:6381 master - 1318428931 1318428931 3 connected 2730-4095
+</code></pre><p>上面列表中按照顺序字段依次是:</p>
+<pre><code>&lt;id&gt; &lt;ip:port&gt; &lt;flags&gt; &lt;master&gt; &lt;ping-sent&gt; &lt;pong-recv&gt; &lt;config-epoch&gt; &lt;link-state&gt; &lt;slot&gt; &lt;slot&gt; ... &lt;slot&gt;
+</code></pre><p>##The Cluster bus</p>
+<p>每个RedisCluster 节点都有另外一个TCP端口用于接收来自其他RedisCluster节点的连接。这个端口与接收客户端连接的正常端口有一个固定偏移。为了取得RedisCluster端口，10000通常是固定偏移。例如，如果一个Redis节点用于客户端的端口是6379，那么Cluster bus的端口16379通常也被打开。</p>
+<p>节点与节点通信仅仅使用Cluster bus和Cluster bus协议：一个由不同类型和字节的帧组成的二进制协议。Cluster bus二进制协议没有公开的文档，因为并不需要外部的软件使用该协议与RedisCluster节点通信。当然，你可以通过源码中的cluster.h和cluster.c阅读。</p>
+<p>##Cluster topology<br>Redis Cluster is a full mesh where every node is connected with every other node using a TCP connection.<br>In a cluster of N nodes, every node has N-1 outgoing TCP connections, and N-1 incoming connections.<br>These TCP connections are kept alive all the time and are not created on demand. When a node expects a pong reply in response to a ping in the cluster bus, before waiting long enough to mark the node as unreachable, it will try to refresh the connection with the node by reconnecting from scratch.</p>
+<p>RedisCluster是一个完整的网，每个节点与其他节点通过TCP连接进行连接。在一个N个节点的集群中，每个节点有N-1个向外的TCP连接和N-1个向内的连接【TODO outgoing, incoming。这些TCP连接一直保活，并且不会按需创建。 When a node expects a pong reply in response to a ping in the cluster bus, before waiting long enough to mark the node as unreachable, it will try to refresh the connection with the node by reconnecting from scratch.</p>
+<p>当RedisCluster节点组成一个完整的网，节点使用gossip协议和配置更新机制来避免正常情况下过多信息在节点间交换，所以交换的消息的数量不是指数的。</p>
+<h2 id="Nodes-handshake"><a href="#Nodes-handshake" class="headerlink" title="Nodes handshake"></a>Nodes handshake</h2><p>节点通常在节点bus端口上接收连接，并且 如果pinging的节点不被信任，当收到ping以后会做出相应。但是如果发送消息的节点不是集群的一部分，那么收到消息的节点会丢弃其他包。<br>【todo】上面这段是什么意思呢？</p>
+<p>只在两种方式下，一个节点会接收另外一个节点作为集群的一部分：<br>如果一个节点使用MEET消息代表自己【todo】。一个meet消息像一个PING消息，但是会强迫接收者去将发送的节点作为集群的一部分。只要系统管理员通过下面命令进行请求，节点将会发送MEET消息给其他节点：</p>
+<pre><code>CLUSTER MEET ip port
+</code></pre><p>如果被信任的节点发送gossip到其他节点，那么节点也会将其他节点注册为集群的一部分。假如A知道B，B知道C，最后B会发送gossip消息给A和C。当这个发生以后，A将会注册C作为网络的一部分，并尝试去连接C。</p>
+<p>这意味着只要在任何连接图中加入节点，他们最后会自动形成一个完整的连接。这意味着节点能够自动发现其他节点，但需要由系统管理员来指定信任关系。</p>
+<p>这种机制使得集群更加健壮但是but prevents different Redis clusters from accidentally mixing after change of IP addresses or other network related events。</p>
+<h1 id="重定向和分片"><a href="#重定向和分片" class="headerlink" title="重定向和分片"></a>重定向和分片</h1><h2 id="MOVED重定向"><a href="#MOVED重定向" class="headerlink" title="MOVED重定向"></a>MOVED重定向</h2><p>一个Redis客户端可以向集群中的每个节点（包括从节点）发送请求。节点分析请求，节点通过判断key所属于的hash槽位来判断是否接收这个请求。如果这个节点负责这个hash槽位，那么请求被处理；反之，节点会检查内部的hash槽位和节点的映射关系，然后返回给客户端一个MOVED错误。下面的例子：</p>
+<pre><code>GET x
+-MOVED 3999 127.0.0.1:6381
+</code></pre><p>错误中包含了key的hash槽位（3999）和负责这个请求的节点的ip:port。客户端需要将这个请求重发到特定的IP地址和端口。    注意到，如果在客户端重发这个请求之前，cluster配置发生改变，如果3999的hash槽位被其他节点6382服务，那么当客户端重发这个请求时，目标节点将又会恢复MOVED错误。</p>
+<p>从cluster角度来看，节点是通过IDs来标识的；与此同时，我们尝试简化客户端的接口，只需要将槽位与IP:PORT对标识的Redis节点间建立映射关系即可。客户端不需要但是应该记住hash槽位3999与服务器的对应关系。</p>
+<p>一种方案是当收到MOVED重定向的时候，使用 CLUSTER NODES或CLUSTER SLOTS来更新整个客户端的集群布局。当重定向发生时，可能是多个而不是一个槽位被重新配置，因此尽可能的更新客户端配置是最好的策略。</p>
+<p>注意到当集群稳定了（配置中没有持续的改动），最后所有的客户端会维持一份hash槽位到节点的映射关系，因为客户端不需要重定向，代理或其他单点失败的情况，就能直接到达正确节点，从而使得集群更加高效。</p>
+<p>一个客户端必须能够处理 -ASK重定向。下面将会描述这种情况，否则就不是一个完整的Cluster客户端。</p>
+<h3 id="集群运行重新配置"><a href="#集群运行重新配置" class="headerlink" title="集群运行重新配置"></a>集群运行重新配置</h3><p>RedisCluster支持在集群运行时添加和删除节点。添加或删除一个节点可以抽象为相同的操作：将hash槽位从一个节点挪到另外一个节点。这意味着可以使用相同的基本的机制来重新均衡集群，添加或删除节点。为了向集群添加新的节点，首先在集群中添加一个空白节点，从已经存在的节点中挪一些hash槽位到新的节点。</p>
+<p>为了从集群中挪出节点，将位于这个节点的hash槽位挪到已经存在的其他节点。</p>
+<p>为了重新均衡集群，一组hash槽位在节点间被移动。</p>
+<p>实现的核心是能够挪走hash槽位。从实践的角度来看，一个hash槽位是一组keys，因此重新分片（resharding）就是将key从一个实例挪到另外一个实例。移动一个hash槽位意味着移动这个槽位上的所有keys。为了明白这是如何工作的，讲一下在RedisCluster节点间用于操作槽位转移的CLUSTER子命令。</p>
+<p>下面是可选的子命令：<br>CLUSTER ADDSLOTS slot1 [slot2] … [slotN]<br>CLUSTER DELSLOTS slot1 [slot2] … [slotN]<br>CLUSTER SETSLOT slot NODE node<br>CLUSTER SETSLOT slot MIGRATING node<br>CLUSTER SETSLOT slot IMPORTING node</p>
+<p>前两个命令，ADDSLOT和DELSLOTS用于分配（或移除）一个节点的slot槽位。分配一个槽位意味着告诉特定主节点，它将要负责存储和服务特定hash槽位。<br>当hash槽位被分配以后，将会使用gossip协议在集群中广播，这部分将会在传播这一章节中详细介绍。</p>
+<p>当创建一个新集群时，通常使用ADDSLOTS为每个主节点分配所有16384个槽位中的一个子集。</p>
+<p>DELSLOTS通常用于集群配置的手工修改或者用于调试：线上基本不用。</p>
+<p>如果使用的是 SETSLOT <slot> NODE格式，SETSLOT子命令用于将槽位分配给特定的nodeID 。否则，槽位会被设定为两个特定状态MIGRATING和IMPORTING。这两个特别的状态用于将hash槽位从一个节点迁移到另外一个节点。</slot></p>
+<p>当一个槽位设置为MIGRATING时，当key存在的时候，节点将会接收这个hash槽位的所有请求。反之，会使用一个-ASK重定向，将其重定向到迁移的目标节点。</p>
+<p>当一个槽位设置为IMPORTING时，只有先发送ASKING命令，节点会接收这个hash槽位的所有请求。如果客户端没有发出ASKING命令，那么会通过-MOVED重定向错误重定向到真正的hash 槽位。</p>
+<p>让我们举一个hash槽位迁移的例子。假设我们有两个RedisCluster节点A和B。我们想将槽位8从A挪到B，因此我们发出命令：</p>
+<pre><code>We send B: CLUSTER SETSLOT 8 IMPORTING A
+We send A: CLUSTER SETSLOT 8 MIGRATING B
+</code></pre><p>All the other nodes will continue to point clients to node “A” every time they are queried with a key that belongs to hash slot 8, so what happens is that:</p>
+<p>当请求的key属于槽位8时，其他所有节点会将客户端重定向到节点A，因此将会发生下面的事情：</p>
+<p>节点A中存在的key的所有查询由节点A处理<br>节点A中不存在的key的所有查询由B处理，因为A会将客户端重定向到B。</p>
+<p>这种方式不会在A中创建新的key。与此同时，在重新分片过程中，一个称为redis-trib的程序将会将槽位8中的存在的key从节点A迁移到节点B。通过下面的命令执行：</p>
+<pre><code>CLUSTER GETKEYSINSLOT slot count
+</code></pre><p>上面的命令会返回指定hash槽位中key的个数。对于返回的每个key，redis-trib会向节点A发送 MIGRATE命令，将特定的key以原子方式从节点A移到节点B（在迁移过程中两个实例都要被锁住，从而避免竞争的情况）。MIGRATE工作情况：</p>
+<pre><code>MIGRATE target_host target_port key target_database id timeout
+</code></pre><p>MIGRATE会连接目标实例，发送key的序列化版本，一旦收到OK，就会从自己的数据集中删除老的key。在外部客户端来看，在任何时间key只会在A或B中存在。</p>
+<p>RedisCluster中不需要指定database，但是MIGRATE是一个普通命令。优化过的MIGRATE可以非常快的进行移动，MIGRATE is optimized to be as fast as possible even when moving complex keys such as long lists, but in Redis Cluster reconfiguring the cluster where big keys are present is not considered a wise procedure if there are latency constraints in the application using the database.</p>
+<p>当迁移过程完成以后， <code>SETSLOT &lt;slot&gt; NODE &lt;node-id&gt;</code> 命令被发送到迁移中的两个节点，从而将槽位设置为正常状态。相同的命令被发送任意其他的节点，从而避免等待新配置在集群中的自然传播。【todo最后一句不懂】</p>
+<p>##ASK redirection</p>
+<p>在之前的章节中，我们简单讨论了ASK重定向。为什么我们不使用MOVED重定向呢？因为使用MOVED意味着我们认为hash槽位已经永久地位于不同的节点B上了，那么下次请求就会到达这个不同节点B；而ASK意味着只是这一次请求到达不同节点B。</p>
+<p>这样做事必须的，因为下一次hash槽位8的请求可能是一个槽位依然在A的key，因此我们希望客户端先去尝试A，如果有必要再去尝试B。因为只是一个槽位，因此cluster的性能是可以接受的额。</p>
+<p>We need to force that client behavior, so to make sure that clients will only try node B after A was tried, node B will only accept queries of a slot that is set as IMPORTING if the client sends the ASKING command before sending the query.</p>
+<p>我们需要强制指定客户端行为，确保客户端只能是在试完A以后再尝试的B，节点B只会接收某种槽位的请求，这种槽位需要满足：槽位设置为IMPORTING，并且客户端在发送请求之前先发送了ASKING命令。</p>
+<p>ASKING命令在客户端上会设置一次性的标识，强迫节点去服务一个IMPORTING节点的请求。</p>
+<p>从客户端角度来看，ASK重定向的完整语义是：</p>
+<ul>
+<li><p>如果收到ASK重定向，这是这次请求被重定向到特定的节点，其他请求都被发送到老的节点。</p>
+</li>
+<li><p>使用ASKING名开始重定向的请求</p>
+</li>
+<li>不会更新本地客户端的映射表，不会将hash 槽位8映射到B。</li>
+</ul>
+<p>一旦完成hash槽位8的迁移，节点A就会发送MOVED消息，客户端会永久的将hash槽位8映射到新的ip:port。如果客户端在完成迁移之前，将槽位8映射到新的ip:port也不会有问题，因为在发送请求之前没有发送ASKING命令，因此节点B会使用MOVED重定向错误将客户端重定向到A。【注：如果客户端不发送ASKING命令，就死循环了】</p>
+<p>在<a href="http://redis.io/commands/cluster-setslot" target="_blank" rel="noopener">CLUSTER SETSLOT</a>命令文档中，slots迁移以相似的术语但是不同的词语进行了解释，主要是考虑到了文档的冗余。</p>
+<p>##客户端首次连接和重定向的控制</p>
+<p>一个RedisCluster客户端的实现可以在内存中<code>不记录</code>槽位配置信息（即槽位与节点地址对应关系），而是连接任意节点等待重定向，这样的客户端很低效。</p>
+<p>RedisCluster客户端应该足够智能的去记录槽位配置信息。但是，这个配置并不需要一直维持最新的。因为连接到错误的节点只是简单的导致重定向，将会触发客户端的一次更新。</p>
+<p>客户端在两种不同情况下可以获取到一份完整的节点配置信息：</p>
+<ul>
+<li>启动时获得初始的槽位配置信息</li>
+<li>收到一个MOVED重定向时</li>
+</ul>
+<p>注意到客户端收到MOVED重定向后，可以只是更新映射表中这一个移动的槽位，但因为一次调整通常会有多个槽位发生改变（比如从节点推举为主，原有主的槽位都要发生改变），因此这样并不高效。简单的方法是收到MOVED重定向以后，重新获取一份完整的节点映射关系。</p>
+<p>为了获取RedisCluster的槽位配置信息，RedisCluster提供了一个新的命令<a href="http://redis.io/commands/cluster-slots" target="_blank" rel="noopener">CLUSTER SLOTS</a>。这个命令不需要解析，只是提供客户端需要的信息，提供的是一个数组，数组的每个元素是槽位范围和与之关联的master和slave节点。下面是<a href="http://redis.io/commands/cluster-slots" target="_blank" rel="noopener">CLUSTER SLOTS</a>的示例：</p>
+<pre><code>127.0.0.1:7000&gt; cluster slots
+1) 1) (integer) 5461
+   2) (integer) 10922
+   3) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7001
+   4) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7004
+2) 1) (integer) 0
+   2) (integer) 5460
+   3) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7000
+   4) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7003
+3) 1) (integer) 10923
+   2) (integer) 16383
+   3) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7002
+   4) 1) &quot;127.0.0.1&quot;
+      2) (integer) 7005
+</code></pre><p>返回数组的每个元素的前两个子元素是槽位起始范围，另外的元素是address-port对。第一个address-port对是主节点，其余都是从节点。</p>
+<p>例如输出第一个元素是指：槽位5461到10922是被127.0.0.1:7001服务，也可以在127.0.0.1:7004上进行只读操作。</p>
+<p>如果集群配置错误，<a href="http://redis.io/commands/cluster-slots" target="_blank" rel="noopener">CLUSTER SLOTS</a>不能保证返回的范围覆盖了全部的16384个槽位，因此客户端需要初始化槽位配置，使用NULL对象来填充目标节点，如果客户去执行了没有分配的槽位的话客户端需要报错。</p>
+<p>发现槽位没有被分配，在给调用者发送错误之前，客户端应该尝试拉取一次槽位配置来检查集群是否已经正确配置。</p>
+<h2 id="多个key的操作"><a href="#多个key的操作" class="headerlink" title="多个key的操作"></a>多个key的操作</h2><p>使用hash tags，客户端能够使用multi-key操作。下面的例子是有效的：</p>
+<pre><code>MSET {user:1000}.name Angela {user:1000}.surname White
+</code></pre><p>当hash槽位重新分片正在进行的时候，multi-key的操作可能不可用。</p>
+<p>如果操作的keys不存在或者在分片进行时keys被分隔在源节点和目标节点中，那么将会产生一个TRYAGAIN错误。过一段时间以后，客户端尝试或者返回错误。</p>
+<p>只要特定hash槽位的迁移完成，对于这个hash槽位的multi-key操作又可以了。</p>
+<h2 id="使用从节点扩展读"><a href="#使用从节点扩展读" class="headerlink" title="使用从节点扩展读"></a>使用从节点扩展读</h2><p>正常情况下，对于给定的命令，从节点会将客户端重定向到hash槽位所在的主节点，但是可以使用从节点通过<a href="http://redis.io/commands/readonly" target="_blank" rel="noopener">READONLY</a>命令来水平扩展读的能力。<a href="http://redis.io/commands/readonly" target="_blank" rel="noopener">READONLY</a>告诉RedisCluster从节点，客户端可以读取数据但是不能写数据。</p>
+<p>当连接是只读模式时，只有key不位于从节点的主节点的时候，集群才会发送一个重定向。发生的原因是：</p>
+<ul>
+<li>当从节点的主节点没有负责这个槽位时，</li>
+<li>集群被重新配置，从节点不再负责这个特定的槽位时，</li>
+</ul>
+<p>当这种情况发生时，客户端要按照之前章节解释的来更新其hash槽位的映射。使用READWRITE命令可以去除连接的只读状态。</p>
+<p>#容错（Fault Tolerance）</p>
+<h2 id="心跳和流言消息（Heartbeat-and-gossip-messages）"><a href="#心跳和流言消息（Heartbeat-and-gossip-messages）" class="headerlink" title="心跳和流言消息（Heartbeat and gossip messages）"></a>心跳和流言消息（Heartbeat and gossip messages）</h2><p>RedisCluster节点持续地交换ping和pong包。这两种类型的包有相同的结构，运载着重要的配置信息。唯一不同的是消息的类型字段。我们将ping和pong包合称为心跳包。</p>
+<p>通常节点发送ping包，ping包会触发接收者回应一个pong包。但是这不必是真的。对于节点而言，可以带着他们的配置向其他节点发送pong包，而不必触发回应。例如，这对于广播新配置很有用。<br>通常一个节点每秒会ping一些节点，因此不管集群中节点数量多少，每个节点发送的ping包数据是固定的。<br>如果有些节点other在<code>NODE_TIMEOUT/2</code>时间内没有被节点A ping过，那么节点A会在<code>NODE_TIMEOUT/2</code>时间后向这些other节点发送ping。在NODE_TIMEOUT到期之前，节点户尝试连接其他节点，从而确保节点的不可达不仅仅是当前TCP连接的问题。</p>
+<p>如果NODE_TIMEOUT设置的很小并且节点数N很大，那么交换的信息非常大，因为在<code>NODE_TIMEOUT/2</code>时间内每个节点会尝试去ping其他节点。</p>
+<p>例如一个100个节点的集群，集群超时时间设置为60妙，那么每个节点每30秒要发送99个pings，即每秒3.3个pings。乘以100个节点，那么整个集群每秒要发送330个ping包。</p>
+<p>有很多方法可以减少消息的数量，但是目前还没有关于RedisCluster 错误检测所带来的带宽问题的issues，因此使用明确和直接的设计。注意，即使在上面的例子中，每秒交换330个包被分散在100个不同节点上，因此可以接受。</p>
+<p>##Heartbeat packet content<br>Ping and pong packets contain a header that is common to all types of packets (for instance packets to request a failover vote), and a special Gossip Section that is specific of Ping and Pong packets.<br>ping和pong包包含了一个所有类型包通用的头部，以及一个具体的gossip section。</p>
+<p>通用头部有下列信息：</p>
+<ul>
+<li>Node ID。节点最开始创建的时候分配的一个160字节的随机字符串。在集群整个生命期中，Node ID不变。</li>
+<li>The currentEpoch and configEpoch fields of the sending node that are used to mount the distributed algorithms used by Redis Cluster (this is explained in detail in the next sections). If the node is a slave the configEpoch is the last known configEpoch of its master.</li>
+<li>The node flags, indicating if the node is a slave, a master, and other single-bit node information.</li>
+<li>A bitmap of the hash slots served by the sending node, or if the node is a slave, a bitmap of the slots served by its master.</li>
+<li>The sender TCP base port (that is, the port used by Redis to accept client commands; add 10000 to this to obtain the cluster bus port).<br>The state of the cluster from the point of view of the sender (down or ok).</li>
+<li>The master node ID of the sending node, if it is a slave.</li>
+</ul>
+<p>Ping和Pong包通常包含一个gossip 部分。This section offers to the receiver a view of what the sender node thinks about other nodes in the cluster.The gossip section only contains information about a few random nodes among the set of nodes known to the sender. gossip部分中提到的节点数量与集群的大小是成比例的。</p>
+<p>gossip section中包含节点以下字段：</p>
+<ul>
+<li>Node ID.</li>
+<li>IP and port of the node.</li>
+<li>Node flags.</li>
+</ul>
+<p>Gossip sections allow receiving nodes to get information about the state of other nodes from the point of view of the sender. This is useful both for failure detection and to discover other nodes in the cluster.</p>
+<p>Gossip章节允许接收的节点去获取其他节点状态的信息。这对于错误检查和发现集群中的其他节点是有用的。</p>
+<h2 id="错误检测"><a href="#错误检测" class="headerlink" title="错误检测"></a>错误检测</h2><p>RedisCluster错误检测用于发现：当大多数节点认为一个master或slave节点 不可用时，会推举一个slave节点作为master节点。 当<code>从推举</code>不可能的时候，集群会进入一个错误状态，从而阻止接收来自客户端的请求。</p>
+<p>正如之前提到的，每个节点获取其他已知节点的一组flags。有两种用于错误检测的flag，称为PFAIL和FAIL。PFAIL以为这可能失败，是一种non-acknowledged失败类型。FAIL意味着一个节点失败了，并且在固定时间内被大多数主节点确认过失败的。</p>
+<h3 id="PFAIL-flag"><a href="#PFAIL-flag" class="headerlink" title="PFAIL flag:"></a>PFAIL flag:</h3><p>当超过NODE_TIMEOUT时间，节点不可达的时候，一个节点会使用PFAIL来标识其他节点。不管其类型是什么，主节点和从节点都可以标识其他节点为PFAIL。</p>
+<p>在RedisCluster节点中<code>不可达</code>的概念是：一个active ping超过NODE_TIMEOUT后依然没有收到响应。这种机制下，NODE_TIMEOUT要大于网络的往返时间（round trip time）。</p>
+<p>在正常操作下，为了增加可靠性，一旦超过NODE_TIMEOUT的一半还没有收到ping的响应，那么节点会尝试与其他节点进行重连。这种机制确保连接保活，错误的连接不会导致错误的节点错误报告。</p>
+<h3 id="FAIL-flag："><a href="#FAIL-flag：" class="headerlink" title="FAIL flag："></a>FAIL flag：</h3><p>PFAIL标识是每个节点记录其他节点的本地信息，这不足以触发从节点的推举。对于一个PFAIL状态的节点会升级为FAIL状态。</p>
+<p>正如文档中节点心跳部分概括的，每个节点会向其他节点发送gossip消息，这些消息包含了其他已知节点的状态。每个节点最后接收一组其他节点的节点标识。This way every node has a mechanism to signal other nodes about failure conditions they have detected.</p>
+<p>当下列条件满足的时候PFAIL条件会升级为FAIL条件：</p>
+<ul>
+<li>节点A已经将节点B标识为PFAIL。</li>
+<li>通过gossip部分，节点A从集群中大多数主节点那儿收集了节点B的状态。</li>
+<li>在<code>NODE_TIMEOUT * FAIL_REPORT_VALIDITY_MULT</code>时间内，多数master节点标记为PFAIL或PFAIL条件（现在的实现中正确的系数设置为2，因此是2倍的NODE_TIMEOUT时间）。</li>
+</ul>
+<p>如果上面的条件为真，节点A将会：</p>
+<ul>
+<li>将节点标记为FAIL</li>
+<li>向所有可以到达的节点发送FAIL消息。</li>
+</ul>
+<p>FAIL消息会强迫每个收到消息的节点将这个节点A标识为FAIL状态，而不管这些收到消息的节点是否标识节点A为PFAIL状态。注意到FAIL标识通常是一个方式。节点可以从PFAIL到FAIL状态，但FAIL状态只能在下面情况下被清除：</p>
+<p>+</p>
+<p>The FAIL message will force every receiving node to mark the node in FAIL state, whether or not it already flagged the node in PFAIL state.<br>Note that the FAIL flag is mostly one way. That is, a node can go from PFAIL to FAIL, but a FAIL flag can only be cleared in the following situations:<br>The node is already reachable and is a slave. In this case the FAIL flag can be cleared as slaves are not failed over.<br>The node is already reachable and is a master not serving any slot. In this case the FAIL flag can be cleared as masters without slots do not really participate in the cluster and are waiting to be configured in order to join the cluster.<br>The node is already reachable and is a master, but a long time (N times the NODE_TIMEOUT) has elapsed without any detectable slave promotion. It’s better for it to rejoin the cluster and continue in this case.<br>It is useful to note that while the PFAIL -&gt; FAIL transition uses a form of agreement, the agreement used is weak:<br>Nodes collect views of other nodes over some time period, so even if the majority of master nodes need to “agree”, actually this is just state that we collected from different nodes at different times and we are not sure, nor we require, that at a given moment the majority of masters agreed. However we discard failure reports which are old, so the failure was signaled by the majority of masters within a window of time.<br>While every node detecting the FAIL condition will force that condition on other nodes in the cluster using the FAIL message, there is no way to ensure the message will reach all the nodes. For instance a node may detect the FAIL condition and because of a partition will not be able to reach any other node.<br>However the Redis Cluster failure detection has a liveness requirement: eventually all the nodes should agree about the state of a given node. There are two cases that can originate from split brain conditions. Either some minority of nodes believe the node is in FAIL state, or a minority of nodes believe the node is not in FAIL state. In both the cases eventually the cluster will have a single view of the state of a given node:<br>Case 1: If a majority of masters have flagged a node as FAIL, because of failure detection and the chain effect it generates, every other node will eventually flag the master as FAIL, since in the specified window of time enough failures will be reported.<br>Case 2: When only a minority of masters have flagged a node as FAIL, the slave promotion will not happen (as it uses a more formal algorithm that makes sure everybody knows about the promotion eventually) and every node will clear the FAIL state as per the FAIL state clearing rules above (i.e. no promotion after N times the NODE_TIMEOUT has elapsed).<br>The FAIL flag is only used as a trigger to run the safe part of the algorithm for the slave promotion. In theory a slave may act independently and start a slave promotion when its master is not reachable, and wait for the masters to refuse to provide the acknowledgment if the master is actually reachable by the majority. However the added complexity of the PFAIL -&gt; FAIL state, the weak agreement, and the FAIL message forcing the propagation of the state in the shortest amount of time in the reachable part of the cluster, have practical advantages. Because of these mechanisms, usually all the nodes will stop accepting writes at about the same time if the cluster is in an error state. This is a desirable feature from the point of view of applications using Redis Cluster. Also erroneous election attempts initiated by slaves that can’t reach its master due to local problems (the master is otherwise reachable by the majority of other master nodes) are avoided.</p>
+<p>#Configuration handling, propagation, and failovers</p>
+<h2 id="集群当前时代（Cluster-current-epoch）"><a href="#集群当前时代（Cluster-current-epoch）" class="headerlink" title="集群当前时代（Cluster current epoch）"></a>集群当前时代（Cluster current epoch）</h2><p>RedisCluster使用一个类似Raft算中的概念，在RedisCluster中这个术语叫做时代（epoch），其目的是给予事件一个增长的版本。当多节点提供冲突消息时，对于其他节点可以获取到最新的状态。</p>
+<p>####当前时代（currentEpoch）是一个64位的无符号数字<br>At node creation every Redis Cluster node, both slaves and master nodes, set the currentEpoch to 0.</p>
+<p>在RedisCluster节点创建的时候，从节点和主节点currentEpoch都是0.<br>每次从其他节点收到包，如果发送者的epoch大于本地节点epoch，那么currentEpoch就会更新为发送者的epoch。因为这样的话，最后所有节点都会得到集群中的最大的configEpoch。<br>当交换集群状态和一个节点执行某些操作的时候回使用这个信息。现在只有在<code>从节点推举</code>的时候才会发生。epoch对于集群而言是一个逻辑锁，面对小的epoch时，所提供的信息以大的epoch的信息为准。</p>
+<h2 id="配置时代（Configuration-epoch）"><a href="#配置时代（Configuration-epoch）" class="headerlink" title="配置时代（Configuration epoch）"></a>配置时代（Configuration epoch）</h2><p>Every master always advertises its configEpoch in ping and pong packets along with a bitmap advertising the set of slots it serves.<br>The configEpoch is set to zero in masters when a new node is created.<br>A new configEpoch is created during slave election. Slaves trying to replace failing masters increment their epoch and try to get authorization from a majority of masters. When a slave is authorized, a new unique configEpoch is created and the slave turns into a master using the new configEpoch.<br>As explained in the next sections the configEpoch helps to resolve conflicts when different nodes claim divergent configurations (a condition that may happen because of network partitions and node failures).<br>Slave nodes also advertise the configEpoch field in ping and pong packets, but in the case of slaves the field represents the configEpoch of its master as of the last time they exchanged packets. This allows other instances to detect when a slave has an old configuration that needs to be updated (master nodes will not grant votes to slaves with an old configuration).<br>Every time the configEpoch changes for some known node, it is permanently stored in the nodes.conf file by all the nodes that receive this information. The same also happens for the currentEpoch value. These two variables are guaranteed to be saved and fsync-ed to disk when updated before a node continues its operations.<br>The configEpoch values generated using a simple algorithm during failovers are guaranteed to be new, incremental, and unique.</p>
+<p>##从节点选举和推举 Slave election and promotion</p>
+<p>从节点的选举和推举是由从节点操作，由主节点投票，推举从节点。当主节点的状态是FAIL，并且主节点有从节点时，从节点会进行选举并有可能成为一个主节点。</p>
+<p>对于一个从节点，想成为一个主节点的话，需要开始一个选举并且赢取选举。当主节点状态是FAIL时，该master的所有从节点会开始选举，但是只有一个从节点会赢得选举并推举自己为主节点。</p>
+<p>当下来条件满足时，一个从节点开始选举：</p>
+<ul>
+<li>从节点的主节点是FAIL状态</li>
+<li>主节点负责的槽位个数大于0</li>
+<li>从节点与主节点的复制连接已经断开一段时间，目的是为了保证被推举从节点的的数据足够新。这个时间是用户可配置的</li>
+</ul>
+<p>为了进行选举，从节点的额第一步是增加currentEpoch计数器，并请求主节点实例的投票。</p>
+<p>从节点向集群中每个主节点发送 FAILOVER_AUTH_REQUEST的包，从而发起投票的请求。之后等待投票的最长时间是2*NODE_TIMEOUT。</p>
+<p>一旦一个主节点为某个从节点投票以后，即回复FAILOVER_AUTH_ACK的包，那么这个主节点在2*NODE_TIMEOUT时间内就不能投票该主节点的其他从节点了。 这不是为了保证安全，但可以防止多个从节点同时被推举，这不是我们想要的。</p>
+<p>当投票请求中的epoch小于节点的currentEpoch时，从节点放弃AUTH_ACK响应。这确保了节点不会统计之前推举的投票。</p>
+<p>一旦从节点收到大部分主节点的ACKS，那么其赢取选举。如果在<code>2*NODE_TIMEOUT</code>时间内，没有收到大多数节点的ACKS，那么就会放弃这次选举，并在<code>4*NODE_TIMEOUT</code>后开始新的推举。</p>
+<p>##Slave rank<br>As soon as a master is in FAIL state, a slave waits a short period of time before trying to get elected. That delay is computed as follows:<br>一旦主节点处于FAIL状态，那么从节点需要在短时间等待以后才会尝试选举，这个时延计算如下：</p>
+<p><code>DELAY = 500 milliseconds + random delay between 0 and 500 milliseconds +
+        SLAVE_RANK * 1000 milliseconds</code>.</p>
+<p>固定的时延确保FAIL状态能够在集群中传播，否则其他主节点没有收到FAIL状态时，从节点的选举就会被拒绝。</p>
+<p>随机时延的目的是为了避免从节点同时进行推荐。</p>
+<p>The SLAVE_RANK is the rank of this slave regarding the amount of replication data it has processed from the master. Slaves exchange messages when the master is failing in order to establish a (best effort) rank: the slave with the most updated replication offset is at rank 0, the second most updated at rank 1, and so forth. In this way the most updated slaves try to get elected before others.<br>Rank order is not strictly enforced; if a slave of higher rank fails to be elected, the others will try shortly.<br>Once a slave wins the election, it obtains a new unique and incremental configEpoch which is higher than that of any other existing master. It starts advertising itself as master in ping and pong packets, providing the set of served slots with a configEpoch that will win over the past ones.<br>In order to speedup the reconfiguration of other nodes, a pong packet is broadcast to all the nodes of the cluster. Currently unreachable nodes will eventually be reconfigured when they receive a ping or pong packet from another node or will receive an UPDATE packet from another node if the information it publishes via heartbeat packets are detected to be out of date.<br>The other nodes will detect that there is a new master serving the same slots served by the old master but with a greater configEpoch, and will upgrade their configuration. Slaves of the old master (or the failed over master if it rejoins the cluster) will not just upgrade the configuration but will also reconfigure to replicate from the new master. How nodes rejoining the cluster are configured is explained in the next sections.</p>
+<p>##Masters reply to slave vote request<br>In the previous section it was discussed how slaves try to get elected. This section explains what happens from the point of view of a master that is requested to vote for a given slave.<br>Masters receive requests for votes in form of FAILOVER_AUTH_REQUEST requests from slaves.<br>For a vote to be granted the following conditions need to be met:<br>A master only votes a single time for a given epoch, and refuses to vote for older epochs: every master has a lastVoteEpoch field and will refuse to vote again as long as the currentEpoch in the auth request packet is not greater than the lastVoteEpoch. When a master replies positively to a vote request, the lastVoteEpoch is updated accordingly, and safely stored on disk.<br>A master votes for a slave only if the slave’s master is flagged as FAIL.<br>Auth requests with a currentEpoch that is less than the master currentEpoch are ignored. Because of this the master reply will always have the same currentEpoch as the auth request. If the same slave asks again to be voted, incrementing the currentEpoch, it is guaranteed that an old delayed reply from the master can not be accepted for the new vote.<br>Example of the issue caused by not using rule number 3:<br>Master currentEpoch is 5, lastVoteEpoch is 1 (this may happen after a few failed elections)<br>Slave currentEpoch is 3.<br>Slave tries to be elected with epoch 4 (3+1), master replies with an ok with currentEpoch 5, however the reply is delayed.<br>Slave will try to be elected again, at a later time, with epoch 5 (4+1), the delayed reply reaches the slave with currentEpoch 5, and is accepted as valid.<br>Masters don’t vote for a slave of the same master before NODE_TIMEOUT * 2 has elapsed if a slave of that master was already voted for. This is not strictly required as it is not possible for two slaves to win the election in the same epoch. However, in practical terms it ensures that when a slave is elected it has plenty of time to inform the other slaves and avoid the possibility that another slave will win a new election, performing an unnecessary second failover.<br>Masters make no effort to select the best slave in any way. If the slave’s master is in FAIL state and the master did not vote in the current term, a positive vote is granted. The best slave is the most likely to start an election and win it before the other slaves, since it will usually be able to start the voting process earlier because of its higher rank as explained in the previous section.<br>When a master refuses to vote for a given slave there is no negative response, the request is simply ignored.<br>Masters don’t vote for slaves sending a configEpoch that is less than any configEpoch in the master table for the slots claimed by the slave. Remember that the slave sends the configEpoch of its master, and the bitmap of the slots served by its master. This means that the slave requesting the vote must have a configuration for the slots it wants to failover that is newer or equal the one of the master granting the vote.<br>Practical example of configuration epoch usefulness during partitions<br>This section illustrates how the epoch concept is used to make the slave promotion process more resistant to partitions.<br>A master is no longer reachable indefinitely. The master has three slaves A, B, C.<br>Slave A wins the election and is promoted to master.<br>A network partition makes A not available for the majority of the cluster.<br>Slave B wins the election and is promoted as master.<br>A partition makes B not available for the majority of the cluster.<br>The previous partition is fixed, and A is available again.<br>At this point B is down and A is available again with a role of master (actually UPDATE messages would reconfigure it promptly, but here we assume all UPDATE messages were lost). At the same time, slave C will try to get elected in order to fail over B. This is what happens:<br>B will try to get elected and will succeed, since for the majority of masters its master is actually down. It will obtain a new incremental configEpoch.<br>A will not be able to claim to be the master for its hash slots, because the other nodes already have the same hash slots associated with a higher configuration epoch (the one of B) compared to the one published by A.<br>So, all the nodes will upgrade their table to assign the hash slots to C, and the cluster will continue its operations.<br>As you’ll see in the next sections, a stale node rejoining a cluster will usually get notified as soon as possible about the configuration change because as soon as it pings any other node, the receiver will detect it has stale information and will send an UPDATE message.<br>Hash slots configuration propagation<br>An important part of Redis Cluster is the mechanism used to propagate the information about which cluster node is serving a given set of hash slots. This is vital to both the startup of a fresh cluster and the ability to upgrade the configuration after a slave was promoted to serve the slots of its failing master.<br>The same mechanism allows nodes partitioned away for an indefinite amount of time to rejoin the cluster in a sensible way.<br>There are two ways hash slot configurations are propagated:<br>Heartbeat messages. The sender of a ping or pong packet always adds information about the set of hash slots it (or its master, if it is a slave) serves.<br>UPDATE messages. Since in every heartbeat packet there is information about the sender configEpoch and set of hash slots served, if a receiver of a heartbeat packet finds the sender information is stale, it will send a packet with new information, forcing the stale node to update its info.<br>The receiver of a heartbeat or UPDATE message uses certain simple rules in order to update its table mapping hash slots to nodes. When a new Redis Cluster node is created, its local hash slot table is simply initialized to NULL entries so that each hash slot is not bound or linked to any node. This looks similar to the following:<br>0 -&gt; NULL<br>1 -&gt; NULL<br>2 -&gt; NULL<br>…<br>16383 -&gt; NULL<br>The first rule followed by a node in order to update its hash slot table is the following:<br>Rule 1: If a hash slot is unassigned (set to NULL), and a known node claims it, I’ll modify my hash slot table and associate the claimed hash slots to it.<br>So if we receive a heartbeat from node A claiming to serve hash slots 1 and 2 with a configuration epoch value of 3, the table will be modified to:<br>0 -&gt; NULL<br>1 -&gt; A [3]<br>2 -&gt; A [3]<br>…<br>16383 -&gt; NULL<br>When a new cluster is created, a system administrator needs to manually assign (using the CLUSTER ADDSLOTS command, via the redis-trib command line tool, or by any other means) the slots served by each master node only to the node itself, and the information will rapidly propagate across the cluster.<br>However this rule is not enough. We know that hash slot mapping can change during two events:<br>A slave replaces its master during a failover.<br>A slot is resharded from a node to a different one.<br>For now let’s focus on failovers. When a slave fails over its master, it obtains a configuration epoch which is guaranteed to be greater than the one of its master (and more generally greater than any other configuration epoch generated previously). For example node B, which is a slave of A, may failover B with configuration epoch of 4. It will start to send heartbeat packets (the first time mass-broadcasting cluster-wide) and because of the following second rule, receivers will update their hash slot tables:<br>Rule 2: If a hash slot is already assigned, and a known node is advertising it using a configEpoch that is greater than the configEpoch of the master currently associated with the slot, I’ll rebind the hash slot to the new node.<br>So after receiving messages from B that claim to serve hash slots 1 and 2 with configuration epoch of 4, the receivers will update their table in the following way:<br>0 -&gt; NULL<br>1 -&gt; B [4]<br>2 -&gt; B [4]<br>…<br>16383 -&gt; NULL<br>Liveness property: because of the second rule, eventually all nodes in the cluster will agree that the owner of a slot is the one with the greatest configEpoch among the nodes advertising it.<br>This mechanism in Redis Cluster is called last failover wins.<br>The same happens during reshardings. When a node importing a hash slot completes the import operation, its configuration epoch is incremented to make sure the change will be propagated throughout the cluster.<br>UPDATE messages, a closer look<br>With the previous section in mind, it is easier to see how update messages work. Node A may rejoin the cluster after some time. It will send heartbeat packets where it claims it serves hash slots 1 and 2 with configuration epoch of 3. All the receivers with updated information will instead see that the same hash slots are associated with node B having an higher configuration epoch. Because of this they’ll send an UPDATE message to A with the new configuration for the slots. A will update its configuration because of the rule 2 above.<br>How nodes rejoin the cluster<br>The same basic mechanism is used when a node rejoins a cluster. Continuing with the example above, node A will be notified that hash slots 1 and 2 are now served by B. Assuming that these two were the only hash slots served by A, the count of hash slots served by A will drop to 0! So A will reconfigure to be a slave of the new master.<br>The actual rule followed is a bit more complex than this. In general it may happen that A rejoins after a lot of time, in the meantime it may happen that hash slots originally served by A are served by multiple nodes, for example hash slot 1 may be served by B, and hash slot 2 by C.<br>So the actual Redis Cluster node role switch rule is: A master node will change its configuration to replicate (be a slave of) the node that stole its last hash slot.<br>During reconfiguration, eventually the number of served hash slots will drop to zero, and the node will reconfigure accordingly. Note that in the base case this just means that the old master will be a slave of the slave that replaced it after a failover. However in the general form the rule covers all possible cases.<br>Slaves do exactly the same: they reconfigure to replicate the node that stole the last hash slot of its former master.<br>Replica migration<br>Redis Cluster implements a concept called replica migration in order to improve the availability of the system. The idea is that in a cluster with a master-slave setup, if the map between slaves and masters is fixed availability is limited over time if multiple independent failures of single nodes happen.<br>For example in a cluster where every master has a single slave, the cluster can continue operations as long as either the master or the slave fail, but not if both fail the same time. However there is a class of failures that are the independent failures of single nodes caused by hardware or software issues that can accumulate over time. For example:<br>Master A has a single slave A1.<br>Master A fails. A1 is promoted as new master.<br>Three hours later A1 fails in an independent manner (unrelated to the failure of A). No other slave is available for promotion since node A is still down. The cluster cannot continue normal operations.<br>If the map between masters and slaves is fixed, the only way to make the cluster more resistant to the above scenario is to add slaves to every master, however this is costly as it requires more instances of Redis to be executed, more memory, and so forth.<br>An alternative is to create an asymmetry in the cluster, and let the cluster layout automatically change over time. For example the cluster may have three masters A, B, C. A and B have a single slave each, A1 and B1. However the master C is different and has two slaves: C1 and C2.<br>Replica migration is the process of automatic reconfiguration of a slave in order to migrate to a master that has no longer coverage (no working slaves). With replica migration the scenario mentioned above turns into the following:<br>Master A fails. A1 is promoted.<br>C2 migrates as slave of A1, that is otherwise not backed by any slave.<br>Three hours later A1 fails as well.<br>C2 is promoted as new master to replace A1.<br>The cluster can continue the operations.<br>Replica migration algorithm<br>The migration algorithm does not use any form of agreement since the slave layout in a Redis Cluster is not part of the cluster configuration that needs to be consistent and/or versioned with config epochs. Instead it uses an algorithm to avoid mass-migration of slaves when a master is not backed. The algorithm guarantees that eventually (once the cluster configuration is stable) every master will be backed by at least one slave.<br>This is how the algorithm works. To start we need to define what is a good slave in this context: a good slave is a slave not in FAIL state from the point of view of a given node.<br>The execution of the algorithm is triggered in every slave that detects that there is at least a single master without good slaves. However among all the slaves detecting this condition, only a subset should act. This subset is actually often a single slave unless different slaves have in a given moment a slightly different view of the failure state of other nodes.<br>The acting slave is the slave among the masters with the maximum number of attached slaves, that is not in FAIL state and has the smallest node ID.<br>So for example if there are 10 masters with 1 slave each, and 2 masters with 5 slaves each, the slave that will try to migrate is - among the 2 masters having 5 slaves - the one with the lowest node ID. Given that no agreement is used, it is possible that when the cluster configuration is not stable, a race condition occurs where multiple slaves believe themselves to be the non-failing slave with the lower node ID (it is unlikely for this to happen in practice). If this happens, the result is multiple slaves migrating to the same master, which is harmless. If the race happens in a way that will leave the ceding master without slaves, as soon as the cluster is stable again the algorithm will be re-executed again and will migrate a slave back to the original master.<br>Eventually every master will be backed by at least one slave. However, the normal behavior is that a single slave migrates from a master with multiple slaves to an orphaned master.<br>The algorithm is controlled by a user-configurable parameter called cluster-migration-barrier: the number of good slaves a master must be left with before a slave can migrate away. For example, if this parameter is set to 2, a slave can try to migrate only if its master remains with two working slaves.</p>
+<p>##configEpoch conflicts resolution algorithm<br>When new configEpoch values are created via slave promotion during failovers, they are guaranteed to be unique.<br>However there are two distinct events where new configEpoch values are created in an unsafe way, just incrementing the local currentEpoch of the local node and hoping there are no conflicts at the same time. Both the events are system-administrator triggered:<br>CLUSTER FAILOVER command with TAKEOVER option is able to manually promote a slave node into a master without the majority of masters being available. This is useful, for example, in multi data center setups.<br>Migration of slots for cluster rebalancing also generates new configuration epochs inside the local node without agreement for performance reasons.<br>Specifically, during manual reshardings, when a hash slot is migrated from a node A to a node B, the resharding program will force B to upgrade its configuration to an epoch which is the greatest found in the cluster, plus 1 (unless the node is already the one with the greatest configuration epoch), without requiring agreement from other nodes. Usually a real world resharding involves moving several hundred hash slots (especially in small clusters). Requiring an agreement to generate new configuration epochs during reshardings, for each hash slot moved, is inefficient. Moreover it requires an fsync in each of the cluster nodes every time in order to store the new configuration. Because of the way it is performed instead, we only need a new config epoch when the first hash slot is moved, making it much more efficient in production environments.<br>However because of the two cases above, it is possible (though unlikely) to end with multiple nodes having the same configuration epoch. A resharding operation performed by the system administrator, and a failover happening at the same time (plus a lot of bad luck) could cause currentEpoch collisions if they are not propagated fast enough.<br>Moreover, software bugs and filesystem corruptions can also contribute to multiple nodes having the same configuration epoch.<br>When masters serving different hash slots have the same configEpoch, there are no issues. It is more important that slaves failing over a master have unique configuration epochs.<br>That said, manual interventions or reshardings may change the cluster configuration in different ways. The Redis Cluster main liveness property requires that slot configurations always converge, so under every circumstance we really want all the master nodes to have a different configEpoch.<br>In order to enforce this, a conflict resolution algorithm is used in the event that two nodes end up with the same configEpoch.<br>IF a master node detects another master node is advertising itself with the same configEpoch.<br>AND IF the node has a lexicographically smaller Node ID compared to the other node claiming the same configEpoch.<br>THEN it increments its currentEpoch by 1, and uses it as the new configEpoch.<br>If there are any set of nodes with the same configEpoch, all the nodes but the one with the greatest Node ID will move forward, guaranteeing that, eventually, every node will pick a unique configEpoch regardless of what happened.<br>This mechanism also guarantees that after a fresh cluster is created, all nodes start with a different configEpoch (even if this is not actually used) since redis-trib makes sure to use CONFIG SET-CONFIG-EPOCH at startup. However if for some reason a node is left misconfigured, it will update its configuration to a different configuration epoch automatically.</p>
+<p>##Node resets<br>Nodes can be software reset (without restarting them) in order to be reused in a different role or in a different cluster. This is useful in normal operations, in testing, and in cloud environments where a given node can be reprovisioned to join a different set of nodes to enlarge or create a new cluster.<br>In Redis Cluster nodes are reset using the CLUSTER RESET command. The command is provided in two variants:<br>CLUSTER RESET SOFT<br>CLUSTER RESET HARD<br>The command must be sent directly to the node to reset. If no reset type is provided, a soft reset is performed.<br>The following is a list of operations performed by a reset:<br>Soft and hard reset: If the node is a slave, it is turned into a master, and its dataset is discarded. If the node is a master and contains keys the reset operation is aborted.<br>Soft and hard reset: All the slots are released, and the manual failover state is reset.<br>Soft and hard reset: All the other nodes in the nodes table are removed, so the node no longer knows any other node.<br>Hard reset only: currentEpoch, configEpoch, and lastVoteEpoch are set to 0.<br>Hard reset only: the Node ID is changed to a new random ID.<br>Master nodes with non-empty data sets can’t be reset (since normally you want to reshard data to the other nodes). However, under special conditions when this is appropriate (e.g. when a cluster is totally destroyed with the intent of creating a new one), FLUSHALL must be executed before proceeding with the reset.</p>
+<h2 id="Removing-nodes-from-a-cluster"><a href="#Removing-nodes-from-a-cluster" class="headerlink" title="Removing nodes from a cluster"></a>Removing nodes from a cluster</h2><p>It is possible to practically remove a node from an existing cluster by resharding all its data to other nodes (if it is a master node) and shutting it down. However, the other nodes will still remember its node ID and address, and will attempt to connect with it.<br>For this reason, when a node is removed we want to also remove its entry from all the other nodes tables. This is accomplished by using the CLUSTER FORGET <node-id> command.<br>The command does two things:<br>It removes the node with the specified node ID from the nodes table.<br>It sets a 60 second ban which prevents a node with the same node ID from being re-added.<br>The second operation is needed because Redis Cluster uses gossip in order to auto-discover nodes, so removing the node X from node A, could result in node B gossiping about node X to A again. Because of the 60 second ban, the Redis Cluster administration tools have 60 seconds in order to remove the node from all the nodes, preventing the re-addition of the node due to auto discovery.<br>Further information is available in the CLUSTER FORGET documentation.</node-id></p>
+<h2 id="Publish-Subscribe"><a href="#Publish-Subscribe" class="headerlink" title="Publish/Subscribe"></a>Publish/Subscribe</h2><p>In a Redis Cluster clients can subscribe to every node, and can also publish to every other node. The cluster will make sure that published messages are forwarded as needed.<br>The current implementation will simply broadcast each published message to all other nodes, but at some point this will be optimized either using Bloom filters or other algorithms.</p>
+<h1 id="Appendix"><a href="#Appendix" class="headerlink" title="Appendix"></a>Appendix</h1><p>Appendix A: CRC16 reference implementation in ANSI C<br>/*</p>
+<ul>
+<li>Copyright 2001-2010 Georges Menie (<a href="http://www.menie.org" target="_blank" rel="noopener">www.menie.org</a>)</li>
+<li>Copyright 2010 Salvatore Sanfilippo (adapted to Redis coding style)</li>
+<li>All rights reserved.</li>
+<li>Redistribution and use in source and binary forms, with or without</li>
+<li>modification, are permitted provided that the following conditions are met:<br>*</li>
+<li><ul>
+<li>Redistributions of source code must retain the above copyright</li>
+</ul>
+</li>
+<li>notice, this list of conditions and the following disclaimer.</li>
+<li><ul>
+<li>Redistributions in binary form must reproduce the above copyright</li>
+</ul>
+</li>
+<li>notice, this list of conditions and the following disclaimer in the</li>
+<li>documentation and/or other materials provided with the distribution.</li>
+<li><ul>
+<li>Neither the name of the University of California, Berkeley nor the</li>
+</ul>
+</li>
+<li>names of its contributors may be used to endorse or promote products</li>
+<li>derived from this software without specific prior written permission.<br>*</li>
+<li>THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS <code></code>AS IS’’ AND ANY</li>
+<li>EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED</li>
+<li>WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE</li>
+<li>DISCLAIMED. IN NO EVENT SHALL THE REGENTS AND CONTRIBUTORS BE LIABLE FOR ANY</li>
+<li>DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES</li>
+<li>(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;</li>
+<li>LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND</li>
+<li>ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT</li>
+<li>(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS</li>
+<li>SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.<br>*/</li>
+</ul>
+<p>/<em> CRC16 implementation according to CCITT standards.
+ </em></p>
+<ul>
+<li>Note by @antirez: this is actually the XMODEM CRC 16 algorithm, using the</li>
+<li>following parameters:<br>*</li>
+<li>Name                       : “XMODEM”, also known as “ZMODEM”, “CRC-16/ACORN”</li>
+<li>Width                      : 16 bit</li>
+<li>Poly                       : 1021 (That is actually x^16 + x^12 + x^5 + 1)</li>
+<li>Initialization             : 0000</li>
+<li>Reflect Input byte         : False</li>
+<li>Reflect Output CRC         : False</li>
+<li>Xor constant to output CRC : 0000</li>
+<li>Output for “123456789”     : 31C3<br>*/</li>
+</ul>
+<p>static const uint16_t crc16tab[256]= {<br>    0x0000,0x1021,0x2042,0x3063,0x4084,0x50a5,0x60c6,0x70e7,<br>    0x8108,0x9129,0xa14a,0xb16b,0xc18c,0xd1ad,0xe1ce,0xf1ef,<br>    0x1231,0x0210,0x3273,0x2252,0x52b5,0x4294,0x72f7,0x62d6,<br>    0x9339,0x8318,0xb37b,0xa35a,0xd3bd,0xc39c,0xf3ff,0xe3de,<br>    0x2462,0x3443,0x0420,0x1401,0x64e6,0x74c7,0x44a4,0x5485,<br>    0xa56a,0xb54b,0x8528,0x9509,0xe5ee,0xf5cf,0xc5ac,0xd58d,<br>    0x3653,0x2672,0x1611,0x0630,0x76d7,0x66f6,0x5695,0x46b4,<br>    0xb75b,0xa77a,0x9719,0x8738,0xf7df,0xe7fe,0xd79d,0xc7bc,<br>    0x48c4,0x58e5,0x6886,0x78a7,0x0840,0x1861,0x2802,0x3823,<br>    0xc9cc,0xd9ed,0xe98e,0xf9af,0x8948,0x9969,0xa90a,0xb92b,<br>    0x5af5,0x4ad4,0x7ab7,0x6a96,0x1a71,0x0a50,0x3a33,0x2a12,<br>    0xdbfd,0xcbdc,0xfbbf,0xeb9e,0x9b79,0x8b58,0xbb3b,0xab1a,<br>    0x6ca6,0x7c87,0x4ce4,0x5cc5,0x2c22,0x3c03,0x0c60,0x1c41,<br>    0xedae,0xfd8f,0xcdec,0xddcd,0xad2a,0xbd0b,0x8d68,0x9d49,<br>    0x7e97,0x6eb6,0x5ed5,0x4ef4,0x3e13,0x2e32,0x1e51,0x0e70,<br>    0xff9f,0xefbe,0xdfdd,0xcffc,0xbf1b,0xaf3a,0x9f59,0x8f78,<br>    0x9188,0x81a9,0xb1ca,0xa1eb,0xd10c,0xc12d,0xf14e,0xe16f,<br>    0x1080,0x00a1,0x30c2,0x20e3,0x5004,0x4025,0x7046,0x6067,<br>    0x83b9,0x9398,0xa3fb,0xb3da,0xc33d,0xd31c,0xe37f,0xf35e,<br>    0x02b1,0x1290,0x22f3,0x32d2,0x4235,0x5214,0x6277,0x7256,<br>    0xb5ea,0xa5cb,0x95a8,0x8589,0xf56e,0xe54f,0xd52c,0xc50d,<br>    0x34e2,0x24c3,0x14a0,0x0481,0x7466,0x6447,0x5424,0x4405,<br>    0xa7db,0xb7fa,0x8799,0x97b8,0xe75f,0xf77e,0xc71d,0xd73c,<br>    0x26d3,0x36f2,0x0691,0x16b0,0x6657,0x7676,0x4615,0x5634,<br>    0xd94c,0xc96d,0xf90e,0xe92f,0x99c8,0x89e9,0xb98a,0xa9ab,<br>    0x5844,0x4865,0x7806,0x6827,0x18c0,0x08e1,0x3882,0x28a3,<br>    0xcb7d,0xdb5c,0xeb3f,0xfb1e,0x8bf9,0x9bd8,0xabbb,0xbb9a,<br>    0x4a75,0x5a54,0x6a37,0x7a16,0x0af1,0x1ad0,0x2ab3,0x3a92,<br>    0xfd2e,0xed0f,0xdd6c,0xcd4d,0xbdaa,0xad8b,0x9de8,0x8dc9,<br>    0x7c26,0x6c07,0x5c64,0x4c45,0x3ca2,0x2c83,0x1ce0,0x0cc1,<br>    0xef1f,0xff3e,0xcf5d,0xdf7c,0xaf9b,0xbfba,0x8fd9,0x9ff8,<br>    0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0<br>};</p>
+<p>uint16_t crc16(const char <em>buf, int len) {<br>    int counter;<br>    uint16_t crc = 0;<br>    for (counter = 0; counter &lt; len; counter++)<br>            crc = (crc&lt;&lt;8) ^ crc16tab[((crc&gt;&gt;8) ^ </em>buf++)&amp;0x00FF];<br>    return crc;<br>}</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/10/03/RedisCluster详细说明[翻译]/" data-id="cjv7slem9006tgrs6c4xdgyuw" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-hive的TRANSFORM操作" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hive的TRANSFORM操作/" class="article-date">
+  <time datetime="2018-09-23T15:03:39.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="Transform-Map-Reduce-Syntax"><a href="#Transform-Map-Reduce-Syntax" class="headerlink" title="Transform/Map-Reduce Syntax"></a>Transform/Map-Reduce Syntax</h2><p>hive语言中内置的特性是支持用户自定义mappers/redulers的。 用户可以使用<code>TRANSFROM</code> 子句来内嵌mapper/reduer脚本的。 </p>
+<p>By default, columns will be transformed to STRING and delimited by TAB before feeding to the user script; similarly, all NULL values will be converted to the literal string \N in order to differentiate NULL values from empty strings. The standard output of the user script will be treated as TAB-separated STRING columns, any cell containing only \N will be re-interpreted as a NULL, and then the resulting STRING column will be cast to the data type specified in the table declaration in the usual way. User scripts can output debug information to standard error which will be shown on the task detail page on hadoop. These defaults can be overridden with ROW FORMAT ….</p>
+<p>注意：</p>
+<p>Formally, MAP … and REDUCE … are syntactic transformations of SELECT TRANSFORM ( … ). In other words, they serve as comments or notes to the reader of the query. BEWARE: Use of these keywords may be dangerous as (e.g.) typing “REDUCE” does not force a reduce phase to occur and typing “MAP” does not force a new map phase!</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">clusterBy: CLUSTER BY colName (&apos;,&apos; colName)*</span><br><span class="line">distributeBy: DISTRIBUTE BY colName (&apos;,&apos; colName)*</span><br><span class="line">sortBy: SORT BY colName (ASC | DESC)? (&apos;,&apos; colName (ASC | DESC)?)*</span><br><span class="line"> </span><br><span class="line">rowFormat</span><br><span class="line">  : ROW FORMAT</span><br><span class="line">    (DELIMITED [FIELDS TERMINATED BY char]</span><br><span class="line">               [COLLECTION ITEMS TERMINATED BY char]</span><br><span class="line">               [MAP KEYS TERMINATED BY char]</span><br><span class="line">               [ESCAPED BY char]</span><br><span class="line">               [LINES SEPARATED BY char]</span><br><span class="line">     |</span><br><span class="line">     SERDE serde_name [WITH SERDEPROPERTIES</span><br><span class="line">                            property_name=property_value,</span><br><span class="line">                            property_name=property_value, ...])</span><br><span class="line"> </span><br><span class="line">outRowFormat : rowFormat</span><br><span class="line">inRowFormat : rowFormat</span><br><span class="line">outRecordReader : RECORDREADER className</span><br><span class="line"> </span><br><span class="line">query:</span><br><span class="line">  FROM (</span><br><span class="line">    FROM src</span><br><span class="line">    MAP expression (&apos;,&apos; expression)*</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_map_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line">    ( clusterBy? | distributeBy? sortBy? ) src_alias</span><br><span class="line">  )</span><br><span class="line">  REDUCE expression (&apos;,&apos; expression)*</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_reduce_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line"> </span><br><span class="line">  FROM (</span><br><span class="line">    FROM src</span><br><span class="line">    SELECT TRANSFORM &apos;(&apos; expression (&apos;,&apos; expression)* &apos;)&apos;</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_map_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line">    ( clusterBy? | distributeBy? sortBy? ) src_alias</span><br><span class="line">  )</span><br><span class="line">  SELECT TRANSFORM &apos;(&apos; expression (&apos;,&apos; expression)* &apos;)&apos;</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_reduce_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br></pre></td></tr></table></figure>
+<p>转化的例子1：</p>
+<p><code>FROM (
+  FROM pv_users
+  MAP pv_users.userid, pv_users.date
+  USING &#39;map_script&#39;
+  AS dt, uid
+  CLUSTER BY dt) map_output
+INSERT OVERWRITE TABLE pv_users_reduced
+  REDUCE map_output.dt, map_output.uid
+  USING &#39;reduce_script&#39;
+  AS date, count;
+FROM (
+  FROM pv_users
+  SELECT TRANSFORM(pv_users.userid, pv_users.date)
+  USING &#39;map_script&#39;
+  AS dt, uid
+  CLUSTER BY dt) map_output
+INSERT OVERWRITE TABLE pv_users_reduced
+  SELECT TRANSFORM(map_output.dt, map_output.uid)
+  USING &#39;reduce_script&#39;
+  AS date, count;</code></p>
+<p>转化的例子2：</p>
+<p><code>FROM (
+  FROM src
+  SELECT TRANSFORM(src.key, src.value) ROW FORMAT SERDE &#39;org.apache.hadoop.hive.contrib.serde2.TypedBytesSerDe&#39;
+  USING &#39;/bin/cat&#39;
+  AS (tkey, tvalue) ROW FORMAT SERDE &#39;org.apache.hadoop.hive.contrib.serde2.TypedBytesSerDe&#39;
+  RECORDREADER &#39;org.apache.hadoop.hive.contrib.util.typedbytes.TypedBytesRecordReader&#39;
+) tmap
+INSERT OVERWRITE TABLE dest1 SELECT tkey, tvalue</code></p>
+<p>将TRANSFORM的输出打出来</p>
+<p>脚本的输出默认是string，如果想进行类型转换的需要进行如下操作。</p>
+<p><code>SELECT TRANSFORM(stuff)
+USING &#39;script&#39;
+AS thing1, thing2</code></p>
+<p>类型转化<br><code>SELECT TRANSFORM(stuff)
+USING &#39;script&#39;
+AS (thing1 INT, thing2 INT)</code></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="cjv7slehj002rgrs62oape3ri" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-hive权威指南学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hive权威指南学习笔记/" class="article-date">
+  <time datetime="2018-09-23T15:02:05.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/09/23/hive权威指南学习笔记/">hive权威指南学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Hive操作</p>
+<p>本篇文章是对 <code>https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations</code> </p>
+<p>以及</p>
+<p>《Hive编程指南》的学习总结</p>
+<ol>
+<li>DDL Operations (data defination language)</li>
+</ol>
+<ul>
+<li>create table pokes (foo INT, bar STRING);</li>
+<li>create table invites (foo INT, bar STRING) PARTITIONED BY (ds STRING);</li>
+</ul>
+<p>partition column 是一个虚拟列，并不是数据本身的一部分，但是可以获得某一份特定数据集。 </p>
+<ul>
+<li>show tables;</li>
+<li>show tables ‘.*s’</li>
+<li>describe invites;</li>
+</ul>
+<ol start="2">
+<li>DML Operations (data manipulation language)</li>
+</ol>
+<h3 id="2-1-装载数据"><a href="#2-1-装载数据" class="headerlink" title="2.1 装载数据"></a>2.1 装载数据</h3><ul>
+<li>LOAD DATA LOCAL INPUT ‘./examples/files/kv1.txt’ OVERWRITE INTO TABLE pokes;</li>
+<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv2.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-15’);</li>
+<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv3.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-08’);</li>
+</ul>
+<p><code>LOCAL</code> 表明这是在本地文件系统上的文件；如果没有的话，那么就从hdfs上获取文件。</p>
+<p><code>OVERWRITE</code> 表明表中已经存在的数据将会被删除。 如果没有的话，数据文件被添加到已经存在的数据集合中。 </p>
+<h3 id="2-2-通过查询语句插入数据"><a href="#2-2-通过查询语句插入数据" class="headerlink" title="2.2 通过查询语句插入数据"></a>2.2 通过查询语句插入数据</h3><ul>
+<li><code>FROM staged_employees se 
+INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;OR&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;OR&#39;
+INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;CA&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;CA&#39;</code></li>
+</ul>
+<h4 id="动态分区插入"><a href="#动态分区插入" class="headerlink" title="动态分区插入"></a>动态分区插入</h4><p>前面的语法中有一个问题，即：如果需要创建非常多的分区，那么用户就需要写非常多的SQL。<br>幸运的是：Hive提供了一个动态分区功能，可以基于查询参数推断出需要创建的分区名称。相比之下，前面看到的都是静态分区。 </p>
+<p><code>INSERT OVERWRITE TABLE employees PARTITION (country, state) 
+ SELECT ..., se.cnty, se.st FROM staged_employees se;</code></p>
+<p>注意：Hive 根据SELECT语句中最后2列来确定分区字段country和state的值。<br>而不是根据命名来匹配的。</p>
+<p>在SQL语句使用不同的命名就是为了强调源表字段值和输出分区值直接的关系是根据位置而不是根据命名来匹配的。 </p>
+<h3 id="2-3-单个查询语句中创建表并加载数据"><a href="#2-3-单个查询语句中创建表并加载数据" class="headerlink" title="2.3 单个查询语句中创建表并加载数据"></a>2.3 单个查询语句中创建表并加载数据</h3><ul>
+<li>create table u_data_v2 as SELECT userid, rating from u_data limit 10;</li>
+</ul>
+<h3 id="2-4-导出数据"><a href="#2-4-导出数据" class="headerlink" title="2.4 导出数据"></a>2.4 导出数据</h3><ul>
+<li>INSERT OVERWRITE LOCAL DIRECTORY ‘/tmp/hive’ SELECT userid, rating FROM u_data; </li>
+</ul>
+<ol start="3">
+<li>SQL操作</li>
+</ol>
+<h3 id="SELECT-…-FROM-语句"><a href="#SELECT-…-FROM-语句" class="headerlink" title="SELECT … FROM 语句"></a>SELECT … FROM 语句</h3><p>3.1 数据类型</p>
+<p> 当用户选择的列是集合数据类型时，Hive会使用JSON语法进行输出。</p>
+<ul>
+<li>当列是一个数组时，其值使用一个括在<code>[...]</code>的逗号分隔的列进行表示，如[“Mary Smith”, “Todd Jones”]</li>
+<li>当列是一个Map时，使用JSON格式来表达map，即使用一个被括在<code>{...}</code>内的以逗号分隔的键值对列表进行表示；如 <code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
+<li>当列是一个Struct时，使用map格式来表示，如<code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
+</ul>
+<p>引用元素的方式：</p>
+<ul>
+<li>引用Map元素，使用ARRAY[…]语法；</li>
+<li>引用Struct的一个元素，使用<code>点</code>符号。</li>
+</ul>
+<p>3.2 使用函数</p>
+<p>3.3 列别名</p>
+<p>如果新产生的结果在源表中不存在的话，通常有必要给这些新产生的列起一个名称，也就是别名。 </p>
+<ul>
+<li>select userid as uid from u_data;</li>
+</ul>
+<p>3.4 嵌套SELECT 语句</p>
+<p><code>FROM (
+    SELECT upper(name), salary ,deductions[&quot;Federal Taxes&quot;] as fed_taxes FROM employees
+    ) e
+SELECT e.name, e.fed_taxes where e.name = &quot;yan&quot;</code></p>
+<p>从这个嵌套语句中可以看到，我们将前面的结果集起了个别名，称之为e，在这个语句外面嵌套查询了name fed_taxes两个字段。 同时约束name必须是yan。</p>
+<p>3.5 CASE … WHEN … THEN 句式</p>
+<p>CASE .. WHEN .. THEN 语句和if条件语句类似，用于处理单个列的查询结果。 </p>
+<p><code>SELECT userid, movieid, 
+    CASE 
+    WHEN rating &lt;= 1 THEN &quot;low&quot; 
+    WHEN rating &gt; 1 and rating &lt;= 3 THEN &quot;middle&quot; ELSE &quot;high&quot;  
+    END  as level 
+    from u_data limit 10;</code></p>
+<h3 id="4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）"><a href="#4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）" class="headerlink" title="4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）"></a>4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）</h3><h4 id="4-1-WHERE语句不能使用列别名。"><a href="#4-1-WHERE语句不能使用列别名。" class="headerlink" title="4.1  WHERE语句不能使用列别名。"></a>4.1  WHERE语句不能使用<code>列别名</code>。</h4><p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
+FROM employees
+WHERE round(salary * (1-deductions[&quot;Federal Taxes&quot;])) &gt; 70000</code></p>
+<p>这个查询语句里面，有重复的表达式。下面的查询语句使用一个列别名来消除重复问题，但是并不能生效。 </p>
+<p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
+FROM employees
+WHERE round(salary_minus_fed_taxes) &gt; 70000;
+报错：Invalid table alias or column reference &#39;salary_minus_fed_taxes&#39;</code></p>
+<p>正如错误信息所提示的，WHERE语句不能使用<code>列别名</code>。<br>不过我们可以使用一个嵌套的SELECT语句</p>
+<p><code>SELECT e.* FROM 
+(SELECT name,salary, salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes FROM employees) e 
+WHERE round(e.salary_minus_fed_taxes) &gt; 70000;</code></p>
+<h4 id="4-2-谓词操作符"><a href="#4-2-谓词操作符" class="headerlink" title="4.2 谓词操作符"></a>4.2 谓词操作符</h4><h4 id="4-3-GROUP-BY语句"><a href="#4-3-GROUP-BY语句" class="headerlink" title="4.3 GROUP BY语句"></a>4.3 GROUP BY语句</h4><p>GROUP BY 通常会和聚合函数一起使用，按照一个或者多个列队结果进行分组，然后对每个组执行聚合操作。 </p>
+<h3 id="4-4-JOIN-语句"><a href="#4-4-JOIN-语句" class="headerlink" title="4.4 JOIN 语句"></a>4.4 JOIN 语句</h3><p>Hive支持通常的SQL JOIN语句，但是只支持<code>等值连接</code>，并且在ON子句中只支持AND。</p>
+<p>4.4.1 INNER JOIN</p>
+<p><code>SELECT a.ymd, a.price_close, b.price_close, c.price_close 
+FROM stocks a JOIN stocks b ON a.ymd = b.ymd
+              JOIN stocks c ON a.ymd = c.ymd
+WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39;GE&#39;;</code></p>
+<p>在这个例子中，会首先启动一个MapReduce job对表a和表b进行连接操作，然后会再启动一个MapReduce job将第一个MapReduce job的输出和表c进行连接操作。 </p>
+<p>Hive表总是按照从左到右的顺序执行的。 </p>
+<h4 id="JOIN优化"><a href="#JOIN优化" class="headerlink" title="JOIN优化"></a>JOIN优化</h4><p>Hive同时假定查询中最后一个表是最大的那个表。在对每行记录进行连接操作时，它会尝试将其他表缓存起来，然后扫描最后那个表进行计算。</p>
+<p>因此用户需要保证<code>连续查询中的表的大小是从左到右依次增加的</code>。</p>
+<h4 id="LEFT-OUTER-JOIN"><a href="#LEFT-OUTER-JOIN" class="headerlink" title="LEFT OUTER JOIN"></a>LEFT OUTER JOIN</h4><h4 id="OUTER-JOIN"><a href="#OUTER-JOIN" class="headerlink" title="OUTER JOIN"></a>OUTER JOIN</h4><h4 id="RIGHT-OUTER-JOIN"><a href="#RIGHT-OUTER-JOIN" class="headerlink" title="RIGHT OUTER JOIN"></a>RIGHT OUTER JOIN</h4><h4 id="FULL-OUTER-JOIN"><a href="#FULL-OUTER-JOIN" class="headerlink" title="FULL OUTER JOIN"></a>FULL OUTER JOIN</h4><h4 id="LEFT-SEMI-JOIN"><a href="#LEFT-SEMI-JOIN" class="headerlink" title="LEFT SEMI-JOIN"></a>LEFT SEMI-JOIN</h4><h4 id="笛卡尔积JOIN"><a href="#笛卡尔积JOIN" class="headerlink" title="笛卡尔积JOIN"></a>笛卡尔积JOIN</h4><h4 id="map-side-JOIN"><a href="#map-side-JOIN" class="headerlink" title="map-side JOIN"></a>map-side JOIN</h4><h3 id="4-5-ORDER-BY-和-SORT-BY"><a href="#4-5-ORDER-BY-和-SORT-BY" class="headerlink" title="4.5 ORDER BY 和 SORT BY"></a>4.5 ORDER BY 和 SORT BY</h3><h3 id="4-6-含有SORT-BY-的DISTRIBUTE-BY"><a href="#4-6-含有SORT-BY-的DISTRIBUTE-BY" class="headerlink" title="4.6 含有SORT BY 的DISTRIBUTE BY"></a>4.6 含有SORT BY 的DISTRIBUTE BY</h3><h3 id="4-10-UNION-ALL"><a href="#4-10-UNION-ALL" class="headerlink" title="4.10 UNION ALL"></a>4.10 UNION ALL</h3><p>UNION ALL将2个或多个进行合并。每个union子查询都必须有相同的列，并且每个字段的字段类型必须是一致的。</p>
+<p>比如，如果第2个字段是FLOAT类型，那么所有其他子查询的第2个字段必须都是FLOAT类型的。</p>
+<p>举例，将日志数据进行合并的例子:</p>
+<p><code>SELECT log.ymd, log.level, log.message 
+    FROM(
+            SELECT l1.ymd, l1.level, l1.message, &#39;Log1&#39; AS source
+            FROM log1 l1
+        UNION ALL
+            SELECT l2.ymd, l2.level, l2.message, &#39;Log2&#39; AS source
+            FROM log2 l2 
+        ) log
+    SORT BY log.ymd ASC;</code></p>
+<h2 id="5-视图（hive编程指南第7章-视图）"><a href="#5-视图（hive编程指南第7章-视图）" class="headerlink" title="5 视图（hive编程指南第7章 视图）"></a>5 视图（hive编程指南第7章 视图）</h2><p>3.3 一些用法</p>
+<ul>
+<li>SELECT a.* FROM invites a WHERE a.ds=’2008-08-15’;</li>
+<li>FROM pokes t1 JOIN invites t2 ON (t1.bar = t2.bar) INSERT OVERWRITE TABLE events SELECT t1.bar, t1.foo, t2.foo;</li>
+<li><p>CREATE TABLE u_data (<br>userid INT,<br>movieid INT,<br>rating INT,<br>unixtime STRING)<br>ROW FORMAT DELIMITED<br>FIELDS TERMINATED BY ‘\t’<br>STORED AS TEXTFILE;</p>
+</li>
+<li><p>LOAD DATA LOCAL INPATH ‘/Users/keything/Downloads/ml-100k/u.data’ OVERWRITE INTO TABLE u_data;</p>
+</li>
+<li><code>SELECT COUNT(*) FROM u_data;</code></li>
+</ul>
+<p>一个简单的例子：</p>
+<p>创建表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  unixtime STRING)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;</span><br><span class="line">STORED AS TEXTFILE;</span><br></pre></td></tr></table></figure>
+<p>获取数据集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http://files.grouplens.org/datasets/movielens/ml-100k.zip</span><br><span class="line">unzip ml-100k.zip</span><br></pre></td></tr></table></figure>
+<p>加载数据集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LOAD DATA LOCAL INPATH &apos;&lt;path&gt;/u.data&apos; OVERWRITE INTO TABLE u_data;</span><br></pre></td></tr></table></figure>
+<p>创建weekday_mapper.py</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">import sys</span><br><span class="line">import datetime</span><br><span class="line"></span><br><span class="line">for line in sys.stdin:</span><br><span class="line">  line = line.strip()</span><br><span class="line">  userid, movieid, rating, unixtime = line.split(&apos;\t&apos;)</span><br><span class="line">  weekday = datetime.datetime.fromtimestamp(float(unixtime)).isoweekday()</span><br><span class="line">  print &apos;\t&apos;.join([userid, movieid, rating, str(weekday)])</span><br></pre></td></tr></table></figure>
+<p>对于这个脚本是否正确，可以通过自己创建文件来验证。</p>
+<p>创建mapper脚本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data_new (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  weekday INT)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;;</span><br><span class="line"></span><br><span class="line">add FILE weekday_mapper.py;</span><br><span class="line"></span><br><span class="line">INSERT OVERWRITE TABLE u_data_new</span><br><span class="line">SELECT</span><br><span class="line">  TRANSFORM (userid, movieid, rating, unixtime)</span><br><span class="line">  USING &apos;python weekday_mapper.py&apos;</span><br><span class="line">  AS (userid, movieid, rating, weekday)</span><br><span class="line">FROM u_data;</span><br><span class="line"></span><br><span class="line">SELECT weekday, COUNT(*)</span><br><span class="line">FROM u_data_new</span><br><span class="line">GROUP BY weekday;</span><br></pre></td></tr></table></figure>
+<p>最后得到</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1	12254</span><br><span class="line">2	13579</span><br><span class="line">3	14430</span><br><span class="line">4	15114</span><br><span class="line">5	14743</span><br><span class="line">6	18229</span><br><span class="line">7	11651</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="cjv7slehl002tgrs6qstuw4z3" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-hadoop权威指南第四版学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hadoop权威指南第四版学习笔记/" class="article-date">
+  <time datetime="2018-09-23T03:30:21.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/09/23/hadoop权威指南第四版学习笔记/">hadoop权威指南第四版学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Hadoop权威指南第四版-学习笔记"><a href="#Hadoop权威指南第四版-学习笔记" class="headerlink" title="Hadoop权威指南第四版-学习笔记"></a>Hadoop权威指南第四版-学习笔记</h1><h2 id="第二章-关于MapReduce"><a href="#第二章-关于MapReduce" class="headerlink" title="第二章 关于MapReduce"></a>第二章 关于MapReduce</h2><p>MapReduce是一种可用于数据处理的编程模型。 </p>
+<p>Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。 </p>
+<p>一个合理的分片大小趋向于HDFS的一个块的大小，默认是128MB。</p>
+<h4 id="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？"><a href="#map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？" class="headerlink" title="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？"></a>map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？</h4><p>因为map的输出是中间结果：该中间结果由reduce任务处理后才产生最终输出结果，而且一旦作业完成，map的输出结果就可以删除。 因此，如果把map输出存储在HDFS中并实现备份，难免有些小题大做。 </p>
+<p>如果运行map任务的节点在map中间结果传送给reduce任务之前失败，hadoop将在另一个节点重新运行这个map任务以再次构建map中间结果。</p>
+<p>reduce任务并不具备数据本地化的优势，单个reduce任务的输入通常来自于所有mapper的输出。</p>
+<p>reduce任务的数量并不是由输入数据的大小决定，相反是独立指定的。<br>如果有多个reduce任务，每个map任务就会针对输出进行分区(partition)，即为每个reduce任务建一个分区，每个分区有许多键（及其对应的值），但每个键对应的key-value 都在同一个分区中。 用户可以使用自定义的分区函数控制分区，但通常使用默认的partitioner 通过哈希函数来区分，很高效。</p>
+<p>一般情况下，多个reduce任务的数据流如图2-4所示，该图清楚表明了为什么map任务和reduce任务之间的数据流成为shuffle（混洗），因为每个reduce任务的输入都来自许多map任务。shuffle一般比图中所示的更复杂，而且调整混洗参数对作业总执行时间的影响非常大。 </p>
+<h2 id="第三章-Hadoop分布式文件系统"><a href="#第三章-Hadoop分布式文件系统" class="headerlink" title="第三章 Hadoop分布式文件系统"></a>第三章 Hadoop分布式文件系统</h2><h3 id="3-2-HDFS概念"><a href="#3-2-HDFS概念" class="headerlink" title="3.2 HDFS概念"></a>3.2 HDFS概念</h3><p>3.2.1 数据块</p>
+<p>HDFS同样也有块block的概念，默认是128MB。</p>
+<p>3.2.2 namenode和datanode</p>
+<p>HDFS集群有两类节点，以 管理节点-工作节点 模式运行，即一个namenode（管理节点）和多个datanode（工作节点）。<br>namenode 管理文件系统的命名空间。它维护者文件系统树及整颗树内所有的文件和目录。这些信息以两个文件形式永久保存在本地磁盘上：命名空间镜像文件和编辑日志文件。 </p>
+<p>namenode也记录着每个文件中各个块所在的数据节点信息，但它并不用就保存块的位置信息，因为这些信息会在系统启动时根据数据节点信息重建。 </p>
+<p>datanode是文件系统的工作节点。他们根据需要存储并检索数据块（受客户端或namenode调度），并且定期向namenode发送所存储的块的列表。</p>
+<p>3.2.3 块缓存<br>3.2.4 联邦HDFS<br>3.2.5 HDFS的高可用性</p>
+<h3 id="3-3-命令行接口"><a href="#3-3-命令行接口" class="headerlink" title="3.3 命令行接口"></a>3.3 命令行接口</h3><h3 id="3-4-Hadoop-文件系统"><a href="#3-4-Hadoop-文件系统" class="headerlink" title="3.4 Hadoop 文件系统"></a>3.4 Hadoop 文件系统</h3><h3 id="3-5-Java接口"><a href="#3-5-Java接口" class="headerlink" title="3.5 Java接口"></a>3.5 Java接口</h3><h3 id="3-6-数据流"><a href="#3-6-数据流" class="headerlink" title="3.6 数据流"></a>3.6 数据流</h3><p>3.6.1 剖析文件读取<br>3.6.2 剖析文件写入<br>3.6.3 一致性模型</p>
+<h2 id="第4章-关于YARN"><a href="#第4章-关于YARN" class="headerlink" title="第4章  关于YARN"></a>第4章  关于YARN</h2><p>Apache YARN(Yet Another Resource Negotiator的缩写)是Hadoop的集群资源管理系统。</p>
+<h2 id="第5章-Hadoop的I-O-操作"><a href="#第5章-Hadoop的I-O-操作" class="headerlink" title="第5章 Hadoop的I/O 操作"></a>第5章 Hadoop的I/O 操作</h2><p>5.1 数据完整性<br>5.2 压缩</p>
+<p>5.2.1 codec<br>5.2.2 压缩和输入分片</p>
+<p>5.4 基于文件的数据结构</p>
+<h2 id="第6章-MapReduce应用开发"><a href="#第6章-MapReduce应用开发" class="headerlink" title="第6章 MapReduce应用开发"></a>第6章 MapReduce应用开发</h2><p>MapReduce编程遵循一个特定的流程。首先写map函数和reduce函数，最好使用单元测试来确保函数的运行符合预期。 然后写一个驱动程序来运行作业。</p>
+<h2 id="第7章-MapReduce的工作机制"><a href="#第7章-MapReduce的工作机制" class="headerlink" title="第7章 MapReduce的工作机制"></a>第7章 MapReduce的工作机制</h2><h3 id="7-3-shuffle和排序"><a href="#7-3-shuffle和排序" class="headerlink" title="7.3 shuffle和排序"></a>7.3 shuffle和排序</h3><p>MapReduce确保每个reducer的输入都是按键排序的。</p>
+<p>系统执行排序、将map输出作为输入传给reducer的过程称为shuffle。</p>
+<p>7.3.1 map端</p>
+<p>map函数开始产生输出时，并不是简单地将它写到磁盘。这个过程更复杂，利用缓冲的方式写到内存并出于效率的考虑进行预排序。<br>每个map任务都有一个环形内存缓冲区用于存储任务输出。在默认情况下，缓冲区大小是100mb。一旦缓冲内容达到阈值，一个后台线程便开始把内容溢出到splill到磁盘。</p>
+<p>在溢出写到磁盘过程中，map输出继续写到缓存区，但如果在此期间缓冲区被填满，map会被阻塞直到写磁盘过程完成。 </p>
+<p>在写磁盘之前，线程首先根据数据最终要传的reduer 将数据划分成相应的分区(partition)。在每个分区中，后台线程按键进行内存中排序，如果有一个combiner函数，它就在排序后的输出上运行。运行combiner函数使得map输出结果更紧凑。</p>
+<p>每次内存缓冲区达到溢出阈值，就会新建一个溢出文件spill file，因此在map任务写完最后一个输出记录之后，会有几个溢出文件。</p>
+
+<p>7.3.2 reduce端</p>
+<h3 id="7-4-任务的执行"><a href="#7-4-任务的执行" class="headerlink" title="7.4 任务的执行"></a>7.4 任务的执行</h3><h2 id="第8章"><a href="#第8章" class="headerlink" title="第8章"></a>第8章</h2><p>8.1 MapReduce的类型</p>
+<p>Hadoop的MapReduce中，map函数和reduce函数遵循如下常规格式：</p>
+<p>map:(k1, v1) -&gt; list(k2, v2)<br>combiner: (k2, list(v2)) -&gt; list(k2, v2)<br>reduce:(k2, list(v2)) -&gt; list(k3, v3)</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="cjv7slehe002lgrs6m2fstwdp" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-spark的sql学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/22/spark的sql学习/" class="article-date">
+  <time datetime="2018-09-22T13:19:27.000Z" itemprop="datePublished">2018-09-22</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/09/22/spark的sql学习/">spark的sql学习</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Spark-SQL-DataFrames-and-Datasets-Guide"><a href="#Spark-SQL-DataFrames-and-Datasets-Guide" class="headerlink" title="Spark SQL, DataFrames and Datasets Guide"></a>Spark SQL, DataFrames and Datasets Guide</h1><p>##概述：</p>
+<p>Spark SQL时候spark中处理结构化数据的模块。 </p>
+<p>Spark SQL可以从已经安装好的hive中读取数据，也可以通过命令行 or JDBC/ODBC 读取数据。 </p>
+<h3 id="Datasets-and-DataFrames"><a href="#Datasets-and-DataFrames" class="headerlink" title="Datasets and DataFrames:"></a>Datasets and DataFrames:</h3><p>Dataset 是数据的分布式集合（A Dataset is a distributed collection of data）。Dataset可以从JVM对象中构建，也可以使用转化进行操作（transformations 如map,flatMap,filter 等等)。</p>
+<p>DataFrame 是将Dataset组织为命名列(named columns)，在python/R 中等同于关系型数据库中的表(table)。</p>
+<h3 id="DataFrame-Operations："><a href="#DataFrame-Operations：" class="headerlink" title="DataFrame Operations："></a>DataFrame Operations：</h3><p>df.printSchema()<br>df.select(“name”).show()<br>df.select(df[‘name’], df[‘age’] + 1).show()<br>df.filter(df[‘age’] &gt; 21).show()<br>df.groupBy(“age”).count().show()</p>
+<p>Running SQL Queries Programmatically</p>
+<p>在SparkSession中的sql函数会执行sql查询语句，并返回 DataFrame的结果。<br>sqlDF = spark.sql(“SELECT * FROM people”)<br>sqlDF.show()</p>
+<h3 id="Programmatically-Specifying-the-Schema"><a href="#Programmatically-Specifying-the-Schema" class="headerlink" title="Programmatically Specifying the Schema"></a>Programmatically Specifying the Schema</h3><p>官方引导的方式个人感觉有点繁琐。 <a href="http://spark.apache.org/docs/latest/sql-programming-guide.html#programmatically-specifying-the-schema" target="_blank" rel="noopener">http://spark.apache.org/docs/latest/sql-programming-guide.html#programmatically-specifying-the-schema</a></p>
+<p>可以使用to.DF()的方式来做。 </p>
+<figure class="highlight plain"><figcaption><span>org.apache.spark.sql.types._</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">from pyspark.sql import Row</span><br><span class="line"></span><br><span class="line">lines =  sc.textFile(&quot;file:///usr/local/Cellar/spark/2.0.1/examples/src/main/resources/people.txt&quot;)</span><br><span class="line">parts = lines.map(lambda l: l.split(&quot;,&quot;))</span><br><span class="line">peoples  = parts.map(lambda p: Row(name=p[0], age=p[1]))</span><br><span class="line">peoples.toDF()</span><br><span class="line"></span><br><span class="line">// Creates a temporary view using the DataFrame</span><br><span class="line">peopleDF.createOrReplaceTempView(&quot;people&quot;)</span><br><span class="line"></span><br><span class="line">// SQL can be run over a temporary view created using DataFrames</span><br><span class="line">val results = spark.sql(&quot;SELECT name FROM people&quot;)</span><br></pre></td></tr></table></figure>
+<h2 id="Data-Sources"><a href="#Data-Sources" class="headerlink" title="Data Sources"></a>Data Sources</h2><p>Spark SQL 通过DataFrame接口 支持不同类型的数据源。<br>将DataFrame注册为一个临时视图（temporary view)，允许你可以通过SQL查询数据。<br>这部分描述的是加载和保存数据的通用方法，并会介绍built-in data sources的特殊选项。</p>
+<h3 id="Generic-Load-Save-Functions"><a href="#Generic-Load-Save-Functions" class="headerlink" title="Generic Load/Save Functions"></a>Generic Load/Save Functions</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">df = spark.read.load(&quot;examples/src/main/resources/users.parquet&quot;)</span><br><span class="line">df.select(&quot;name&quot;, &quot;favorite_color&quot;).write.save(&quot;namesAndFavColors.parquet&quot;)</span><br></pre></td></tr></table></figure>
+<h3 id="手工指定特殊参数"><a href="#手工指定特殊参数" class="headerlink" title="手工指定特殊参数"></a>手工指定特殊参数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">df = spark.read.load(&quot;examples/src/main/resources/people.json&quot;, format=&quot;json&quot;)</span><br><span class="line">df.select(&quot;name&quot;, &quot;age&quot;).write.save(&quot;namesAndAges.parquet&quot;, format=&quot;parquet&quot;)</span><br></pre></td></tr></table></figure>
+<h2 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">#-*- coding:utf-8 -*-</span><br><span class="line"></span><br><span class="line">import sys</span><br><span class="line">reload(sys)</span><br><span class="line">sys.setdefaultencoding(&apos;utf8&apos;)</span><br><span class="line">import json</span><br><span class="line">import subprocess</span><br><span class="line">import time</span><br><span class="line">import pandas as pd</span><br><span class="line">from pyspark.sql import Row</span><br><span class="line"></span><br><span class="line">import math</span><br><span class="line">from datetime import datetime, timedelta</span><br><span class="line">from pyspark import SparkContext, SparkConf</span><br><span class="line">from pyspark import HiveContext</span><br><span class="line">import collections</span><br><span class="line"></span><br><span class="line">def hiveSql():</span><br><span class="line">    sql = &apos;&apos;&apos;</span><br><span class="line">    select param[&apos;datatype&apos;] as datatype</span><br><span class="line">     from xxx between aaa and bbb</span><br><span class="line">    &apos;&apos;&apos;</span><br><span class="line">    return sql</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">def parse_poi(row):</span><br><span class="line">    # 第二列取值：</span><br><span class="line">    # 1 参数错误并且经纬度为0，</span><br><span class="line">    # 2 参数错误并且经纬度不是0</span><br><span class="line">    # 3 query为空</span><br><span class="line">    # 4 其他异常情况</span><br><span class="line">    parse_result = &quot;empty\tempty\tempty&quot;</span><br><span class="line">    json_str = row.json_str</span><br><span class="line">    if type(json_str) != str and type(json_str) != unicode:</span><br><span class="line">        return parse_result</span><br><span class="line">    try:</span><br><span class="line">        res = json.loads(json_str)</span><br><span class="line">    except:</span><br><span class="line">        return parse_result</span><br><span class="line"></span><br><span class="line">    if row.searchname != &apos;&apos;:</span><br><span class="line">        parse_result = &apos;%s\t%s\t%s&apos;%(row.nnn, 0, row.oooo)</span><br><span class="line">        return parse_result</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">def parse_mmm(sc):</span><br><span class="line">    hc = HiveContext(sc)</span><br><span class="line"></span><br><span class="line">    all_sug_poi = sc.parallelize([])</span><br><span class="line">    sql = hiveSql()</span><br><span class="line">    print sql</span><br><span class="line">    df = hc.sql(sql)</span><br><span class="line">    mmmm = df.rdd.map(parse_poi).map(lambda x:x.split(&quot;\t&quot;))</span><br><span class="line"></span><br><span class="line">    ooooo = mmmm.map(lambda p: Row(searchname=p[0], stattype=p[1], datatype=p[2]))</span><br><span class="line"></span><br><span class="line">    dudtf = ooooo.toDF()</span><br><span class="line">    dudtf.printSchema()</span><br><span class="line">    dudtf.groupBy(&apos;stattype&apos;).count().show()</span><br><span class="line">    dudtf.groupBy(&apos;stattype&apos;, &apos;datatype&apos;).count().show()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">if __name__ == &quot;__main__&quot;:</span><br><span class="line">    conf = SparkConf()</span><br><span class="line">    conf.setAppName(&apos;mmmmxxxx&apos;)</span><br><span class="line">    sc = SparkContext(conf = conf)</span><br><span class="line">    parse_mmm(sc)</span><br></pre></td></tr></table></figure>
+<p>在这个例子中，</p>
+<ul>
+<li>首先查询hive，要使用HiveContext去查询。</li>
+<li>再次，由于数据存在一定的污染，因此在进行json.loads之前必须对row.json_str进行类型断言；并且当json.loads抛出异常时，进行捕获。</li>
+<li>在执行mmmm.map时使用map，而不是flatMap。</li>
+<li></li>
+</ul>
+<p>##参考文章：</p>
+<ul>
+<li><a href="http://spark.apache.org/docs/latest/sql-programming-guide.html" target="_blank" rel="noopener">http://spark.apache.org/docs/latest/sql-programming-guide.html</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/22/spark的sql学习/" data-id="cjv7slel4005ugrs6wvbm9u04" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-机器学习-chapter1-梯度下降" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/07/27/机器学习-chapter1-梯度下降/" class="article-date">
+  <time datetime="2018-07-27T12:18:28.000Z" itemprop="datePublished">2018-07-27</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/07/27/机器学习-chapter1-梯度下降/">机器学习-chapter1-梯度下降</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>数学知识：高等数学第六版下册&lt;同济大学数学系&gt; 第八章和第九章知识<br>机器学习理论：<br>代码实现：<a href="https://ctmakro.github.io/site/on_learning/gd.html" target="_blank" rel="noopener">https://ctmakro.github.io/site/on_learning/gd.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/07/27/机器学习-chapter1-梯度下降/" data-id="cjv7slelz006kgrs6n096bnyc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine-learning</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-cpp-libconfig" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/05/28/cpp-libconfig/" class="article-date">
+  <time datetime="2018-05-28T02:50:46.000Z" itemprop="datePublished">2018-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/05/28/cpp-libconfig/">cpp_libconfig</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="参考处："><a href="#参考处：" class="headerlink" title="参考处："></a>参考处：</h2><p><a href="https://hyperrealm.github.io/libconfig/" target="_blank" rel="noopener">https://hyperrealm.github.io/libconfig/</a></p>
+<h2 id="简单用法"><a href="#简单用法" class="headerlink" title="简单用法"></a>简单用法</h2><p>libconfig::Config 的方法</p>
+<pre><code>#include &lt;libconfig.h++&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    try {
+        libconfig::Config config;
+        config.readFile(&quot;config.ini&quot;);
+        const libconfig::Setting&amp; serverConf = config.lookup(&quot;server&quot;);
+        int serverPort;
+        bool flag = serverConf.lookupValue(&quot;service_port&quot;, serverPort);
+        std::cout &lt;&lt; &quot;server port &quot; &lt;&lt; serverPort &lt;&lt; std::endl;
+    } catch (const libconfig::ConfigException&amp; e) {
+        std::cout &lt;&lt; &quot;exception:&quot; &lt;&lt; e.what() &lt;&lt; std::endl;
+    }
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="cjv7slefx001igrs61ddgtoru" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-faiss-tutorial" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2018/04/10/faiss-tutorial/" class="article-date">
@@ -88,7 +940,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="cjsr5cjj5001zrxs65igdlay8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="cjv7slegl0020grs6ouy1z9xc" class="article-share-link">Share</a>
       
       
     </footer>
@@ -198,7 +1050,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjsr5cjj0001wrxs6w2akitue" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjv7slegj001xgrs6d9ae2is4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/faiss/">faiss</a></li></ul>
@@ -237,1498 +1089,9 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="cjsr5cjlt0053rxs63grwvnug" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="cjv7slelx006hgrs6r3s57nxg" class="article-share-link">Share</a>
       
       
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-octave操作记录" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/02/24/octave操作记录/" class="article-date">
-  <time datetime="2018-02-24T14:39:53.000Z" itemprop="datePublished">2018-02-24</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/02/24/octave操作记录/">octave操作记录</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>‘.’ is used to make sure if z is a vector (a matrix) then each element undergoes the same operation simultaneously. Take a look at Matlab’s docs for this. For instance : <a href="https://in.mathworks.com/help/fixedpoint/ref/rdivide.html" target="_blank" rel="noopener">https://in.mathworks.com/help/fixedpoint/ref/rdivide.html</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/24/octave操作记录/" data-id="cjsr5cjkx003urxs6q2kge2y4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/octave/">octave</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-awk使用技巧" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/02/23/awk使用技巧/" class="article-date">
-  <time datetime="2018-02-23T15:09:12.000Z" itemprop="datePublished">2018-02-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/02/23/awk使用技巧/">awk使用技巧</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol>
-<li>shell 变量传递给 awk</li>
-</ol>
-<p>举例：将shell的变量shellVarm传递给awk，在awk中变量名叫awkVarm</p>
-<p>该shell语句的目的是：如果第一列等于a的话，则打印</p>
-<pre><code>shellVarm=a; echo &quot;a b\na d\nc m&quot; | awk -v awkVarm=${shellVarm} &apos;$1==awkVarm {print $2}&apos;
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/23/awk使用技巧/" data-id="cjsr5cjid001arxs6aa0z24an" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-golang-glide版本控制" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/01/23/golang-glide版本控制/" class="article-date">
-  <time datetime="2018-01-23T11:29:35.000Z" itemprop="datePublished">2018-01-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/01/23/golang-glide版本控制/">golang_glide版本控制</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/23/golang-glide版本控制/" data-id="cjsr5cjjb0024rxs6csv22tns" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-golang环境变量" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/01/23/golang环境变量/" class="article-date">
-  <time datetime="2018-01-22T16:08:32.000Z" itemprop="datePublished">2018-01-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/01/23/golang环境变量/">golang环境变量</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="GOROOT"><a href="#GOROOT" class="headerlink" title="GOROOT"></a>GOROOT</h2><p>GOROOT 是golang的安装路径</p>
-<h2 id="GOPATH"><a href="#GOPATH" class="headerlink" title="GOPATH"></a>GOPATH</h2><p>go install/go get和 go的工具等会用到GOPATH环境变量.</p>
-<p>GOPATH是作为编译后二进制的存放目的地和import包时的搜索路径。其实也是你的工作目录, 你可以在src下创建你自己的go源文件, 然后开始工作。</p>
-<ul>
-<li>GOPATH之下主要包含三个目录: bin、pkg、src</li>
-<li>bin目录主要存放可执行文件; pkg目录存放编译好的库文件, 主要是.a文件; src目录下主要存放go的源文件</li>
-</ul>
-<h2 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h2><p>不要把GOPATH设置成go的安装路径</p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.csdn.net/Alsmile/article/details/48290223" target="_blank" rel="noopener">http://blog.csdn.net/Alsmile/article/details/48290223</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/23/golang环境变量/" data-id="cjsr5cjji0028rxs6pns988b6" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-golang的import介绍" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/01/21/golang的import介绍/" class="article-date">
-  <time datetime="2018-01-20T16:01:53.000Z" itemprop="datePublished">2018-01-21</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/01/21/golang的import介绍/">golang的import介绍</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Golang使用包（package）这种语法元素来组织源码，所有语法可见性均定义在package这个级别。</p>
-<h3 id="import-路径中的最后一个元素到底代表的是-目录还是包名"><a href="#import-路径中的最后一个元素到底代表的是-目录还是包名" class="headerlink" title="import 路径中的最后一个元素到底代表的是 目录还是包名?"></a>import 路径中的最后一个元素到底代表的是 目录还是包名?</h3><h3 id="编译时使用的是包源码还是-a"><a href="#编译时使用的是包源码还是-a" class="headerlink" title="编译时使用的是包源码还是.a"></a>编译时使用的是包源码还是.a</h3><p>我们知道一个非main包在编译后会生成一个.a文件（在临时目录下生成，除非使用go install安装到$GOROOT或$GOPATH下，否则你看不到.a），用于后续可执行程序链接使用。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/21/golang的import介绍/" data-id="cjsr5cjjm002crxs63lniyxec" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-ElasticSearch基础知识" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/11/15/ElasticSearch基础知识/" class="article-date">
-  <time datetime="2017-11-15T02:25:47.000Z" itemprop="datePublished">2017-11-15</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/11/15/ElasticSearch基础知识/">ElasticSearch基础知识</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol>
-<li><p>创建一个索引</p>
-<pre><code>   curl -XPUT  http://10.95.116.44:9202/test11 -d &apos;{
-    &quot;settings&quot;:{
-        &quot;number_of_shards&quot;: 5,
-        &quot;number_of_replicas&quot;: 1
-    },
-    &quot;mappings&quot; : {
-        &quot;prod&quot;: {
-            &quot;dynamic&quot;: &quot;strict&quot;,
-            &quot;properties&quot;: {
-                &quot;brand_code&quot;: {
-                    &quot;type&quot;: &quot;integer&quot;
-                },
-                &quot;brand&quot;: {
-                    &quot;type&quot;: &quot;string&quot;
-                }
-            }
-        }
-    }
-}&apos;
-</code></pre></li>
-<li><p>查看索引的setting</p>
-<pre><code>curl -XGET http://10.95.116.44:9202/test11/_mapping
-</code></pre></li>
-<li><p>添加一条数据</p>
-</li>
-</ol>
-<ol start="4">
-<li>查看一条记录</li>
-</ol>
-<pre><code>curl -XGET &quot;http://10.95.116.44:9202/megacorp/employee/1&quot;
-</code></pre><ol start="5">
-<li><p>检索接口</p>
-<pre><code>    curl -XGET &quot;http://10.95.116.44:9202/megacorp/employee/_search?pretty&quot;
-{
-  &quot;took&quot; : 16,
-  &quot;timed_out&quot; : false,
-  &quot;_shards&quot; : {
-    &quot;total&quot; : 5,
-    &quot;successful&quot; : 5,
-    &quot;failed&quot; : 0
-  },
-  &quot;hits&quot; : {
-    &quot;total&quot; : 1,
-    &quot;max_score&quot; : 1.0,
-    &quot;hits&quot; : [ {
-      &quot;_index&quot; : &quot;megacorp&quot;,
-      &quot;_type&quot; : &quot;employee&quot;,
-      &quot;_id&quot; : &quot;1&quot;,
-      &quot;_score&quot; : 1.0,
-      &quot;_source&quot; : {
-        &quot;first_name&quot; : &quot;John&quot;,
-        &quot;last_name&quot; : &quot;Smith&quot;,
-        &quot;age&quot; : 25,
-        &quot;about&quot; : &quot;I love to go rock climbing&quot;,
-        &quot;interests&quot; : [ &quot;sports&quot;, &quot;music&quot; ]
-      }
-    } ]
-  }
-}
-</code></pre></li>
-</ol>
-<p>5.1 使用查询语句进行</p>
-<pre><code>curl -XGET &quot;http://10.95.116.44:9202/megacorp/employee/_search&quot; -d &apos;
-{
-    &quot;query&quot;: {
-        &quot;match&quot;: {
-            &quot;first_name&quot;: &quot;John&quot;
-        }
-    }
-}&apos;
-</code></pre><p>5.2 更复杂的查询语句</p>
-<pre><code>curl -XGET &quot;http://10.95.116.44:9202/megacorp/employee/_search&quot; -d &apos;
-{
-    &quot;query&quot; : {
-        &quot;bool&quot;: {
-            &quot;must&quot;: {
-                &quot;match&quot; : {
-                    &quot;last_name&quot; : &quot;Smith&quot; 
-                }
-            },
-            &quot;filter&quot;: {
-                &quot;range&quot; : {
-                    &quot;age&quot; : { &quot;gt&quot; : 20 } 
-                }
-            }
-        }
-    }
-}
-&apos;
-</code></pre><p>5.3 全文搜索</p>
-<p>5.4 短语搜索 match_phrase</p>
-<h2 id="集群内部原理"><a href="#集群内部原理" class="headerlink" title="集群内部原理"></a>集群内部原理</h2><ol>
-<li><p>查看集群健康</p>
-<pre><code>/_cluster/health
-</code></pre></li>
-<li><p>当master节点都挂了以后，查看机器健康状态就有问题，会报错：</p>
-<pre><code>master_not_discovered_exception
-</code></pre></li>
-</ol>
-<h2 id="数据输入与输出"><a href="#数据输入与输出" class="headerlink" title="数据输入与输出"></a>数据输入与输出</h2><ol>
-<li><p>取回一个文档</p>
-<p> GET /website/blog/123?pretty</p>
-</li>
-<li><p>取回一个文档的一部分</p>
-<p> GET /website/blog/123?pretty&amp;_source=title,text</p>
-</li>
-<li><p>删除一个文档</p>
-<p> DELETE /website/blog/123</p>
-</li>
-<li><p>判断一个文档是否存在 </p>
-<p> HEAD /website/blog/123</p>
-<p> 如果有status code = 200;<br> 如果没有 status code = 404</p>
-</li>
-<li><p>处理冲突</p>
-<p> 在数据库领域中，有两种方法通常被用来确保并发更新时变更不会丢失：</p>
-<ul>
-<li><p>乐观并发控制</p>
-<p>  采用compare_and_set的方式， Elasticsearch 使用这个 _version 号来确保变更以正确顺序得到执行。如果旧版本的文档在新版本之后到达，它可以被简单的忽略。冲突时返回的status code 是 409 Conflict HTTP 响应码。</p>
-</li>
-<li><p>悲观并发控制<br>  采用加锁的方式来做</p>
-</li>
-</ul>
-</li>
-</ol>
-<ol start="6">
-<li>mapping新增一个字段 其中employee是type，新增一个string类型的名为onSale的字段</li>
-</ol>
-<pre><code>curl -XPOST &quot;http://10.95.177.126:9201/megacorp/employee/_mapping&quot; -d &apos;
-
-{
-     &quot;employee&quot;: {
-                &quot;properties&quot;: {
-                 &quot;onSale&quot;:{
-                    &quot;type&quot;:&quot;string&quot; 
-               }
-            }
-        }
-}&apos;
-</code></pre><ol start="7">
-<li><p>文档的部分更新</p>
-<p> <a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/partial-updates.html" target="_blank" rel="noopener">https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/partial-updates.html</a></p>
-</li>
-</ol>
-<h2 id="分布式存储"><a href="#分布式存储" class="headerlink" title="分布式存储"></a>分布式存储</h2><ol>
-<li><p>新建、索引和删除文档</p>
-<p> 数据写入时如何是写入成功呢？</p>
-<ul>
-<li>在客户端收到成功响应时，文档变更已经在主分片和所有副本分片执行完成，变更是安全的。</li>
-<li>默认情况下，主分片 需要 规定数量(quorum),或大多数的分片 (其中分片副本可以是主分片或者副本分片)在写入操作时可用。这是为了防止将数据写入到网络分区的‘<code>背面’&#39;。规定的数量定义公式如下：
-  +</code>int( (primary + number_of_replicas) / 2 ) + 1`</li>
-</ul>
-</li>
-<li><p>取回一个文档</p>
-<ul>
-<li>为了读取请求，协调节点在每次请求的时候将选择不同的副本分片来达到负载均衡；通过轮询所有的副本分片。</li>
-</ul>
-</li>
-</ol>
-<pre><code>问题：取回是从主分片取还是从副本取呢？？
-</code></pre><ol start="3">
-<li><p>局部更新文档</p>
-<p> 在主分片上更新，同时并行转发给replicas分片。</p>
-</li>
-<li><p>多文档模式</p>
-<p> <a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/distrib-multi-doc.html" target="_blank" rel="noopener">https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/distrib-multi-doc.html</a></p>
-</li>
-</ol>
-<h2 id="搜索"><a href="#搜索" class="headerlink" title="搜索"></a>搜索</h2><ol>
-<li><p>空搜索</p>
-<p>响应的字段取值</p>
-<p> |字段取值|含义|<br> |—|—|<br> |took|告诉我们执行整个搜索请求耗费了多少毫秒<br> |请求中的timeout|默认情况下，搜索请求不会超时。 如果低响应时间比完成结果更重要，你可以指定 timeout 为 10 或者 10ms（10毫秒），或者 1s（1秒），在请求超时之前，Elasticsearch 将会返回已经成功从每个分片获取的结果。 timeout 不是停止执行查询，它仅仅是告知正在协调的节点返回到目前为止收集的结果并且关闭连接。在后台，其他的分片可能仍在执行查询即使是结果已经被发送了。使用超时是因为 SLA(服务等级协议)对你是很重要的，而不是因为想去中止长时间运行的查询。|<br> |响应中timed_out|表示是否超时|<br> |_shards| 告诉我们在查询中参与分片的总数，以及这些分片成功了多少个失败了多少个。正常情况下我们不希望分片失败，但是分片失败是可能发生的。如果我们遭遇到一种灾难级别的故障，在这个故障中丢失了相同分片的原始数据和副本，那么对这个分片将没有可用副本来对搜索请求作出响应。假若这样，Elasticsearch 将报告这个分片是失败的，但是会继续返回剩余分片的结果。|<br> |hits|它 包含 total 字段来表示匹配到的文档总数，并且一个 hits 数组包含所查询结果的前十个文档.在 hits 数组中每个结果包含文档的 _index 、 _type 、 _id ，加上 _source 字段。这意味着我们可以直接从返回的搜索结果中使用整个文档。这不像其他的搜索引擎，仅仅返回文档的ID，需要你单独去获取文档。</p>
-</li>
-<li><p>分页</p>
-<p> 参数from=0&amp;size=1，</p>
-<p> 理解为什么深度分页是有问题的，我们可以假设在一个有 5 个主分片的索引中搜索。 当我们请求结果的第一页（结果从 1 到 10 ），每一个分片产生前 10 的结果，并且返回给 协调节点 ，协调节点对 50 个结果排序得到全部结果的前 10 个。</p>
-<p> 现在假设我们请求第 1000 页–结果从 10001 到 10010 。所有都以相同的方式工作除了每个分片不得不产生前10010个结果以外。 然后协调节点对全部 50050 个结果排序最后丢弃掉这些结果中的 50040 个结果。</p>
-<p> 可以看到，在分布式系统中，对结果排序的成本随分页的深度成指数上升。这就是 web 搜索引擎对任何查询都不要返回超过 1000 个结果的原因。</p>
-</li>
-</ol>
-<h2 id="映射和分析"><a href="#映射和分析" class="headerlink" title="映射和分析"></a>映射和分析</h2><ol>
-<li>精确值和全文</li>
-<li>倒排索引</li>
-<li><p>分析与分析器</p>
-<p> 分析 包含下面的过程：</p>
-<ul>
-<li>首先，将一块文本分成适合于倒排索引的独立的 词条 ，</li>
-<li><p>之后，将这些词条统一化为标准格式以提高它们的”可搜索性”，或者 recall</p>
-<p>分析器 实际上是将三个功能封装到了一个包里：</p>
-</li>
-<li><p>字符过滤器<br>首先，字符串按顺序通过每个 字符过滤器 。他们的任务是在分词前整理字符串。一个字符过滤器可以用来去掉HTML，或者将 &amp; 转化成 <code>and</code>。</p>
-</li>
-<li>分词器<br>其次，字符串被 分词器 分为单个的词条。一个简单的分词器遇到空格和标点的时候，可能会将文本拆分成词条。</li>
-<li><p>Token 过滤器<br>最后，词条按顺序通过每个 token 过滤器 。这个过程可能会改变词条</p>
-<h3 id="内置分析器"><a href="#内置分析器" class="headerlink" title="内置分析器"></a>内置分析器</h3><p>对于一个例子</p>
-<p>  “Set the shape to semi-transparent by calling set_trans(5)”</p>
-</li>
-</ul>
-</li>
-</ol>
-<pre><code>+ 标准分析器：它根据 Unicode 联盟 定义的 单词边界 划分文本。删除绝大部分标点。最后，将词条小写。
-    `set, the, shape, to, semi, transparent, by, calling, set_trans, 5`
-+ 简单分析器
-简单分析器在任何不是字母的地方分隔文本，将词条小写
-    `set, the, shape, to, semi, transparent, by, calling, set, trans`
-+ 空格分析器
-空格分析器在空格的地方划分文本
-
-    `Set, the, shape, to, semi-transparent, by, calling, set_trans(5)`
-+ 语言分析器
-
-    特定语言分析器可用于 很多语言。它们可以考虑指定语言的特点。例如， 英语 分析器附带了一组英语无用词（常用单词，例如 and 或者 the ，它们对相关性没有多少影响），它们会被删除。 由于理解英语语法的规则，这个分词器可以提取英语单词的 词干 .
-
-    `set, shape, semi, transpar, call, set_tran, 5`
-
-### 什么时候使用分析器
-
-全文查询，理解每个域是如何定义的，因此它们可以做 正确的事：
-
-+ 当你查询一个 全文 域时， 会对查询字符串应用相同的分析器，以产生正确的搜索词条列表。
-+ 当你查询一个 精确值 域时，不会分析查询字符串， 而是搜索你指定的精确值。
-
-### 注意：
-
-当Elasticsearch在你的文档中检测到一个新的字符串域 ，它会自动设置其为一个全文 字符串 域，使用 标准 分析器对它进行分析。
-
-
-### 测试分析器
-
-
-    GET /_analyze
-    {
-      &quot;analyzer&quot;: &quot;standard&quot;,
-      &quot;text&quot;: &quot;Text to analyze&quot;
-    }
-这样得到分析结果
-
-    {
-       &quot;tokens&quot;: [
-          {
-             &quot;token&quot;:        &quot;text&quot;,
-             &quot;start_offset&quot;: 0,
-             &quot;end_offset&quot;:   4,
-             &quot;type&quot;:         &quot;&lt;ALPHANUM&gt;&quot;,
-             &quot;position&quot;:     1
-          },
-          {
-             &quot;token&quot;:        &quot;to&quot;,
-             &quot;start_offset&quot;: 5,
-             &quot;end_offset&quot;:   7,
-             &quot;type&quot;:         &quot;&lt;ALPHANUM&gt;&quot;,
-             &quot;position&quot;:     2
-          },
-          {
-             &quot;token&quot;:        &quot;analyze&quot;,
-             &quot;start_offset&quot;: 8,
-             &quot;end_offset&quot;:   15,
-             &quot;type&quot;:         &quot;&lt;ALPHANUM&gt;&quot;,
-             &quot;position&quot;:     3
-          }
-       ]
-    }
-</code></pre><ol start="4">
-<li>映射</li>
-</ol>
-<pre><code>Elasticsearch 支持 如下简单域类型：
-
-+ 字符串: string
-+ 整数 : byte, short, integer, long
-+ 浮点数: float, double
-+ 布尔型: boolean
-+ 日期: date
-
-JSON中类型与Elasticsearch类型对应
-
-|Json类型|Elasticsearch类型|
-|---|---|
-|true/false|boolean|
-|123|long|
-|123.45|double|
-|字符串，有效日期: 2014-09-15|date|
-|字符串foo bar| string|
-
-### string域 
-string 域映射的两个最重要 属性是 index 和 analyzer 。
-index的取值
-
-|index取值|含义|
-|---|---|
-| analyzed|首先分析字符串，然后索引它。换句话说，以全文索引这个域|
-| not_analyzed|索引这个域，所以可以搜索到它，但索引指定的精确值。不对它进行分析|
-| no|不索引这个域。这个域不会被搜索到|
-
-analyzer的取值
-
-对于 analyzed 字符串域，用 analyzer 属性指定在搜索和索引时使用的分析器。默认， Elasticsearch 使用 standard 分析器， 但你可以指定一个内置的分析器替代它，例如 whitespace 、 simple 和 `english`
-</code></pre><ol start="5">
-<li><p>复杂核心域类型</p>
-<ul>
-<li>数组 { “tag”: [ “search”, “nosql” ]}<ul>
-<li>数组中所有的值必须是相同数据类型的</li>
-</ul>
-</li>
-<li><p>空域 null,[],[null]</p>
-<ul>
-<li>空域不会被索引</li>
-</ul>
-</li>
-<li><p>多层级对象<br>  内部对象 经常用于 嵌入一个实体或对象到其它对象中。<br>  Elasticsearch 会动态 监测新的对象域并映射它们为 对象 ，在 properties 属性下列出内部域，</p>
-<ul>
-<li>user 和 name 域的映射结构与 tweet 类型的相同。事实上， type 映射只是一种特殊的 对象 映射，我们称之为 根对象 。除了它有一些文档元数据的特殊顶级域，例如 _source 和 _all 域，它和其他对象一样。</li>
-</ul>
-</li>
-</ul>
-</li>
-</ol>
-<pre><code>        {
-          &quot;gb&quot;: {
-            &quot;tweet&quot;: { 
-              &quot;properties&quot;: {
-                &quot;tweet&quot;:            { &quot;type&quot;: &quot;string&quot; },
-                &quot;user&quot;: { 
-                  &quot;type&quot;:             &quot;object&quot;,
-                  &quot;properties&quot;: {
-                    &quot;id&quot;:           { &quot;type&quot;: &quot;string&quot; },
-                    &quot;gender&quot;:       { &quot;type&quot;: &quot;string&quot; },
-                    &quot;age&quot;:          { &quot;type&quot;: &quot;long&quot;   },
-                    &quot;name&quot;:   { 
-                      &quot;type&quot;:         &quot;object&quot;,
-                      &quot;properties&quot;: {
-                        &quot;full&quot;:     { &quot;type&quot;: &quot;string&quot; },
-                        &quot;first&quot;:    { &quot;type&quot;: &quot;string&quot; },
-                        &quot;last&quot;:     { &quot;type&quot;: &quot;string&quot; }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } 
-
-
-+ 内部对象是如何进行索引的。
-
-
-    Lucene 不理解内部对象。 Lucene 文档是由一组键值对列表组成的。为了能让 Elasticsearch 有效地索引内部类，它把我们的文档转化成这样：
-
-        {
-            &quot;tweet&quot;:            [elasticsearch, flexible, very],
-            &quot;user.id&quot;:          [@johnsmith],
-            &quot;user.gender&quot;:      [male],
-            &quot;user.age&quot;:         [26],
-            &quot;user.name.full&quot;:   [john, smith],
-            &quot;user.name.first&quot;:  [john],
-            &quot;user.name.last&quot;:   [smith]
-        }
-
-+ 内部对象数组 最后，考虑包含 内部对象的数组是如何被索引的
-
-    假设我们有个 followers 数组：
-
-        {
-            &quot;followers&quot;: [
-                { &quot;age&quot;: 35, &quot;name&quot;: &quot;Mary White&quot;},
-                { &quot;age&quot;: 26, &quot;name&quot;: &quot;Alex Jones&quot;},
-                { &quot;age&quot;: 19, &quot;name&quot;: &quot;Lisa Smith&quot;}
-            ]
-        }
-
-    这个文档会像我们之前描述的那样被扁平化处理，结果如下所示：
-
-        {
-            &quot;followers.age&quot;:    [19, 26, 35],
-            &quot;followers.name&quot;:   [alex, jones, lisa, smith, mary, white]
-        }
-</code></pre><h2 id="请求体查询"><a href="#请求体查询" class="headerlink" title="请求体查询"></a>请求体查询</h2><ol>
-<li>查询表达式</li>
-</ol>
-<pre><code>一个查询语句的典型结构：
-
-    {
-        QUERY_NAME: {
-            ARGUMENT: VALUE,
-            ARGUMENT: VALUE,...
-        }
-    }
-
-如果针对某个字段，其结构如下：
-
-    {
-        QUERY_NAME: {
-            FIELD_NAME: {
-                ARGUMENT: VALUE,
-                ARGUMENT: VALUE,...
-            }
-        }
-    }
-举个例子，你可以使用 match 查询语句 来查询 tweet 字段中包含 elasticsearch 的 tweet：
-
-    {
-        &quot;match&quot;:{
-            &quot;tweet&quot;:&quot;elasticsearch&quot;
-        }
-    }
-
-完整的查询语句：
-
-    GET /_search
-    {
-        &quot;query&quot;: {
-            &quot;match&quot;: {
-                &quot;tweet&quot;: &quot;elasticsearch&quot;
-            }
-        }
-    }
-</code></pre><ol start="2">
-<li><p>合并查询语句</p>
-<p> 查询语句Query Clasues就像一些简单的组合块，这些组合块可以彼此之间合并组成更复杂的查询。如下：</p>
-<ul>
-<li>叶子语句 Leaf Clauses：用于将查询字符串和一个字段对比</li>
-<li><p>复合Compound语句：合并其他查询语句，比如一个bool语句 允许在你需要的时候组合其他语句，无论是<code>must</code>，<code>must not</code>, <code>should</code>，同时它可以包含不评分的过滤器<code>filters</code></p>
-<pre><code>{
-    &quot;bool&quot;: {
-        &quot;must&quot;:     { &quot;match&quot;: { &quot;tweet&quot;: &quot;elasticsearch&quot; }},
-        &quot;must_not&quot;: { &quot;match&quot;: { &quot;name&quot;:  &quot;mary&quot; }},
-        &quot;should&quot;:   { &quot;match&quot;: { &quot;tweet&quot;: &quot;full text&quot; }},
-        &quot;filter&quot;:   { &quot;range&quot;: { &quot;age&quot; : { &quot;gt&quot; : 30 }} }
-    }
-}
-</code></pre><p>一条复合语句可以合并 任何 其它查询语句，包括复合语句，了解这一点是很重要的。这就意味着，复合语句之间可以互相嵌套，可以表达非常复杂的逻辑。</p>
-</li>
-</ul>
-</li>
-<li><p>查询与过滤</p>
-<p> Elasticsearch使用的查询语言可以以无限组合的方式进行搭配，可以在以下两种情况下使用：过滤情况(filtering context)和查询情况（query context)。</p>
-<ul>
-<li>过滤情况：回答是 yes/no，二者必居其一。</li>
-<li><p>查询情况：查询就变成了一个“评分”的查询。        </p>
-<p>但从 Elasticsearch 2.0 开始，过滤（filters）已经从技术上被排除了，同时所有的查询（queries）拥有变成不评分查询的能力</p>
-<p>性能差异</p>
-</li>
-<li><p>过滤查询（Filtering queries）只是简单的检查包含或者排除，这就使得计算起来非常快。考虑到至少有一个过滤查询（filtering query）的结果是 “稀少的”（很少匹配的文档），并且经常使用不评分查询（non-scoring queries），结果会被缓存到内存中以便快速读取，所以有各种各样的手段来优化查询结果。</p>
-</li>
-<li><p>评分查询（scoring queries）不仅仅要找出 匹配的文档，还要计算每个匹配文档的相关性，计算相关性使得它们比不评分查询费力的多。同时，查询结果并不缓存。</p>
-<p>如何选择过滤或评分</p>
-<p>通常的规则是，使用 查询（query）语句来进行 全文 搜索或者其它任何需要影响 相关性得分 的搜索。除此以外的情况都使用过滤（filters)。</p>
-</li>
-</ul>
-</li>
-<li><p>重要的查询</p>
-<ul>
-<li><code>match_all</code> 查询简单的 匹配所有文档</li>
-<li><p><code>match</code>查询：无论你在任何字段上进行的是全文搜索还是精确查询，match 查询是你可用的标准查询。</p>
-<ul>
-<li>如果是全文搜索，会先进行分析 { “match”: { “tweet”: “About Search” }}</li>
-</ul>
-</li>
-<li><p><code>multi_match</code>查询：multi_match 查询可以在多个字段上执行相同的 match 查询</p>
-<pre><code>{
-    &quot;multi_match&quot;: {
-        &quot;query&quot;:    &quot;full text search&quot;,
-        &quot;fields&quot;:   [ &quot;title&quot;, &quot;body&quot; ]
-    }
-}
-</code></pre></li>
-<li><p><code>range</code>查询 查询找出那些落在指定区间内的数字或者时间，被允许的操作符：gt,lt,gte,lte</p>
-<pre><code>{
-    &quot;range&quot;: {
-        &quot;age&quot;: {
-            &quot;gte&quot;:  20,
-            &quot;lt&quot;:   30
-        }
-    }
-}
-</code></pre></li>
-<li><p><code>term</code>查询 term 查询被用于精确值 匹配，这些精确值可能是数字、时间、布尔或者那些 not_analyzed 的字符串</p>
-<pre><code>{ &quot;term&quot;: { &quot;age&quot;:    26           }}
-{ &quot;term&quot;: { &quot;date&quot;:   &quot;2014-09-01&quot; }}
-</code></pre></li>
-<li><p><code>terms</code>查询：和 term 查询一样，但它允许你指定多值进行匹配。如果这个字段包含了指定值中的任何一个值，那么这个文档满足条件</p>
-<pre><code>{ &quot;terms&quot;: { &quot;tag&quot;: [ &quot;search&quot;, &quot;full_text&quot;, &quot;nosql&quot; ] }}
-</code></pre></li>
-</ul>
-</li>
-</ol>
-<ol start="5">
-<li><p>组合查询</p>
-<ul>
-<li><p><code>bool查询</code>，可以接收以下参数：</p>
-<ul>
-<li>must:文档 必须 匹配这些条件才能被包含进来。</li>
-<li>must_not:文档 必须不 匹配这些条件才能被包含进来</li>
-<li>should:如果满足这些语句中的任意语句，将增加 _score ，否则，无任何影响。它们主要用于修正每个文档的相关性得分</li>
-<li>filter:必须 匹配，但它以不评分、过滤模式来进行。这些语句对评分没有贡献，只是根据过滤标准来排除或包含文档。</li>
-</ul>
-<p>举例：下面的查询用于查找 title 字段匹配 how to make millions 并且不被标识为 spam 的文档。那些被标识为 starred 或在2014之后的文档，将比另外那些文档拥有更高的排名。如果 _两者_ 都满足，那么它排名将更高：</p>
-<p>  {</p>
-<pre><code>&quot;bool&quot;: {
-    &quot;must&quot;:     { &quot;match&quot;: { &quot;title&quot;: &quot;how to make millions&quot; }},
-    &quot;must_not&quot;: { &quot;match&quot;: { &quot;tag&quot;:   &quot;spam&quot; }},
-    &quot;should&quot;: [
-        { &quot;match&quot;: { &quot;tag&quot;: &quot;starred&quot; }},
-        { &quot;range&quot;: { &quot;date&quot;: { &quot;gte&quot;: &quot;2014-01-01&quot; }}}
-    ]
-}
-</code></pre><p>  }</p>
-<p>假如不想文档的时间影响评分，则可以<code>增加带过滤器的查询</code>：</p>
-<p>  {</p>
-<pre><code>&quot;bool&quot;: {
-    &quot;must&quot;:     { &quot;match&quot;: { &quot;title&quot;: &quot;how to make millions&quot; }},
-    &quot;must_not&quot;: { &quot;match&quot;: { &quot;tag&quot;:   &quot;spam&quot; }},
-    &quot;should&quot;: [
-        { &quot;match&quot;: { &quot;tag&quot;: &quot;starred&quot; }}
-    ],
-    &quot;filter&quot;: {
-      &quot;range&quot;: { &quot;date&quot;: { &quot;gte&quot;: &quot;2014-01-01&quot; }} 
-    }
-}
-</code></pre><p>  }</p>
-<p>所有查询都可以借鉴这种方式。将查询移到 bool 查询的 filter 语句中，这样它就自动的转成一个不评分的 filter 了。</p>
-</li>
-</ul>
-</li>
-</ol>
-<ul>
-<li><p><code>constant_score</code>查询</p>
-<p>  constant_score 查询也是你工具箱里有用的查询工具。它将一个不变的常量评分应用于所有匹配的文档。它被经常用于你只需要执行一个 filter 而没有其它查询。<br>  可以使用它来取代只有 filter 语句的 bool 查询。在性能上是完全相同的，但对于提高查询简洁性和清晰度有很大帮助。</p>
-</li>
-</ul>
-<pre><code>term 查询被放置在 constant_score 中，转成不评分的 filter
-
-    {
-        &quot;constant_score&quot;:   {
-            &quot;filter&quot;: {
-                &quot;term&quot;: { &quot;category&quot;: &quot;ebooks&quot; } 
-            }
-        }
-    }
-</code></pre><h2 id="排序和相关性"><a href="#排序和相关性" class="headerlink" title="排序和相关性"></a>排序和相关性</h2><ol>
-<li><p>排序</p>
-<p> 为了按照相关性来排序，需要将相关性表示为一个数值。在 Elasticsearch 中， 相关性得分 由一个浮点数进行表示，并在搜索结果中通过 _score 参数返回， 默认排序是 _score 降序。</p>
-<ul>
-<li><p>按照字段的值进行排序</p>
-<p>  我们可以使用 sort 参数进行实现</p>
-<p>  返回结果中<code>_score</code>是不会被计算的。</p>
-<pre><code>GET /_search
-
-{
-    &quot;query&quot; : {
-        &quot;bool&quot; : {
-            &quot;filter&quot; : { &quot;term&quot; : { &quot;user_id&quot; : 1 }}
-        }
-    },
-    &quot;sort&quot;: { &quot;date&quot;: { &quot;order&quot;: &quot;desc&quot; }}
-}
-</code></pre></li>
-<li><p>多级排序</p>
-<pre><code>GET /_search
-{
-    &quot;query&quot; : {
-        &quot;bool&quot; : {
-            &quot;must&quot;:   { &quot;match&quot;: { &quot;tweet&quot;: &quot;manage text search&quot; }},
-            &quot;filter&quot; : { &quot;term&quot; : { &quot;user_id&quot; : 2 }}
-        }
-    },
-    &quot;sort&quot;: [
-        { &quot;date&quot;:   { &quot;order&quot;: &quot;desc&quot; }},
-        { &quot;_score&quot;: { &quot;order&quot;: &quot;desc&quot; }}
-    ]
-}
-</code></pre></li>
-</ul>
-</li>
-</ol>
-<ol start="2">
-<li><p><a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/relevance-intro.html" target="_blank" rel="noopener">相关性</a></p>
-<p> Elasticsearch 的相似度算法 被定义为检索词频率/反向文档频率， TF/IDF，包括以下内容：</p>
-</li>
-<li><p><a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/docvalues-intro.html" target="_blank" rel="noopener">Doc Value介绍</a></p>
-</li>
-</ol>
-<h2 id="执行分布式检索"><a href="#执行分布式检索" class="headerlink" title="执行分布式检索"></a>执行分布式检索</h2><h2 id="索引管理"><a href="#索引管理" class="headerlink" title="索引管理"></a>索引管理</h2><ol>
-<li><p>创建一个索引</p>
-<pre><code>PUT /my_index
-{
-    &quot;settings&quot;: { ... any settings ... },
-    &quot;mappings&quot;: {
-        &quot;type_one&quot;: { ... any mappings ... },
-        &quot;type_two&quot;: { ... any mappings ... },
-        ...
-    }
-}
-</code></pre><p> action.auto_create_index: false</p>
-</li>
-<li><p>删除一个索引</p>
-<pre><code>DELETE /my_index
-DELETE /my_index*
-</code></pre></li>
-<li><p>索引设置</p>
-<p> 两个最重要的设置</p>
-<ul>
-<li><code>number_of_shards</code><br>每个索引的主分片数，默认值是 5 。这个配置在索引创建后不能修改。</li>
-<li><p><code>number_of_replicas</code><br>每个主分片的副本数，默认值是 1 。对于活动的索引库，这个配置可以随时修改。</p>
-<p>修改副本配置</p>
-<p>  PUT /my_temp_index/_settings<br>  {</p>
-<pre><code>&quot;number_of_replicas&quot;: 1
-</code></pre><p>  }</p>
-</li>
-</ul>
-</li>
-<li><p>配置分析器</p>
-<p> 第三个重要的索引设置是 analysis 部分， 用来配置已存在的分析器或针对你的索引创建新的自定义分析器。</p>
-</li>
-</ol>
-<pre><code>`standard `分析器是用于全文字段的默认分析器， 对于大部分西方语系来说是一个不错的选择。 它包括了以下几点：
-
-+ standard 分词器，通过单词边界分割输入的文本。
-+ standard 语汇单元过滤器，目的是整理分词器触发的语汇单元（但是目前什么都没做）。
-+ lowercase 语汇单元过滤器，转换所有的语汇单元为小写。
-+ stop 语汇单元过滤器，删除停用词--对搜索相关性影响不大的常用词，如 a ， the ， and ， is 。
-
-    默认情况下，停用词过滤器是被禁用的。如需启用它，你可以通过创建一个基于 standard 分析器的自定义分析器并设置 stopwords 参数。 可以给分析器提供一个停用词列表，或者告知使用一个基于特定语言的预定义停用词列表
-</code></pre><ol start="5">
-<li><p>自定义分析器</p>
-<p> 一个 分析器 就是在一个包里面组合了三种函数的一个包装器</p>
-<ul>
-<li>字符过滤器：用来处理一个尚未被分词的字符串。可以包含多个字符过滤器</li>
-<li>分词器：一个分析器 必须 有一个唯一的分词器。 分词器把字符串分解成单个词条或者词汇单元。 standard 分析器里使用的standard分词器 把一个字符串根据单词边界分解成单个词条，并且移除掉大部分的标点符号。</li>
-<li><p>token过滤器：经过分词，作为结果的 词单元流 会按照指定的顺序通过指定的词单元过滤器。</p>
-<h3 id="创建一个自定义的分析器"><a href="#创建一个自定义的分析器" class="headerlink" title="创建一个自定义的分析器"></a>创建一个自定义的分析器</h3><p>格式：</p>
-<p>  PUT /my_index<br>  {</p>
-<pre><code>&quot;settings&quot;: {
-    &quot;analysis&quot;: {
-        &quot;char_filter&quot;: { ... custom character filters ... },
-        &quot;tokenizer&quot;:   { ...    custom tokenizers     ... },
-        &quot;filter&quot;:      { ...   custom token filters   ... },
-        &quot;analyzer&quot;:    { ...    custom analyzers      ... }
-    }
-}
-</code></pre><p>  }</p>
-<p>字符过滤器：将&amp;替换为and,</p>
-<pre><code>&quot;char_filter&quot;: {
-      &quot;&amp;_to_and&quot;: {
-      &quot;type&quot;:       &quot;mapping&quot;,
-      &quot;mappings&quot;: [ &quot;&amp;=&gt; and &quot;]
-}},
-</code></pre><p>token过滤器：</p>
-<p>  “filter”: {</p>
-<pre><code>&quot;my_stopwords&quot;: {
-    &quot;type&quot;:       &quot;stop&quot;,
-    &quot;stopwords&quot;: [ &quot;the&quot;, &quot;a&quot; ]
-}
-</code></pre><p>  },<br>分析：</p>
-<p>  “analyzer”: {</p>
-<pre><code>&quot;my_analyzer&quot;: {
-    &quot;type&quot;:         &quot;custom&quot;,
-    &quot;char_filter&quot;:  [ &quot;html_strip&quot;, &quot;&amp;_to_and&quot; ],
-    &quot;tokenizer&quot;:    &quot;standard&quot;,
-    &quot;filter&quot;:       [ &quot;lowercase&quot;, &quot;my_stopwords&quot; ]
-}
-</code></pre><p>  }</p>
-<p>整体设置：</p>
-<p>  PUT /my_index<br>  {</p>
-<pre><code>&quot;settings&quot;: {
-    &quot;analysis&quot;: {
-        &quot;char_filter&quot;: {
-            &quot;&amp;_to_and&quot;: {
-                &quot;type&quot;:       &quot;mapping&quot;,
-                &quot;mappings&quot;: [ &quot;&amp;=&gt; and &quot;]
-        }},
-        &quot;filter&quot;: {
-            &quot;my_stopwords&quot;: {
-                &quot;type&quot;:       &quot;stop&quot;,
-                &quot;stopwords&quot;: [ &quot;the&quot;, &quot;a&quot; ]
-        }},
-        &quot;analyzer&quot;: {
-            &quot;my_analyzer&quot;: {
-                &quot;type&quot;:         &quot;custom&quot;,
-                &quot;char_filter&quot;:  [ &quot;html_strip&quot;, &quot;&amp;_to_and&quot; ],
-                &quot;tokenizer&quot;:    &quot;standard&quot;,
-                &quot;filter&quot;:       [ &quot;lowercase&quot;, &quot;my_stopwords&quot; ]
-        }}
-</code></pre><p>  }}}</p>
-<p>索引被创建以后，使用 analyze API 来 测试这个新的分析器：</p>
-<p>  curl -XGET “<a href="http://10.95.177.126:9201/my_index/_analyze?analyzer=my_analyzer&amp;pretty&quot;" target="_blank" rel="noopener">http://10.95.177.126:9201/my_index/_analyze?analyzer=my_analyzer&amp;pretty&quot;</a> -d “ The quick &amp; brown fox”<br>  {</p>
-<pre><code>&quot;tokens&quot; : [ {
-  &quot;token&quot; : &quot;quick&quot;,
-  &quot;start_offset&quot; : 5,
-  &quot;end_offset&quot; : 10,
-  &quot;type&quot; : &quot;&lt;ALPHANUM&gt;&quot;,
-  &quot;position&quot; : 1
-}, {
-  &quot;token&quot; : &quot;and&quot;,
-  &quot;start_offset&quot; : 11,
-  &quot;end_offset&quot; : 12,
-  &quot;type&quot; : &quot;&lt;ALPHANUM&gt;&quot;,
-  &quot;position&quot; : 2
-}, {
-  &quot;token&quot; : &quot;brown&quot;,
-  &quot;start_offset&quot; : 13,
-  &quot;end_offset&quot; : 18,
-  &quot;type&quot; : &quot;&lt;ALPHANUM&gt;&quot;,
-  &quot;position&quot; : 3
-}, {
-  &quot;token&quot; : &quot;fox&quot;,
-  &quot;start_offset&quot; : 19,
-  &quot;end_offset&quot; : 22,
-  &quot;type&quot; : &quot;&lt;ALPHANUM&gt;&quot;,
-  &quot;position&quot; : 4
-} ]
-</code></pre><p>  }</p>
-</li>
-</ul>
-</li>
-<li><p>类型和映射</p>
-<ul>
-<li><code>类型</code>在 Elasticsearch 中表示一类相似的文档</li>
-<li><p><code>映射</code> 就像数据库中的 schema ，描述了文档可能具有的字段或 属性 、 每个字段的数据类型，以及Lucene是如何索引和存储这些字段的</p>
-<p>避免类型陷阱</p>
-<p>这导致了一个有趣的思想实验： 如果有两个不同的类型，每个类型都有同名的字段，但映射不同（例如：一个是字符串一个是数字），将会出现什么情况？</p>
-<p>简单回答是，Elasticsearch 不会允许你定义这个映射。当你配置这个映射时，将会出现异常。</p>
-</li>
-</ul>
-</li>
-</ol>
-<ol start="7">
-<li>根对象</li>
-</ol>
-<pre><code>映射的最高一层被称为 根对象 ，它可能包含下面几项：
-
-+ 一个 properties 节点，列出了文档中可能包含的每个字段的映射
-+ 各种元数据字段，它们都以一个下划线开头，例如 _type 、 _id 和 _source
-+ 设置项，控制如何动态处理新的字段，例如 analyzer 、 dynamic_date_formats 和 dynamic_templates
-+ 其他设置，可以同时应用在根对象和其他 object 类型的字段上，例如 enabled 、 dynamic 和 include_in_all
-
-### 属性
-
-+ type：字段的数据类型，例如 string 或 date
-+ index：字段是否应当被当成全文来搜索（ analyzed ），或被当成一个准确的值（ not_analyzed ），还是完全不可被搜索（ no ）
-+ analyzer：确定在索引和搜索时全文字段使用的 analyzer
-+ ip ,`geo_point` , `geo_shape`
-
-### 元数据：`_source`字段
-
-这个字段的存储几乎总是我们想要的，因为它意味着下面的这些：
-
-+ 搜索结果包括了整个可用的文档——不需要额外的从另一个的数据仓库来取文档。
-+ 如果没有 _source 字段，部分 update 请求不会生效。
-+ 当你的映射改变时，你需要重新索引你的数据，有了_source字段你可以直接从Elasticsearch这样做，而不必从另一个（通常是速度更慢的）数据仓库取回你的所有文档。
-+ 当你不需要看到整个文档时，单个字段可以从 _source 字段提取和通过 get 或者 search 请求返回。
-+ 调试查询语句更加简单，因为你可以直接看到每个文档包括什么，而不是从一列id猜测它们的内容。
-
-### 元数据: `_all`字段
-
-_all 字段：一个把其它字段值 当作一个大字符串来索引的特殊字段
-
-如果你不再需要 _all 字段，你可以通过下面的映射来禁用：
-
-    PUT /my_index/_mapping/my_type
-    {
-        &quot;my_type&quot;: {
-            &quot;_all&quot;: { &quot;enabled&quot;: false }
-        }
-    }
-
-### 元数据：文档标识
-
-+ `_id`: 文档的 ID 字符串
-+ `_type`:  文档的类型名
-+ `_index`: 文档所在的索引
-+ `_uid`: `_type` 和 `_id`连接在一起构造成 type#id
-</code></pre><ol start="8">
-<li><p>动态映射</p>
-<p> 当 Elasticsearch 遇到文档中以前 未遇到的字段，它用 dynamic mapping 来确定字段的数据类型并自动把新的字段添加到类型映射。</p>
-<p> dynamic取值</p>
-<ul>
-<li>true：动态添加新的字段–缺省</li>
-<li>false：忽略新的字段</li>
-<li>strict：如果遇到新字段抛出异常</li>
-<li>下面的设置中，对于<code>my_type</code>出现新增字段就报异常，如果对于字段stash出现新增字段，则动态映射。</li>
-</ul>
-</li>
-</ol>
-<pre><code>PUT /my_index
-{
-    &quot;mappings&quot;: {
-        &quot;my_type&quot;: {
-            &quot;dynamic&quot;:      &quot;strict&quot;, 
-            &quot;properties&quot;: {
-                &quot;title&quot;:  { &quot;type&quot;: &quot;string&quot;},
-                &quot;stash&quot;:  {
-                    &quot;type&quot;:     &quot;object&quot;,
-                    &quot;dynamic&quot;:  true 
-                }
-            }
-        }
-    }
-}
-</code></pre><ol start="9">
-<li><p>自定义动态映射</p>
-<p> <code>https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/custom-dynamic-mapping.html</code></p>
-</li>
-<li><p>缺省映射</p>
-<p><code>https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/default-mapping.html</code></p>
-</li>
-<li><p>重新索引你的数据</p>
-<p>从ES2.3开始，可以使用<a href="https://www.elastic.co/guide/en/elasticsearch/reference/master/docs-reindex.html" target="_blank" rel="noopener">reindex</a> api，它能够对文档重建索引而不需要任何插件或外部工具。</p>
-</li>
-<li><p>索引别名和零停机</p>
-<p>索引 别名 就像一个快捷方式或软连接，可以指向一个或多个索引，也可以给任何一个需要索引名的API来使用。别名 带给我们极大的灵活性，允许我们做下面这些：</p>
-<ul>
-<li>在运行的集群中可以无缝的从一个索引切换到另一个索引</li>
-<li>给多个索引分组 (例如， last_three_months)</li>
-<li>给索引的一个子集创建 视图</li>
-</ul>
-<p>举例：</p>
-<pre><code>PUT /my_index_v1  #创建索引my_index_v1
-PUT /my_index_v1/_alias/my_index  # 设置别名 my_index指向my_index_v1
-</code></pre></li>
-</ol>
-<h2 id="分片内部原理"><a href="#分片内部原理" class="headerlink" title="分片内部原理"></a>分片内部原理</h2><ul>
-<li>为什么搜索是 近 实时的？(内存缓冲区不可被搜索，写入文件系统缓存后可以被搜索）</li>
-<li>为什么文档的 CRUD (创建-读取-更新-删除) 操作是 实时 的?</li>
-<li>Elasticsearch 是怎样保证更新被持久化在断电时也不丢失数据?<br>为什么删除文档不会立刻释放空间？</li>
-<li>refresh, flush, 和 optimize API 都做了什么, 你什么情况下应该是用他们？</li>
-</ul>
-<ol>
-<li><p>使文本可搜索</p>
-<h3 id="不变性"><a href="#不变性" class="headerlink" title="不变性"></a>不变性</h3><ul>
-<li><p>倒排索引被写入磁盘后是 不可改变 的:它永远不会修改。 不变性有重要的价值：</p>
-<ul>
-<li>不需要锁。如果你从来不更新索引，你就不需要担心多进程同时修改数据的问题。</li>
-<li>一旦索引被读入内核的文件系统缓存，便会留在哪里，由于其不变性。只要文件系统缓存中还有足够的空间，那么大部分读请求会直接请求内存，而不会命中磁盘。这提供了很大的性能提升。</li>
-<li>其它缓存(像filter缓存)，在索引的生命周期内始终有效。它们不需要在每次数据改变时被重建，因为数据不会变化。</li>
-<li>写入单个大的倒排索引允许数据被压缩，减少磁盘 I/O 和 需要被缓存到内存的索引的使用量</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p><a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/dynamic-indices.html" target="_blank" rel="noopener">动态更新索引</a></p>
-<p> 下一个需要被解决的问题是怎样在保留不变性的前提下实现倒排索引的更新？ 答案是: 用更多的索引。</p>
-</li>
-</ol>
-<h3 id="索引和分片"><a href="#索引和分片" class="headerlink" title="索引和分片"></a>索引和分片</h3><p>被混淆的概念是，一个 Lucene 索引 我们在 Elasticsearch 称作 分片 。 一个 Elasticsearch 索引 是分片的集合。 当 Elasticsearch 在索引中搜索的时候， 他发送查询到每一个属于索引的分片(Lucene 索引)，然后像 <a href="https://elasticsearch.cn/book/elasticsearch_definitive_guide_2.x/distributed-search.html" target="_blank" rel="noopener">执行分布式检索</a>  提到的那样，合并每个分片的结果到一个全局的结果集。</p>
-<p>sync is a standard system call in the Unix operating system, which commits to disk all data in the kernel filesystem buffers, i.e., data which has been scheduled for writing via low-level I/O system calls. Higher-level I/O layers such as stdio may maintain separate buffers of their own.</p>
-<h3 id="数据写入的流程"><a href="#数据写入的流程" class="headerlink" title="数据写入的流程"></a>数据写入的流程</h3><p>要回答的问题是：</p>
-<ul>
-<li>为什么搜索是 近 实时的？</li>
-<li>为什么文档的 CRUD (创建-读取-更新-删除) 操作是 实时 的?</li>
-<li>Elasticsearch 是怎样保证更新被持久化在断电时也不丢失数据?</li>
-<li>为什么删除文档不会立刻释放空间？</li>
-<li>refresh, flush, 和 optimize API 都做了什么, 你什么情况下应该是用他们？<ul>
-<li>refresh将内存缓冲区数据写入文件系统缓存的segment，可以被搜索（近实时搜索）</li>
-<li>flush将文件系统缓存的数据写入磁盘。执行一个提交并且截断 translog 的行为</li>
-</ul>
-</li>
-</ul>
-<ol>
-<li>倒排索引写入文件以后就是不变的</li>
-<li><p>倒排索引写入的流程</p>
-<p> —&gt;写入内存buffer–&gt;写入文件系统缓存（一个segment）</p>
-<p> —&gt;translog </p>
-<p> 数据写入时在写入内存buffer时，会同时写入translog；<br> 内存buffer中的数据每隔refresh_interval（es设置，默认是1秒）写入文件系统缓存；这就是为什么我们说 Elasticsearch 是 近 实时搜索: 文档的变化并不是立即对搜索可见，但会在一秒之内变为可见<br> 当translog到达一定阈值后</p>
-<ul>
-<li>所有在内存缓冲区的文档会被写入一个新的段</li>
-<li>缓冲区被清空</li>
-<li>一个提交点被写入硬盘</li>
-<li>文件系统缓存通过 fsync 被刷新（flush）</li>
-<li>老的 translog 被删除</li>
-</ul>
-</li>
-</ol>
-<p>这个执行一个提交并且截断 translog 的行为在 Elasticsearch 被称作一次 flush 。 <code>分片每30分钟被自动刷新</code>（flush），或者在 <code>translog 太大的时候</code>也会刷新。请查看 translog 文档 来设置，它可以用来 控制这些阈值：</p>
-<ol start="3">
-<li>提交点 的概念 — 一个列出了所有已知段的文件</li>
-<li><p>下面的图演示了一个完整的数据写入流程</p>
- 
- 
- 
- 
-</li>
-</ol>
-<ol start="5">
-<li><p>段合并。由于自动刷新流程每秒会创建一个新的段 ，这样会导致短时间内的段数量暴增。而段数目太多会带来较大的麻烦。 每一个段都会消耗文件句柄、内存和cpu运行周期。更重要的是，每个搜索请求都必须轮流检查每个段；所以段越多，搜索也就越慢。</p>
-<p> 启动段合并不需要你做任何事。进行索引和搜索时会自动进行。会进行以下工作：</p>
-<ul>
-<li>当索引的时候，刷新（refresh）操作会创建新的段并将段打开以供搜索使用。</li>
-<li><p>合并进程选择一小部分大小相似的段，并且在后台将它们合并到更大的段中。这并不会中断索引和搜索。</p>
-<p><img src="elas_两个提交了的段和一个未提交的段进行合并.png" alt="两个提交了的段和一个未提交的段进行合并"></p>
-</li>
-</ul>
-</li>
-</ol>
-<pre><code>一旦合并结束，老的段被删除，
-
-![合并结束老的段被删除](elas_合并结束老的段被删除.png)
-
-
-通过optimize API大可看做是 强制合并 API 。它会将一个分片强制合并到 `max_num_segments` 参数指定大小的段数目。 这样做的意图是减少段的数量（通常减少到一个），来提升搜索性能
-
-    POST /logstash-2014-10/_optimize?max_num_segments=1 
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/11/15/ElasticSearch基础知识/" data-id="cjsr5cjgu000brxs617oka4bs" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-go源码分析-http处理流程分析" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/10/31/go源码分析-http处理流程分析/" class="article-date">
-  <time datetime="2017-10-31T06:39:54.000Z" itemprop="datePublished">2017-10-31</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/10/31/go源码分析-http处理流程分析/">go源码分析-http处理流程分析</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="【概述】"><a href="#【概述】" class="headerlink" title="【概述】"></a>【概述】</h2><p>GO的web服务器的简单helloword 服务器就是使用net/http库的进行编写。需要看一下http.ListenAndServe的工作原理。</p>
-<pre><code>package main
-import &quot;net/http&quot;
-func main() {
-    http.HandleFunc(&quot;/&quot;, func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte(`hello world`))
-    })
-    http.ListenAndServe(&quot;:3000&quot;, nil)
-}
-</code></pre><p>主要包括：</p>
-<ul>
-<li>uri_path跟handler的对应关系是如何初始化的</li>
-<li>端口接收到请求后，请求是如何处理、以及如何被定义的func处理、响应是如何处理的</li>
-</ul>
-<h2 id="HandleFunc的参数"><a href="#HandleFunc的参数" class="headerlink" title="HandleFunc的参数"></a>HandleFunc的参数</h2><p>HandleFunc的第二个参数是func(ResponseWriter, *Request)，会赋值给HandlerFunc类型</p>
-<pre><code>// The HandlerFunc type is an adapter to allow the use of
-// ordinary functions as HTTP handlers.  If f is a function
-// with the appropriate signature, HandlerFunc(f) is a
-// Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
-
-// ServeHTTP calls f(w, r).
-func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
-    f(w, r)
-}
-</code></pre><h2 id="映射处理"><a href="#映射处理" class="headerlink" title="映射处理"></a>映射处理</h2><p>在src/net/http/server.go中使用<code>HandleFunc</code>进行注册，会将其放入多路复用的结构体<code>ServeMux</code>中。</p>
-<p>src/net/http/server.go</p>
-<pre><code>// HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    mux.Handle(pattern, HandlerFunc(handler))
-}
-// Handle registers the handler for the given pattern
-// in the DefaultServeMux.
-// The documentation for ServeMux explains how patterns are matched.
-func Handle(pattern string, handler Handler) { DefaultServeMux.Handle(pattern, handler) }
-// HandleFunc registers the handler function for the given pattern
-// in the DefaultServeMux.
-// The documentation for ServeMux explains how patterns are matched.
-func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    DefaultServeMux.HandleFunc(pattern, handler)
-}
-
- // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    mux.Handle(pattern, HandlerFunc(handler))
-}
-
-type Handler interface {
-   ServeHTTP(ResponseWriter, *Request)
-}
-
-func (mux *ServeMux) Handle(pattern string, handler Handler) {
-}
-
-// The HandlerFunc type is an adapter to allow the use of
-// ordinary functions as HTTP handlers.  If f is a function
-// with the appropriate signature, HandlerFunc(f) is a
-// Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
-</code></pre><p>http请求的多路复用结构体<code>ServeMux</code></p>
-<pre><code>// ServeMux is an HTTP request multiplexer.
-// It matches the URL of each incoming request against a list of registered
-// patterns and calls the handler for the pattern that
-// most closely matches the URL.
-//
-// Patterns name fixed, rooted paths, like &quot;/favicon.ico&quot;,
-// or rooted subtrees, like &quot;/images/&quot; (note the trailing slash).
-// Longer patterns take precedence over shorter ones, so that
-// if there are handlers registered for both &quot;/images/&quot;
-// and &quot;/images/thumbnails/&quot;, the latter handler will be
-// called for paths beginning &quot;/images/thumbnails/&quot; and the
-// former will receive requests for any other paths in the
-// &quot;/images/&quot; subtree.
-//
-// Note that since a pattern ending in a slash names a rooted subtree,
-// the pattern &quot;/&quot; matches all paths not matched by other registered
-// patterns, not just the URL with Path == &quot;/&quot;.
-//
-// If a subtree has been registered and a request is received naming the
-// subtree root without its trailing slash, ServeMux redirects that
-// request to the subtree root (adding the trailing slash). This behavior can
-// be overridden with a separate registration for the path without
-// the trailing slash. For example, registering &quot;/images/&quot; causes ServeMux
-// to redirect a request for &quot;/images&quot; to &quot;/images/&quot;, unless &quot;/images&quot; has
-// been registered separately.
-//
-// Patterns may optionally begin with a host name, restricting matches to
-// URLs on that host only.  Host-specific patterns take precedence over
-// general patterns, so that a handler might register for the two patterns
-// &quot;/codesearch&quot; and &quot;codesearch.google.com/&quot; without also taking over
-// requests for &quot;http://www.google.com/&quot;.
-//
-// ServeMux also takes care of sanitizing the URL request path,
-// redirecting any request containing . or .. elements or repeated slashes
-// to an equivalent, cleaner URL.
-type ServeMux struct {
-    mu    sync.RWMutex
-    m     map[string]muxEntry
-    hosts bool // whether any patterns contain hostnames
-}
-</code></pre><h2 id="对外提供服务"><a href="#对外提供服务" class="headerlink" title="对外提供服务"></a>对外提供服务</h2><pre><code>// A Server defines parameters for running an HTTP server.
-// The zero value for Server is a valid configuration.
-type Server struct {
-    Addr           string        // TCP address to listen on, &quot;:http&quot; if empty
-    Handler        Handler       // handler to invoke, http.DefaultServeMux if nil
-    ReadTimeout    time.Duration // maximum duration before timing out read of the request
-    WriteTimeout   time.Duration // maximum duration before timing out write of the response
-    MaxHeaderBytes int           // maximum size of request headers, DefaultMaxHeaderBytes if 0
-    TLSConfig      *tls.Config   // optional TLS config, used by ListenAndServeTLS
-
-    // TLSNextProto optionally specifies a function to take over
-    // ownership of the provided TLS connection when an NPN
-    // protocol upgrade has occurred.  The map key is the protocol
-    // name negotiated. The Handler argument should be used to
-    // handle HTTP requests and will initialize the Request&apos;s TLS
-    // and RemoteAddr if not already set.  The connection is
-    // automatically closed when the function returns.
-    // If TLSNextProto is nil, HTTP/2 support is enabled automatically.
-    TLSNextProto map[string]func(*Server, *tls.Conn, Handler)
-
-    // ConnState specifies an optional callback function that is
-    // called when a client connection changes state. See the
-    // ConnState type and associated constants for details.
-    ConnState func(net.Conn, ConnState)
-
-    // ErrorLog specifies an optional logger for errors accepting
-    // connections and unexpected behavior from handlers.
-    // If nil, logging goes to os.Stderr via the log package&apos;s
-    // standard logger.
-    ErrorLog *log.Logger
-
-    disableKeepAlives int32     // accessed atomically.
-    nextProtoOnce     sync.Once // guards initialization of TLSNextProto in Serve
-    nextProtoErr      error
-}
-</code></pre><p>其中<code>ListenAndServe</code>函数的逻辑，其中tcpKeepAliveListener是开启了tcp的keep-alive</p>
-<pre><code>// ListenAndServe listens on the TCP network address srv.Addr and then
-// calls Serve to handle requests on incoming connections.
-// Accepted connections are configured to enable TCP keep-alives.
-// If srv.Addr is blank, &quot;:http&quot; is used.
-// ListenAndServe always returns a non-nil error.
-func (srv *Server) ListenAndServe() error {
-    addr := srv.Addr
-    if addr == &quot;&quot; {
-        addr = &quot;:http&quot;
-    }
-    ln, err := net.Listen(&quot;tcp&quot;, addr)
-    if err != nil {
-        return err
-    }
-    return srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)}) 
-}
-</code></pre><p>在Serve中在Accept处于等待，当请求到来时，Accept会从Listener l中接收一个到来的连接并创建一个新的goroutine处理请求。这个goroutine会读取请求，调用Server.Handler来处理他们。</p>
-<pre><code>func (srv *Server) Serve(l net.Listener) error {
-    defer l.Close()
-    ....
-    for {
-        rw, e := l.Accept()
-        if e != nil {
-            ....
-            return e
-        }
-        tempDelay = 0
-        c := srv.newConn(rw)
-        c.setState(c.rwc, StateNew) // before Serve can return
-        go c.serve()
-    }
-}
-</code></pre><p>其中newConn是获得一个新连接</p>
-<pre><code>// Create new connection from rwc.
-func (srv *Server) newConn(rwc net.Conn) *conn {
-    c := &amp;conn{
-        server: srv,
-        rwc:    rwc,
-    }
-    if debugServerConnections {
-        c.rwc = newLoggingConn(&quot;server&quot;, c.rwc)
-    }
-    return c
-}
-</code></pre><p>其中conn结构体在net/http/server.go文件中</p>
-<pre><code>// A conn represents the server side of an HTTP connection.
-type conn struct {
-    // server is the server on which the connection arrived.
-    // Immutable; never nil.
-    server *Server
-
-    // rwc is the underlying network connection.
-    // This is never wrapped by other types and is the value given out
-    // to CloseNotifier callers. It is usually of type *net.TCPConn or
-    // *tls.Conn.
-    rwc net.Conn
-
-    // remoteAddr is rwc.RemoteAddr().String(). It is not populated synchronously
-    // inside the Listener&apos;s Accept goroutine, as some implementations block.
-    // It is populated immediately inside the (*conn).serve goroutine.
-    // This is the value of a Handler&apos;s (*Request).RemoteAddr.
-    remoteAddr string
-
-    // tlsState is the TLS connection state when using TLS.
-    // nil means not TLS.
-    tlsState *tls.ConnectionState
-
-    // werr is set to the first write error to rwc.
-    // It is set via checkConnErrorWriter{w}, where bufw writes.
-    werr error
-
-    // r is bufr&apos;s read source. It&apos;s a wrapper around rwc that provides
-    // io.LimitedReader-style limiting (while reading request headers)
-    // and functionality to support CloseNotifier. See *connReader docs.
-    r *connReader
-
-    // bufr reads from r.
-    // Users of bufr must hold mu.
-    bufr *bufio.Reader
-
-    // bufw writes to checkConnErrorWriter{c}, which populates werr on error.
-    bufw *bufio.Writer
-
-    // lastMethod is the method of the most recent request
-    // on this connection, if any.
-    lastMethod string
-
-    // mu guards hijackedv, use of bufr, (*response).closeNotifyCh.
-    mu sync.Mutex
-
-    // hijackedv is whether this connection has been hijacked
-    // by a Handler with the Hijacker interface.
-    // It is guarded by mu.
-    hijackedv bool
-}
-</code></pre><p>serve方法</p>
-<pre><code>// Serve a new connection.
-func (c *conn) serve() {
-    c.remoteAddr = c.rwc.RemoteAddr().String()
-    defer func() {
-        ... // defer处理
-    }()
-
-    ... // tls connection
-
-    c.r = &amp;connReader{r: c.rwc}
-    c.bufr = newBufioReader(c.r)
-    c.bufw = newBufioWriterSize(checkConnErrorWriter{c}, 4&lt;&lt;10)
-
-    for {
-        w, err := c.readRequest() //读取请求
-        ...
-        if err != nil {
-            ....
-            return
-        }
-
-
-        ...     // Expect 100 Continue support
-
-        // HTTP cannot have multiple simultaneous active requests.[*]
-        // Until the server replies to this request, it can&apos;t read another,
-        // so we might as well run the handler in this goroutine.
-        // [*] Not strictly true: HTTP pipelining.  We could let them all process
-        // in parallel even if their responses need to be serialized.
-        serverHandler{c.server}.ServeHTTP(w, w.req)
-
-        ... // finish operation
-    }
-}
-</code></pre><p>看一下这里面最核心的 <code>serverHandler{c.server}.ServeHTTP(w, w.rseq)</code>处理逻辑</p>
-<pre><code>// serverHandler delegates to either the server&apos;s Handler or
-// DefaultServeMux and also handles &quot;OPTIONS *&quot; requests.
-type serverHandler struct {
-    srv *Server
-}
-
-func (sh serverHandler) ServeHTTP(rw ResponseWriter, req *Request) {
-    handler := sh.srv.Handler
-    if handler == nil {
-        handler = DefaultServeMux
-    }
-    if req.RequestURI == &quot;*&quot; &amp;&amp; req.Method == &quot;OPTIONS&quot; {
-        handler = globalOptionsHandler{}
-    }
-    handler.ServeHTTP(rw, req)
-}
-
-
-// ServeHTTP dispatches the request to the handler whose
-// pattern most closely matches the request URL.
-func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
-    if r.RequestURI == &quot;*&quot; {
-        if r.ProtoAtLeast(1, 1) {
-            w.Header().Set(&quot;Connection&quot;, &quot;close&quot;)
-        }
-        w.WriteHeader(StatusBadRequest)
-        return
-    }
-    h, _ := mux.Handler(r)
-    h.ServeHTTP(w, r)
-}
-</code></pre><p>最后的<code>h,_:=mux.Handler</code>获取的是<code>type HandlerFunc func(ResponseWriter, *Request)</code>，调用ServeHTTP也就是调用了我们注册的</p>
-<pre><code>http.HandleFunc(&quot;/&quot;, func(w http.ResponseWriter, r *http.Request) {    
-    w.Write([]byte(`hello world`))
-})
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/10/31/go源码分析-http处理流程分析/" data-id="cjsr5cjjn002drxs6in8y81x1" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/go-source-code/">go.source.code</a></li></ul>
-
     </footer>
   </div>
   
@@ -1740,7 +1103,7 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
 
   <nav id="page-nav">
     
-    <a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><span class="space">&hellip;</span><a class="page-number" href="/page/9/">9</a><a class="extend next" rel="next" href="/page/3/">Next &raquo;</a>
+    <a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><a class="extend next" rel="next" href="/page/3/">Next &raquo;</a>
   </nav>
 
 </section>
@@ -1764,7 +1127,7 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 13.75px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 16.25px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 11.25px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 16.25px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1773,7 +1136,7 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1786,23 +1149,23 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
       <ul>
         
           <li>
-            <a href="/2019/03/02/golang-面向对象编程/">golang-面向对象编程</a>
+            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
           <li>
-            <a href="/2019/02/04/elasticsearch路由规则学习/">(no title)</a>
+            <a href="/2019/04/29/golang继承/">golang继承</a>
           </li>
         
           <li>
-            <a href="/2018/10/12/hello-world/">Hello World</a>
+            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
           <li>
-            <a href="/2018/10/03/RedisCluster详细说明[翻译]/">(no title)</a>
+            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
           <li>
-            <a href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
+            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>
