@@ -84,7 +84,7 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>一、基本概念</p>
+        <h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><p>1.1 基本概念</p>
 <p>IPC是进程间通信(interprocess communication)的简称。IPC指的是不同进程间消息传递的不同方式。</p>
 <p>消息传递历经如下几个发展阶段：</p>
 <ul>
@@ -98,18 +98,21 @@
 <li><p>有名管道(named pipe)</p>
 <ul>
 <li>半双工</li>
+<li>可以在没有亲缘关系的进程间使用</li>
 </ul>
 </li>
-<li><p>System V消息队列：20世纪80年代早期加到System V内核中。可以在无亲缘关系的进程中通信。</p>
+<li><p>System V消息队列：20世纪80年代早期加到System V内核中。可以在没有亲缘关系的进程中通信。</p>
 </li>
-</ul>
+<li><p>Posix消息队列：同一主机上游亲缘关系和无亲缘关系的进程之间。</p>
 <ul>
-<li>Posix消息队列：同一主机上游亲缘关系和无亲缘关系的进程之间。</li>
+<li>两个消息队列的缺点：存在于内核并且没有引用计数；性能跟全双工管道和套接字相当。</li>
+</ul>
+</li>
 </ul>
 <ul>
 <li>远程过程调用：RPC可用在同一主机上的客户和服务器直接，因此可以认为RPC是另一种形式的消息传递。</li>
 </ul>
-<p>二、进程、线程与信息共享</p>
+<p>1.2 进程、线程与信息共享</p>
 <p><img src="/2019/05/03/linux进程间通信/ipc三种方式.jpg" alt="ipc三种方式"><br>Unix进程间的信息共享有多种方式：</p>
 <ul>
 <li><p>文件系统：</p>
@@ -129,11 +132,111 @@
 </ul>
 </li>
 </ul>
+<p>1.3 IPC对象的持续性</p>
+<p>有三种类型的持续性：</p>
+<ul>
+<li>随进程持续</li>
+<li>随内核持续</li>
+<li>随文件系统持续</li>
+</ul>
+<p>1.4 名字空间</p>
+<p>当两个或多个无沁园关系的进程使用某种类型的IPC对象类彼此交换信息时，该IPC对象必须有一个某种形式的名字name或标识符identifier，这样其中一个进程可以创建该IPC对象，其余进程可以指定同一个IPC对象。 </p>
+<p>管道没有名字，因此只能用于有亲缘关系的进程间。</p>
+<p>1.5 fork,exec对于IPC对象的影响</p>
+<h3 id="二、管道和FIFO"><a href="#二、管道和FIFO" class="headerlink" title="二、管道和FIFO"></a>二、管道和FIFO</h3><p>2.3 管道</p>
+<p>管道由pipe函数创建，提供一个单路（单向）数据流。</p>
+<p><code>int pipe(int fd[2])</code></p>
+<p>该函数返回两个文件描述字：fd[0]和fd[1]。前者打开来读，后者打开来写。 </p>
+<p>创建一个全双工IPC管道的另外一个方法是使用UNPv1的14.3节讲述的<code>socketpair</code>函数。</p>
+<p>当然管道最常见用途是用在各种shell中，这种情况下半双工就够了。 </p>
+<p>2.4 全双工管道</p>
+<p>2.6 FIFO 有名管道</p>
+<p>FIFO指代先进先出(first in, first out)，是一个单向（半双工）数据流。 </p>
+<p>与管道不同的是， 每个FIFO有一个路径与之关联，从而允许无亲缘关系的进程访问同一个FIFO。FIFO也称为有名管道（named pipe)。</p>
+<p>因此FIFO可以用于无亲缘关系的进程间通信。</p>
+<p>通过<code>int mkfifo(const char *pathname, mode_t mode)</code>创建。</p>
+<h3 id="三、Posix-消息队列"><a href="#三、Posix-消息队列" class="headerlink" title="三、Posix 消息队列"></a>三、Posix 消息队列</h3><p>3.1 简介</p>
+<p>消息队列可以认为一个消息链表。每个消息是一个记录，它由发送者赋予一个优先级。在某个进程往一个队列写入消息之前，并不需要另外某个进程在该队列上等待消息的到达。</p>
+<p>队列中的每个消息具有如下属性:</p>
+<ul>
+<li>一个无符号整数优先级或一个长整型类型</li>
+<li>消息的数据部分长度</li>
+<li>数据本身</li>
+</ul>
+<p>消息队列与管道和FIFO区别：</p>
+<ol>
+<li>某个进程往一个队列写入消息之前，并不需要某个进程在该队列上等待消息的到达；而管道和FIFO 必须是读出者已经存在，否则先有写入者没有意义。 </li>
+<li>管道和FIFO是字节流模型，没有消息边界，也没能与每个消息关联的类型。</li>
+</ol>
+<p>3.6 Posix消息队列的 mq_notify函数</p>
+<p>System V消息队列的问题之一是无法通知一个进程何时在某个队列中放置了一个消息。</p>
+<p>Posix消息队列允许异步事件通知（asynchronous event notification),以告知何时有一个消息放置到了某个空消息队列中，这种通知有两种方式可供选择：</p>
+<ul>
+<li>产生一个信号</li>
+<li>创建一个线程执行一个指定函数</li>
+</ul>
+<p>3.8 使用内存映射I/O实现Posix消息队列</p>
+<p>该小节使用内存映射I/O 以及一个Posix互斥锁和一个Posix条件变量以约500行的C代码实现了Posix消息队列的大多数特性。 </p>
+<p>实现方案是什么呢？？？？？</p>
+<p>学习一下Posix消息队列的实现，从而看看golang channel是不是一样呢？</p>
+<h3 id="四、System-V消息队列"><a href="#四、System-V消息队列" class="headerlink" title="四、System V消息队列"></a>四、System V消息队列</h3><p>System V消息队列使用消息队列标识符标识。</p>
+<p><code>新的应用程序应考虑使用Posix消息队列。</code></p>
+<p>Posix消息队列遗漏的主要特性是从队列中读出指定优先级的消息的能力。这两种消息队列都不使用真正的描述字，从而造成在消息队列上使用select或poll的困难。</p>
+<p>####消息队列和全双工管道对比</p>
+<p>unp15.7节中介绍了二者对比。</p>
+<p>如果需要客户进程和服务器进程之间的双向数据流，可以使用消息队列或全双工通道。（通过Unix域套接字机制 或者pipe函数提供全双工管道）。</p>
+<p><img src="/2019/05/03/linux进程间通信/msg_socket_pipe_compare.jpg" alt=""></p>
+<p>图15-27 显示了在Solaris上3中技术在时间方面的比较，这三种技术是：消息队列、全双工管道、UNIX域套接字。</p>
+<p>测试程序先创建IPC通道，调用fork，然后从父进程向子进程发送约200MB数据。数据发送的方式是：对于消息队列，调用100,000次msgsnd，每个消息长度为2000字节。对于全双工管道和UNIX域套接字，调用100,000次write，每次写2000字节。时间都以秒为单位。</p>
+<p>从这些数字中可见，消息队列原来的实施目的是提供高于一般速度的IPC，但现在与其他形式的IPC相比，在速度方面已经没有什么差别了。 </p>
+<p>注意：在原来实施消息队列时，可用的其他形式的IPC就只有半双工管道这一种。</p>
+<p>考虑到消息队列遇到的问题，我们得出的结论是，在新的应用程序中不应当再使用它们。</p>
+<p>消息队列遇到的问题是：</p>
+<ol>
+<li>消息队列是在内核中起作用，没有引用计数。例如，如果进程创建了一个消息队列并写入了几则消息，然后终止，那么该消息队列及其内容不会被删除。</li>
+<li>消息队列在文件系统中没有名字。为了支持这些IPC对象，内核中增加了十几个全新的系统调用(msgget,semop,shmat等）。        </li>
+</ol>
+<h3 id="五、总结"><a href="#五、总结" class="headerlink" title="五、总结"></a>五、总结</h3><p>管道和FIFO：</p>
+<ul>
+<li>半双工管道</li>
+<li>管道是匿名的、FIFO是有名的；因此管道只能用于有亲缘关系的进程、FIFO则可以用于没有亲缘关系的进程。 </li>
+<li>对于shell而言使用管道即可。</li>
+</ul>
+<p>消息队列：</p>
+<ul>
+<li>诞生的背景是IPC只有管道，因此通过消息队列提升IPC性能；但后来有了全双工管道和套接字，</li>
+<li>因此新的应用程序都可以使用全双工管道和套接字。</li>
+<li>消息队列缺点：存在于内核并且没有引用计数，会存在进程已经消失，但是消息队列还在内核中存在。 </li>
+</ul>
+<p>套接字：</p>
+<ul>
+<li>全双工通道</li>
+<li>应用场景：<ul>
+<li>在nginx master进程和worker进程之间是通过套接字进行通信的。</li>
+<li>在nginx和php-fpm之间通过套接字进行通信。 </li>
+</ul>
+</li>
+</ul>
+<h4 id="5-1-nginx和phpfpm交互两种方式性能比较"><a href="#5-1-nginx和phpfpm交互两种方式性能比较" class="headerlink" title="5.1 nginx和phpfpm交互两种方式性能比较"></a>5.1 nginx和phpfpm交互两种方式性能比较</h4><p>nginx和phpfpm的交互有两种方式：</p>
+<ul>
+<li>tcp方式</li>
+<li>unix domain socket方式<br>tcp方式的优点是可以跨机器。</li>
+</ul>
+<p>socket方式的优点是：</p>
+<ul>
+<li>进程间通信，</li>
+<li>不需要经过网络协议栈、不需要打包、拆包、计算校验和、维护序号和应答等，只是将应用层数据从一个进程拷贝到另外一个进程。</li>
+<li>因此IPC机制本质上是可靠的通讯，而网络协议是为不可靠通讯设计的。 </li>
+</ul>
+<h4 id="5-2-IPC分类"><a href="#5-2-IPC分类" class="headerlink" title="5.2 IPC分类"></a>5.2 IPC分类</h4><ol>
+<li>消息传递（管道、FIFO、消息队列、RPC、匿名共享内存区、有名共享内存区）</li>
+<li>同步（互斥锁、条件变量、读写锁、文件与记录锁、信号灯）</li>
+</ol>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjv7sleho002xgrs6stwhr9bm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjv83u3tc0030xus6prmpj98x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -192,7 +295,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjv7sleh8002jgrs686ec2bmt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjv83u3sq002hxus6po1d9aev" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -438,7 +541,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjv7slel6005xgrs6b227cu0w" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjv83u3ww006cxus6vsjmx8zp" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -520,7 +623,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjv7sleh1002bgrs6gd2qeq0d" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjv83u3se0028xus6nk07zqic" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -548,7 +651,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjv7sleci0000grs6enxvp7ly" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjv83u3np0000xus6ma9j4lw0" class="article-share-link">Share</a>
       
       
     </footer>
@@ -696,7 +799,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjv7slefl0014grs66ousywyu" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjv83u3qq0011xus6rnsrzm9u" class="article-share-link">Share</a>
       
       
     </footer>
@@ -734,7 +837,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjv7slegz0029grs6dktgkrsk" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjv83u3sj002axus6j0gr29or" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -826,7 +929,7 @@ type InterfaceAction func(hosts []string, is_high_node, is_primary bool) (bool, 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjv7sleh4002dgrs63i1kdlem" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjv83u3td0032xus69byx8t15" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -914,7 +1017,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjv7sleg5001qgrs6si6subrq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjv83u3sn002exus6bbzv13fb" class="article-share-link">Share</a>
       
       
     </footer>
@@ -959,7 +1062,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/10/12/hello-world/" data-id="cjv7slehh002pgrs628i416ha" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/10/12/hello-world/" data-id="cjv83u3to003axus6f4c5zf48" class="article-share-link">Share</a>
       
       
     </footer>
