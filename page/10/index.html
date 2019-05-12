@@ -62,6 +62,66 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-mac安装storm" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/03/mac安装storm/" class="article-date">
+  <time datetime="2016-01-03T09:46:01.000Z" itemprop="datePublished">2016-01-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/01/03/mac安装storm/">Mac 安装storm环境</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-安装"><a href="#1-安装" class="headerlink" title="1. 安装"></a>1. 安装</h2><ol>
+<li><p>获取storm-starter源代码</p>
+<p> git clone <a href="https://github.com/nathanmarz/storm-starter.git" target="_blank" rel="noopener">https://github.com/nathanmarz/storm-starter.git</a></p>
+</li>
+<li><p>cd storm_starter</p>
+</li>
+<li><p>mvn package</p>
+</li>
+<li><p>使用 Intellij</p>
+<ol>
+<li>Open File &gt; Import Project… and navigate to the storm-starter directory of your storm clone (e.g. ~/git/storm/examples/storm-starter).</li>
+<li>Select Import project from external model, select “Maven”, and click Next.<br>In the following screen, enable the checkbox Import Maven projects automatically. Leave all other values at their defaults. Click Next.</li>
+<li>Click Next on the following screen about selecting Maven projects to import.<br>Select the JDK to be used by IDEA for storm-starter, then click Next.<br>At the time of this writing you should use JDK 6.<br>It is strongly recommended to use Sun/Oracle JDK 6 rather than OpenJDK 6.</li>
+<li>You may now optionally change the name of the project in IDEA. The default name suggested by IDEA is “storm-starter”. Click Finish once you are done</li>
+</ol>
+</li>
+</ol>
+<h2 id="可能出现的问题"><a href="#可能出现的问题" class="headerlink" title="可能出现的问题"></a>可能出现的问题</h2><ol>
+<li>org.apache.zookeeper.ClientCnxn  - Session 0x0 for server null, unexpected error, closing socket connection and attempting reconnect.<br>解决方案：<br><a href="http://blog.csdn.net/myemail_sl/article/details/11074017" target="_blank" rel="noopener">http://blog.csdn.net/myemail_sl/article/details/11074017</a><br>设置执行参数。在Deault VM Arguments中设置-Djava.net.preferIPv4Stack=true</li>
+<li>如果出现缺少module.xml 那么需要重新导入一次项目即可。</li>
+<li>java.lang.NoClassDefFoundError: backtype/storm/topology/IRichSpout….<br><a href="http://blog.jobbole.com/88203/" target="_blank" rel="noopener">http://blog.jobbole.com/88203/</a> 这篇文章给出了解释。<br>解决方案：在pom.xml将storm的scope由provided修改为compile即可。</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="cjvl1evu2003elws6pynnol0b" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-mac安装hbase" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/01/03/mac安装hbase/" class="article-date">
@@ -150,7 +210,7 @@ hbase(main):013:0&gt; drop &apos;test&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjv83u3u5003oxus6qc213bav" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjvl1evu3003hlws6aaxbf9k5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -256,7 +316,7 @@ start-yarn.sh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjv83u3tk0037xus632wckcwj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjvl1evtv0036lws6wnwkc3vj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -393,7 +453,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjv83u3ry0021xus6lukqa0it" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjvl1evst0024lws651e20377" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -531,7 +591,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjv83u3pp0009xus6yogkh194" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjvl1evqo000blws6b4chparf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -571,7 +631,7 @@ git reset --hard HEAD~2
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -593,6 +653,10 @@ git reset --hard HEAD~2
       <ul>
         
           <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
@@ -606,10 +670,6 @@ git reset --hard HEAD~2
         
           <li>
             <a href="/2019/03/20/golang-包导入/">golang包导入</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>

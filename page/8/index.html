@@ -62,6 +62,79 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Index-Condition-Pushdown-优化" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/26/Index-Condition-Pushdown-优化/" class="article-date">
+  <time datetime="2016-06-26T00:24:56.000Z" itemprop="datePublished">2016-06-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/26/Index-Condition-Pushdown-优化/">Index Condition Pushdown 优化</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Index Condition Pushdown是一种优化，针对的是使用索引去表中获取记录rows的优化。没有ICP的话，存储引擎遍历索引来定位数据表中的记录（rows），并将其返回给Mysql的server层，在server层对所获取的记录进行WHERE条件的过滤。<br>开启ICP后，如果WHERE条件中的某些字段刚好是索引中的字段，那么Mysql的server层会将这些字段下放到存储引擎，存储引擎会使用这些WHERE条件进行过滤，只有满足这些字段的条件，存储引擎才会去数据表中读取整行记录。</p>
+<p>ICP的优点就是：减少了存储引擎到达数据表的次数，以及MySQL server层到达存储引擎的次数。</p>
+<p>能够使用ICP优化的索引：range，ref， eq_ref和ref_or_null。这些索引都需要获取全表的记录。<br>能够使用ICP优化的引擎：InnoDB和MyISAM。注意 在MySQL5.6的分区表中不支持，MySQL5.7中支持。<br>注意：只支持辅助索引。因为ICP优化的目标：减少读取整行的次数，从而降低了IO操作。对于InnoDB的聚簇索引，已经读取了整行记录，因此使用ICP并不会降低IO。</p>
+<p>优化器没有使用ICP时，数据访问和提取的过程如下：</p>
+<pre><code>1) 当storage engine读取下一行时，首先读取一个索引，然后使用索引在数据表中定位和读取整行数据。
+2) sever层评估where条件，如果该行数据满足where条件则使用，否则丢弃。
+3) 执行1），直到最后一行数据。
+</code></pre><p><img src="/images/no_icp.png" alt="no-icp"></p>
+<p>优化器使用ICP时，server层会将WHERE条件中某些字段（这些字段在索引中）下推到storage engine层。数据访问和提取过程如下：</p>
+<pre><code>1) storage engine从索引中读取下一条索引。
+2) storage engine使用索引评估下推的索引条件。如果没有满足wehere条件，则回到1）。只有当索引满足下推的索引条件的时候，才会继续去数据表中读取数据。
+3) 如果满足WHERE的索引条件，storage engine通过索引定位数据表的行和读取整行数据并返回给server层。
+4) server层评估没有被下推到storage engine层的where条件，如果该行数据满足where条件则使用，否则丢弃。
+</code></pre><p><img src="/images/icp.png" alt="icp"></p>
+<p>举例来说明：一个表中包含一个人和其地址信息，表中有一个索引(zipcode, lastname, firstname)。如果我们知道一个人的zipcode，但不确定其lastname，因此可以像下面一样进行查询</p>
+<pre><code>SELECT * FROM peope WHERE zipcode = &apos;95054&apos; 
+AND lastname LIKE &apos;%etrunica%&apos;
+AND address LIKE &apos;%Main Street%&apos;;
+</code></pre><p>zipcode = ‘95054’可以使用索引，但是第二部分lastname LIKE ‘%etrunica%’，不使用ICP时不能限制需要扫描的记录的行数，需要获取所有满足zipcode = ‘95054’的所有用户记录。</p>
+<p>如果使用ICP，在去数据表读取整行记录之前，MYSQL会检查lastname LIKE ‘%etrunica%’部分。这样避免了去读取不满足lastname 这个条件的数据记录。</p>
+<p>默认ICP是开启的。可以通过index_condition_pushdown来设置。</p>
+<pre><code>set optimizer_switch=&apos;index_condition_pushdown=off&apos;;
+</code></pre><p>特别注意：</p>
+<ol>
+<li>ICP只能用于二级索引，不能用于主索引</li>
+<li>也不是全部where条件都可以用ICP筛选，如果某where条件的字段不在索引中，当然还是要读取整条记录做筛选，在这种情况下，仍然要到server端做where筛选。</li>
+<li>ICP的加速效果取决于在存储引擎内通过ICP筛选掉的数据的比例</li>
+<li>概括之：对于完全命中索引的查询，不需要ICP。比如索引是idx_abc(a,b,c)。查询是where a = 1 and b = 2 则不需要ICP。如果查询是 where a = 1 and b &gt; 3 则会使用ICP.</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li><a href="http://dev.mysql.com/doc/refman/5.6/en/index-condition-pushdown-optimization.html" target="_blank" rel="noopener">http://dev.mysql.com/doc/refman/5.6/en/index-condition-pushdown-optimization.html</a></li>
+<li><a href="http://ourmysql.com/archives/1351" target="_blank" rel="noopener">http://ourmysql.com/archives/1351</a></li>
+<li><a href="http://mdba.cn/?p=315" target="_blank" rel="noopener">http://mdba.cn/?p=315</a></li>
+<li><a href="https://mariadb.com/kb/en/mariadb/index-condition-pushdown/" target="_blank" rel="noopener">https://mariadb.com/kb/en/mariadb/index-condition-pushdown/</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="cjvl1evqm0009lws61hcoyl45" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Redis内存优化-聚合数据类型的特殊编码" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" class="article-date">
@@ -131,7 +204,7 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjv83u3qt0014xus6w72tn8se" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjvl1evrq0013lws60d7xajk5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -302,7 +375,7 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjv83u3wn0062xus6j2f36rt9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjvl1evvj004klws6gu189m6o" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -524,7 +597,7 @@ location /baz {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjv83u3uf003zxus6hmzo581v" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjvl1evvf004dlws6aema6tr0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -771,105 +844,7 @@ location /third {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjv83u3u9003txus6zwq5rl48" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
-  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
-<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
-
-location [ = | ~ | ~* | ^~ ] uri { ... }
-location @name { ... }
-
-Default:
-
-—
-
-Context:
-
-server, location
-</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
-<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
-<ol>
-<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
-<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
-<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
-<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
-<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
-<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
-<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
-</ol>
-<p>location检查的策略：</p>
-<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
-2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
-对于匹配正则location并不是所有情况都进行，有两种情况是例外：
-1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
-2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
-
-   简要概述：
-    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
-如下图所示：
-</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
-<p>举例说明：</p>
-<pre><code>location = / {
-    [ configuration A ]
-}
-
-location / {
-    [ configuration B ]
-}
-
-location /documents/ {
-    [ configuration C ]
-}
-
-location ^~ /images/ {
-    [ configuration D ]
-}
-
-location ~* \.(gif|jpg|jpeg)$ {
-    [ configuration E ]
-}
-
-请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
-</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
-<p>参考文章</p>
-<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjv83u3ue003xxus6un9gautj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjvl1evv7003ylws64cfab7oa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -969,7 +944,105 @@ server {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjv83u3uz0048xus6xiqk2qle" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjvl1evva0043lws62y7wjr5d" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
+<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
+
+location [ = | ~ | ~* | ^~ ] uri { ... }
+location @name { ... }
+
+Default:
+
+—
+
+Context:
+
+server, location
+</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
+<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
+<ol>
+<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
+<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
+<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
+<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
+<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
+<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
+<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
+</ol>
+<p>location检查的策略：</p>
+<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
+2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
+对于匹配正则location并不是所有情况都进行，有两种情况是例外：
+1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
+2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
+
+   简要概述：
+    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
+如下图所示：
+</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
+<p>举例说明：</p>
+<pre><code>location = / {
+    [ configuration A ]
+}
+
+location / {
+    [ configuration B ]
+}
+
+location /documents/ {
+    [ configuration C ]
+}
+
+location ^~ /images/ {
+    [ configuration D ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration E ]
+}
+
+请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
+</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
+<p>参考文章</p>
+<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjvl1evv5003ulws6fpx3qwyb" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -1065,7 +1138,7 @@ passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjv83u3wz006fxus641feex9o" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjvl1evvu0054lws6aemzer4v" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1114,7 +1187,7 @@ client---&gt; lvs ------  node2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjv83u3q4000mxus6b4mifdjj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjvl1evqv000jlws6ranme0pf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1183,54 +1256,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjv83u3ty003kxus6qbi738co" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcache参考文章" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcache参考文章/" class="article-date">
-  <time datetime="2016-04-17T10:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcache参考文章/">5. Memcache好的文章</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol>
-<li>火丁笔记 Memcache <a href="http://huoding.com/2012/12/30/205" target="_blank" rel="noopener">http://huoding.com/2012/12/30/205</a></li>
-<li>mc基础讲解 <a href="http://charlee.li/memcached-001.html" target="_blank" rel="noopener">http://charlee.li/memcached-001.html</a></li>
-<li>twemcache <a href="https://github.com/twitter/twemcache" target="_blank" rel="noopener">https://github.com/twitter/twemcache</a></li>
-<li>当我谈缓存的时候 我谈些什么 <a href="http://www.tuicool.com/wx/nMfmaeb" target="_blank" rel="noopener">http://www.tuicool.com/wx/nMfmaeb</a></li>
-<li>缓存系列无底洞 <a href="http://www.tuicool.com/wx/BjeIJzE" target="_blank" rel="noopener">http://www.tuicool.com/wx/BjeIJzE</a></li>
-<li>关于redis与Memcached的一点澄清 <a href="http://www.tuicool.com/wx/bmQFNjm" target="_blank" rel="noopener">http://www.tuicool.com/wx/bmQFNjm</a></li>
-<li>PHP使用Memcached扩展的一个坑 <a href="http://www.tuicool.com/articles/qaAnUz" target="_blank" rel="noopener">http://www.tuicool.com/articles/qaAnUz</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjv83u3tv003ixus6w8lt3iya" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjvl1evur003olws6zb26z3er" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -1270,7 +1296,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1292,6 +1318,10 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       <ul>
         
           <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
@@ -1305,10 +1335,6 @@ foreach ($allSlabs as $server =&gt; $slabs) {
         
           <li>
             <a href="/2019/03/20/golang-包导入/">golang包导入</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>

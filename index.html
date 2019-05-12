@@ -62,6 +62,64 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-字符编码和字符集" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/12/字符编码和字符集/" class="article-date">
+  <time datetime="2019-05-12T13:39:53.000Z" itemprop="datePublished">2019-05-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>计算机底层使用二进制数来存储和传输数据；<br>人类使用文字、数字、图形来表达信息；<br>因此二者之间需要进行某种转换。<br>文字、数字等字符转换为二进制数被称为编码<br>二进制数转换为文字、数字称为解码。<br>文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。</p>
+<p>字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集</p>
+<p>ASCII码 使用一个字节表示，第一个bit是0，用7个bit来表示，只能表示128个字符。<br>GB2312是针对汉字的字符集，使用两个字节来表示；但如果每个国家都有自己的字符集，那字符集太多了，有没有一种字符集可以包括所有字符呢？</p>
+<p>Unicode：囊括所有字符，但只是字符集，没有规定字符是如何存储和传输的。 而UTF(unicode transformation format)规定了字符如何传输和存储的。常用的是UTF-8。</p>
+<p>UTF-8是变长的编码方式：</p>
+<ul>
+<li>对于单字节的符号，字节的第一位置0，后面7位为这个符号的Unicode码。因此，对于英语字母，UTF-8编码和ASCII码是相同的</li>
+<li>对于n个字节的字符（n&gt;1）,第一个字节的前n位都置为1，第n+1位置为0，后面字节的前两位一律置为10。剩下的没有提及的二进制位，全部为这个符号的Unicode码<br><img src="https://upload-images.jianshu.io/upload_images/10175366-da25c0ec4c5c2113.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/974/format/webp" alt="图片"></li>
+</ul>
+<p>UTF8和unicode之间转换</p>
+<p>这里只介绍Unicode转换为UTF-8 ，以汉字 “柯” 为例。已知 “柯” 的Unicode码是 \u 67ef(0110 0111 1110 1111)，根据上表，我们可以知道 “柯”这个Unicode对应的UTF-8编码需要3个字节。然后，从0110 0111 1110 1111从由往左依次取数放入到1110 xxxx 10xx xxxx 10xx xxxx中，得到最终的结果是 1110 0110 1001 1111 1010 1111，转换成十六进制是E6 9F AF。</p>
+<p>golang代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	&quot;unicode/utf8&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	s := &quot;hello, 世界&quot;</span><br><span class="line">	fmt.Println(&quot;byte=&quot;, len(s))</span><br><span class="line">	fmt.Println(&quot;utf8 cnt=&quot;, utf8.RuneCountInString(s))</span><br><span class="line"></span><br><span class="line">	for i := 0; i &lt; len(s); &#123;</span><br><span class="line">		r, size := utf8.DecodeRuneInString(s[i:])</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">		i += size</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Println(&quot;range start&quot;)</span><br><span class="line">	for i, r := range s &#123;</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">	&#125;</span><br><span class="line">	fmt.Println(&quot;range end&quot;)</span><br><span class="line"></span><br><span class="line">	s2 := &quot;柯&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s2) //utf8编码</span><br><span class="line">	r := []rune(s2)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r) //unicode 码点序列</span><br><span class="line">	s3 := &quot;燕&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s3) //utf8编码</span><br><span class="line">	r3 := []rune(s3)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r3) //unicode 码点序列</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如何实现汉字转拼音呢？</p>
+<p>首先有一个汉字的unicode码点到拼音的映射表，如<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,//对应汉字   柯</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;, //对应汉字 燕</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
+<p>汉字-&gt; unicode码点 -&gt; 映射表 -&gt; 拼音</p>
+<p>如何实现拼音转汉字</p>
+<p>拼音-&gt; 映射表 -&gt; unicode码点 -&gt; 汉字</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">	han2 := &quot;我是&quot;</span><br><span class="line">	fmt.Println(&quot;len=&quot;, len([]rune(han2)))</span><br><span class="line"></span><br><span class="line">	unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;,</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han1 := &quot;柯&quot;</span><br><span class="line">	strHan1 := fmt.Sprintf(&quot;%x&quot;, ([]rune(han1))[0])</span><br><span class="line">	fmt.Println(&quot;str han1=&quot;, strHan1)</span><br><span class="line">	if v, ok := unicodeMapPinyin[strHan1]; ok &#123;</span><br><span class="line">		fmt.Printf(&quot;%s pinyin is %s\n&quot;, han1, v)</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		fmt.Println(&quot;not ok&quot;)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han3 := string([]rune(han1)[0])</span><br><span class="line">	fmt.Println(&quot;han3=&quot;, han3)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>参考<br><a href="https://www.jianshu.com/p/4a043c3f8108" target="_blank" rel="noopener">https://www.jianshu.com/p/4a043c3f8108</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjvl1evvz005elws64naobyoa" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-linux进程间通信" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/03/linux进程间通信/" class="article-date">
@@ -236,7 +294,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjv83u3tc0030xus6prmpj98x" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjvl1evty003alws6ufyhqhpv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -295,7 +353,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjv83u3sq002hxus6po1d9aev" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjvl1evt8002llws65jpcsqgh" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -541,7 +599,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjv83u3ww006cxus6vsjmx8zp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjvl1evvm004plws6hhepqb1s" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -623,7 +681,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjv83u3se0028xus6nk07zqic" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjvl1evt1002dlws691kjnnl2" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -651,7 +709,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjv83u3np0000xus6ma9j4lw0" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjvl1evo60000lws6pt4ce6lm" class="article-share-link">Share</a>
       
       
     </footer>
@@ -799,7 +857,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjv83u3qq0011xus6rnsrzm9u" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjvl1evs4001flws6qe7yb7bn" class="article-share-link">Share</a>
       
       
     </footer>
@@ -837,7 +895,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjv83u3sj002axus6j0gr29or" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjvl1evsv0026lws6wl5z6gcw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -929,7 +987,7 @@ type InterfaceAction func(hosts []string, is_high_node, is_primary bool) (bool, 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjv83u3td0032xus69byx8t15" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjvl1evt5002jlws6v7yk25yc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -1017,52 +1075,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjv83u3sn002exus6bbzv13fb" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-hello-world" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/10/12/hello-world/" class="article-date">
-  <time datetime="2018-10-12T01:47:58.000Z" itemprop="datePublished">2018-10-12</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/10/12/hello-world/">Hello World</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/10/12/hello-world/" data-id="cjv83u3to003axus6f4c5zf48" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjvl1evse001rlws616h9biqb" class="article-share-link">Share</a>
       
       
     </footer>
@@ -1100,7 +1113,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1122,6 +1135,10 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       <ul>
         
           <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
@@ -1135,10 +1152,6 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
         
           <li>
             <a href="/2019/03/20/golang-包导入/">golang包导入</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>

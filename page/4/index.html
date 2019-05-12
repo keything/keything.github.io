@@ -62,6 +62,85 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-free命令详解" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/10/08/free命令详解/" class="article-date">
+  <time datetime="2017-10-08T05:15:29.000Z" itemprop="datePublished">2017-10-08</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/10/08/free命令详解/">free命令详解</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在centos上使用free命令得到如下四行，其中行号1 2 3 4是我加上的</p>
+<pre><code>1          total       used       free           shared    buffers     cached
+2 Mem:     132047948  121586656   10461292       2824      89148       106314244
+3 -/+ buffers/cache:   15183264  116864684
+4 Swap:      7812092      97712    7714380
+</code></pre><p>第一行解释：</p>
+<pre><code>total：除系统外，可以使用的内存总量；
+used：已经使用的内存总量
+free：空闲的内存总量
+shared：共享内存使用总量
+buffers:被OS buffer住的内存
+cached：被OS cached住的内存
+buffers和cached的区别是：
+
++ A buffer is something that has yet to be &quot;written&quot; to disk. 
++ A cache is something that has been &quot;read&quot; from the disk and stored for later use.
++ 也就是说buffer是用于存放要输出到disk（块设备）的数据的，而cache是存放从disk上读出的数据。这二者是为了提高IO性能的，并由OS管理。
+</code></pre><p>第二行解释：</p>
+<pre><code>输出是从操作系统（OS）来看的。也就是说，从OS的角度来看，计算机上一共有:
+
+132047948（缺省时free的单位为KB）物理内存，即FO[2][1]；
+在这些物理内存中有121586656（即FO[2][2]）被使用了；
+还用10461292（即FO[2][3]）是可用的；
+这里得到第一个等式：
+
+FO[2][1] = FO[2][2] + FO[2][3]
+
+FO[2][5] 是OS buffer住的内存，FO[2][6]是OS cached住的内存。
+
+Linux和其他成熟的操作系统（例如windows），为了提高IO read的性能，总是要多cache一些数据，这也就是为什么FO[2][6]（cached memory）比较大，而FO[2][3]比较小的原因。
+</code></pre><p>第三行解释：</p>
+<pre><code>是从一个应用程序的角度看系统内存的使用情况。
+
+对于FO[3][2]，即FO[2][2]-buffers/cache，表示一个应用程序认为系统被用掉多少内存；
+对于FO[3][3]，即FO[2][3]+buffers/cache，表示一个应用程序认为系统还有多少内存；
+因为被系统cache和buffer占用的内存可以被快速回收，所以通常FO[3][3]比FO[2][3]会大很多
+
+这里还用两个等式：
+
+FO[3][2] = FO[2][2] - FO[2][5] - FO[2][6]
+FO[3][3] = FO[2][3] + FO[2][5] + FO[2][6]
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/10/08/free命令详解/" data-id="cjvl1evsn001zlws6ylvrbvl0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-es-install-ik" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2017/07/31/es-install-ik/" class="article-date">
@@ -94,7 +173,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/07/31/es-install-ik/" data-id="cjv83u3rc001lxus64oki5mrh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/07/31/es-install-ik/" data-id="cjvl1evsi001ulws66la2k58d" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li></ul>
@@ -157,7 +236,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/28/cpp异常处理/" data-id="cjv83u3rg001qxus6a07uikwx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/28/cpp异常处理/" data-id="cjvl1evsd001plws6gmxldjw7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -243,7 +322,7 @@ int main()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="cjv83u3ri001sxus6v5iyulkc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="cjvl1evs9001klws6cc93zdf5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -407,7 +486,7 @@ int main()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="cjv83u3r0001dxus6as2vlbvl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="cjvl1evs6001hlws6prm6cxnj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/composer/">composer</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -457,7 +536,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="cjv83u3pu000dxus6luppgyub" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="cjvl1evqk0008lws6sy79yl5b" class="article-share-link">Share</a>
       
       
     </footer>
@@ -553,7 +632,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="cjv83u3xf006vxus6m7btr5hx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="cjvl1evw3005olws6kpbt6dw5" class="article-share-link">Share</a>
       
       
     </footer>
@@ -780,7 +859,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="cjv83u3wv006axus64t9klxrl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="cjvl1evvp004ulws6gmugp51j" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -818,7 +897,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="cjv83u3x9006pxus6w8m6dar8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="cjvl1evvr004xlws6u5j997ji" class="article-share-link">Share</a>
       
       
     </footer>
@@ -864,163 +943,10 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjv83u3x4006lxus65h17ofi4" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjvl1evvt0052lws6ve023pj8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-log4cplus介绍" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/01/02/log4cplus介绍/" class="article-date">
-  <time datetime="2017-01-02T14:57:32.000Z" itemprop="datePublished">2017-01-02</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/01/02/log4cplus介绍/">log4cplus介绍</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。</p>
-<p>首先说一下我的几个困惑：</p>
-<ol>
-<li><p>版本问题，目前<a href="https://sourceforge.net/p/log4cplus/wiki/Home/" target="_blank" rel="noopener">官方wiki</a>, <a href="https://github.com/log4cplus/log4cplus/blob/master/docs/examples.md" target="_blank" rel="noopener">例子</a> 介绍的是版本2.0。而我们在使用多是1.2版本。 </p>
-</li>
-<li><p>代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的代码只有很少的代码。<br>经过查证，log4cplus有两种方式，一种是代码中写appender,layout,一种是通过配置。</p>
-</li>
-</ol>
-<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>有关log4cplus的配置有一篇不错的文章。 <a href="http://blog.csdn.net/fksec/article/details/41546189" target="_blank" rel="noopener">log4cplus介绍</a></p>
-<p>log4cplus的组成：</p>
-<ul>
-<li><ol>
-<li>logger： 一个应用程序可以使用多个logger，logger是我们打印log的句柄</li>
-</ol>
-</li>
-<li><ol start="2">
-<li>appender：一个logger可以拥有多个appender，appender决定了log的输出方向</li>
-</ol>
-</li>
-<li><ol start="3">
-<li>filter：一个appender可以有多个filter，在配置文件中设置过滤条件</li>
-</ol>
-</li>
-<li><ol start="4">
-<li>layout：支持多种layout，一个appender一个layout</li>
-</ol>
-</li>
-</ul>
-<h2 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h2><p>demo.cpp </p>
-<pre><code>// demo.cpp
-#include &lt;log4cplus/logger.h&gt;
-#include &lt;log4cplus/configurator.h&gt;
-#include &lt;log4cplus/helpers/loglog.h&gt;
-#include &lt;log4cplus/helpers/stringhelper.h&gt;
-#include &lt;log4cplus/helpers/sleep.h&gt;
-#include &lt;log4cplus/loggingmacros.h&gt;
-#include &lt;iostream&gt;
-
-using namespace log4cplus;
-using namespace log4cplus::helpers;
-
-
-Logger log_1 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_1&quot;));
-Logger log_2 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_2&quot;));
-Logger log_3 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_3&quot;));
-
-
-void
-printMsgs(Logger&amp; logger)
-{
-    LOG4CPLUS_TRACE_METHOD(logger, LOG4CPLUS_TEXT(&quot;printMsgs()&quot;));
-    //LOG4CPLUS_DEBUG(logger, &quot;printMsgs()&quot;);
-    LOG4CPLUS_INFO(logger, &quot;printMsgs()&quot;);
-    //LOG4CPLUS_WARN(logger, &quot;printMsgs()&quot;);
-    //LOG4CPLUS_ERROR(logger, &quot;printMsgs()&quot;);
-    LOG4CPLUS_ERROR_FMT(logger, &quot;printMsgs(%s)&quot;, &quot;helloworld&quot;);
-}
-
-
-
-int
-main()
-{
-    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Entering main()...&quot;) &lt;&lt; std::endl;
-    log4cplus::initialize();
-    LogLog::getLogLog()-&gt;setInternalDebugging(true);
-    Logger root = Logger::getRoot();
-    try 
-    {
-        ConfigureAndWatchThread configureThread(
-            LOG4CPLUS_TEXT(&quot;log4cplus.properties&quot;), 5 * 1000);
-
-        LOG4CPLUS_WARN(root, &quot;Testing....&quot;);
-
-        for(int i=0; i&lt;4; ++i) {
-            //printMsgs(log_1);
-            printMsgs(log_2);
-            //printMsgs(log_3);
-            log4cplus::helpers::sleep(1);
-        }
-    }
-    catch(...) {
-        std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exception...&quot;) &lt;&lt; std::endl;
-        LOG4CPLUS_FATAL(root, &quot;Exception occured...&quot;);
-    }
-
-    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exiting main()...&quot;) &lt;&lt; std::endl;
-    return 0;
-}
-</code></pre><p>配置文件</p>
-<pre><code>log4cplus.rootLogger= WARN, M
-log4cplus.logger.test.log_1=WARN
-log4cplus.logger.test.log_2=WARN
-log4cplus.logger.test.log_3=WARN
-
-log4cplus.appender.TT=log4cplus::ConsoleAppender
-log4cplus.appender.TT.layout=log4cplus::PatternLayout
-log4cplus.appender.TT.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
-
-log4cplus.appender.M=log4cplus::DailyRollingFileAppender
-log4cplus.appender.M.Schedule=MINUTELY
-log4cplus.appender.M.filters.1.LogLevelToMatch=DEBUG
-log4cplus.appender.M.filters.1.AcceptOnMatch=TRUE
-log4cplus.appender.M.filters.2=log4cplus::spi::DenyAllFilter
-log4cplus.appender.M.File=output.log
-#log4cplus.appender.M.MaxFileSize=5MB
-log4cplus.appender.M.MaxBackupIndex=1
-log4cplus.appender.M.layout=log4cplus::PatternLayout
-log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
-</code></pre><p>编译</p>
-<pre><code>g++ -llog4cplus -lpthread -o test log4cplus.demo.cpp
-</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.csdn.net/cchd0001/article/details/49928421" target="_blank" rel="noopener">log4cplus学习速记</a><br><a href="http://blog.csdn.net/skyztttt/article/details/51492935" target="_blank" rel="noopener">log4cplush学习</a></p>
-<p>安装</p>
-<p> ./configure –enable-static –prefix=/Users/keything/log4cplus_static CXXFLAGS=”-std=c++0x”</p>
-<p>因为如果需要log4cplus支持C++11，必须在g++编译的时候需要加选项“-std=c++0x”。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjv83u3ts003exus6ng3allz8" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
 
     </footer>
   </div>
@@ -1057,7 +983,7 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1079,6 +1005,10 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
       <ul>
         
           <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
@@ -1092,10 +1022,6 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
         
           <li>
             <a href="/2019/03/20/golang-包导入/">golang包导入</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>

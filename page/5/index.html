@@ -62,6 +62,159 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-log4cplus介绍" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/02/log4cplus介绍/" class="article-date">
+  <time datetime="2017-01-02T14:57:32.000Z" itemprop="datePublished">2017-01-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/01/02/log4cplus介绍/">log4cplus介绍</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。</p>
+<p>首先说一下我的几个困惑：</p>
+<ol>
+<li><p>版本问题，目前<a href="https://sourceforge.net/p/log4cplus/wiki/Home/" target="_blank" rel="noopener">官方wiki</a>, <a href="https://github.com/log4cplus/log4cplus/blob/master/docs/examples.md" target="_blank" rel="noopener">例子</a> 介绍的是版本2.0。而我们在使用多是1.2版本。 </p>
+</li>
+<li><p>代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的代码只有很少的代码。<br>经过查证，log4cplus有两种方式，一种是代码中写appender,layout,一种是通过配置。</p>
+</li>
+</ol>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>有关log4cplus的配置有一篇不错的文章。 <a href="http://blog.csdn.net/fksec/article/details/41546189" target="_blank" rel="noopener">log4cplus介绍</a></p>
+<p>log4cplus的组成：</p>
+<ul>
+<li><ol>
+<li>logger： 一个应用程序可以使用多个logger，logger是我们打印log的句柄</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>appender：一个logger可以拥有多个appender，appender决定了log的输出方向</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>filter：一个appender可以有多个filter，在配置文件中设置过滤条件</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>layout：支持多种layout，一个appender一个layout</li>
+</ol>
+</li>
+</ul>
+<h2 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h2><p>demo.cpp </p>
+<pre><code>// demo.cpp
+#include &lt;log4cplus/logger.h&gt;
+#include &lt;log4cplus/configurator.h&gt;
+#include &lt;log4cplus/helpers/loglog.h&gt;
+#include &lt;log4cplus/helpers/stringhelper.h&gt;
+#include &lt;log4cplus/helpers/sleep.h&gt;
+#include &lt;log4cplus/loggingmacros.h&gt;
+#include &lt;iostream&gt;
+
+using namespace log4cplus;
+using namespace log4cplus::helpers;
+
+
+Logger log_1 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_1&quot;));
+Logger log_2 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_2&quot;));
+Logger log_3 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_3&quot;));
+
+
+void
+printMsgs(Logger&amp; logger)
+{
+    LOG4CPLUS_TRACE_METHOD(logger, LOG4CPLUS_TEXT(&quot;printMsgs()&quot;));
+    //LOG4CPLUS_DEBUG(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_INFO(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_WARN(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_ERROR(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_ERROR_FMT(logger, &quot;printMsgs(%s)&quot;, &quot;helloworld&quot;);
+}
+
+
+
+int
+main()
+{
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Entering main()...&quot;) &lt;&lt; std::endl;
+    log4cplus::initialize();
+    LogLog::getLogLog()-&gt;setInternalDebugging(true);
+    Logger root = Logger::getRoot();
+    try 
+    {
+        ConfigureAndWatchThread configureThread(
+            LOG4CPLUS_TEXT(&quot;log4cplus.properties&quot;), 5 * 1000);
+
+        LOG4CPLUS_WARN(root, &quot;Testing....&quot;);
+
+        for(int i=0; i&lt;4; ++i) {
+            //printMsgs(log_1);
+            printMsgs(log_2);
+            //printMsgs(log_3);
+            log4cplus::helpers::sleep(1);
+        }
+    }
+    catch(...) {
+        std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exception...&quot;) &lt;&lt; std::endl;
+        LOG4CPLUS_FATAL(root, &quot;Exception occured...&quot;);
+    }
+
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exiting main()...&quot;) &lt;&lt; std::endl;
+    return 0;
+}
+</code></pre><p>配置文件</p>
+<pre><code>log4cplus.rootLogger= WARN, M
+log4cplus.logger.test.log_1=WARN
+log4cplus.logger.test.log_2=WARN
+log4cplus.logger.test.log_3=WARN
+
+log4cplus.appender.TT=log4cplus::ConsoleAppender
+log4cplus.appender.TT.layout=log4cplus::PatternLayout
+log4cplus.appender.TT.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+
+log4cplus.appender.M=log4cplus::DailyRollingFileAppender
+log4cplus.appender.M.Schedule=MINUTELY
+log4cplus.appender.M.filters.1.LogLevelToMatch=DEBUG
+log4cplus.appender.M.filters.1.AcceptOnMatch=TRUE
+log4cplus.appender.M.filters.2=log4cplus::spi::DenyAllFilter
+log4cplus.appender.M.File=output.log
+#log4cplus.appender.M.MaxFileSize=5MB
+log4cplus.appender.M.MaxBackupIndex=1
+log4cplus.appender.M.layout=log4cplus::PatternLayout
+log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+</code></pre><p>编译</p>
+<pre><code>g++ -llog4cplus -lpthread -o test log4cplus.demo.cpp
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.csdn.net/cchd0001/article/details/49928421" target="_blank" rel="noopener">log4cplus学习速记</a><br><a href="http://blog.csdn.net/skyztttt/article/details/51492935" target="_blank" rel="noopener">log4cplush学习</a></p>
+<p>安装</p>
+<p> ./configure –enable-static –prefix=/Users/keything/log4cplus_static CXXFLAGS=”-std=c++0x”</p>
+<p>因为如果需要log4cplus支持C++11，必须在g++编译的时候需要加选项“-std=c++0x”。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjvl1evtx0038lws660zbki8y" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-mac安装hive" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/11/27/mac安装hive/" class="article-date">
@@ -165,7 +318,7 @@ df.show
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjv83u3tm0039xus6h9gymm7o" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjvl1evu0003clws67gl8ntwr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -304,7 +457,7 @@ string = readString()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjv83u3qx0019xus6ulzcgb1n" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjvl1evrr0015lws63el3fwb3" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -539,7 +692,7 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjv83u3rd001nxus6v7c7mrjl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjvl1evrt0018lws6hpjzkcl5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -583,7 +736,7 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjv83u3qz001bxus6srvc0fw1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjvl1evrw001alws6bpkpuxab" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -653,7 +806,7 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="cjv83u3t5002txus6n7u1scah" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="cjvl1evtk002xlws64fuvobio" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
@@ -716,7 +869,7 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="cjv83u3px000hxus6oyjx0v5u" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="cjvl1evqt000hlws6y1hf7mfr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
@@ -861,7 +1014,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="cjv83u3pn0008xus6yvoia44v" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="cjvl1evqp000dlws6ctwttzet" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Laravel/">Laravel</a></li></ul>
@@ -899,7 +1052,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="cjv83u3q2000kxus65h6xjn2j" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="cjvl1evqr000glws6btmlpzhu" class="article-share-link">Share</a>
       
       
     </footer>
@@ -972,159 +1125,7 @@ echo $foo, $bar; // Outputs &quot;Hello World!&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="cjv83u3xe006txus6x7kdeato" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-PHP函数之匿名函数" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/21/PHP函数之匿名函数/" class="article-date">
-  <time datetime="2016-09-21T12:06:54.000Z" itemprop="datePublished">2016-09-21</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/21/PHP函数之匿名函数/">PHP函数之匿名函数</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="匿名函数与闭包的关系"><a href="#匿名函数与闭包的关系" class="headerlink" title="匿名函数与闭包的关系"></a>匿名函数与闭包的关系</h2><p>匿名函数是一类不需要指定指示符，而又可以被调用的函数或子例程，匿名函数可以方便的作为参数传递给其他函数， 最常见应用是作为回调函数。</p>
-<p>闭包是词法闭包（Lexical Closure）的简称，是引用了自由变量的函数， 这个被引用的自由变量将和这个函数一同存在，即使离开了创建它的环境也一样，所以闭包也可认为是有函数和与其相关引用组合而成的实体。 </p>
-<p>闭包和匿名函数很容易混用，但其实这是两个不同的概念。</p>
-<p>当然在PHP中，一个观点就是<code>Anonymous Functions are Closures without a name</code>，即匿名函数是没有名字的闭包。</p>
-<h2 id="PHP中匿名函数基本用法"><a href="#PHP中匿名函数基本用法" class="headerlink" title="PHP中匿名函数基本用法"></a>PHP中匿名函数基本用法</h2><p>在PHP中匿名函数(Anonymous functions)也叫作闭包函数(closures)，允许临时创建一个没有指定名称的函数。</p>
-<ol>
-<li><p>使用use关键字从父作用域继承变量。继承的变量的取值是在函数定义时的值，而不是被调用的时候的值。因此下面的代码输出是<code>hello hello</code>。</p>
-<pre><code>&lt;?php
-$helo = &apos;hello&apos;;
-
-$func = function() use ($helo) {
-    echo $helo . &quot;\n&quot;;
-};
-$func();
-
-$helo = &apos;world&apos;;
-$func();
-</code></pre></li>
-<li><p>当把use后面的变量改为引用以后，那么就可以改变了，输出 <code>hello world</code></p>
-<pre><code>&lt;?php
-$helo = &apos;hello&apos;;
-
-$func = function() use (&amp;$helo) {
-    echo $helo . &quot;\n&quot;;
-};
-$func();
-
-$helo = &apos;world&apos;;
-$func();
-</code></pre></li>
-</ol>
-<h2 id="PHP中匿名函数"><a href="#PHP中匿名函数" class="headerlink" title="PHP中匿名函数"></a>PHP中匿名函数</h2><h3 id="create-function"><a href="#create-function" class="headerlink" title="create_function"></a>create_function</h3><p>PHP5.3中才开始正式支持匿名函数，在此之前可以通过create_function函数来创建<code>匿名函数</code>。</p>
-<p>通过create_function函数创建的<code>匿名函数</code>并不是真的没有名字，而是生成了一个<code>\0lambda_xxx</code>的函数名，并且会在<code>EG(function_table)</code>中注册。因为函数名的第一个字符是<code>\0</code>，这样的函数名用户是不会出现的。</p>
-<pre><code>#define LAMBDA_TEMP_FUNCNAME    &quot;__lambda_func&quot;
-
-ZEND_FUNCTION(create_function)
-{
-    // ... 省去无关代码
-    function_name = (char *) emalloc(sizeof(&quot;0lambda_&quot;)+MAX_LENGTH_OF_LONG);
-    function_name[0] = &apos;\0&apos;;  // &lt;--- 这里
-    do {
-        function_name_length = 1 + sprintf(function_name + 1, &quot;lambda_%d&quot;, ++EG(lambda_count));
-    } while (zend_hash_add(EG(function_table), function_name, function_name_length+1, &amp;new_function, sizeof(zend_function), NULL)==FAILURE);
-    zend_hash_del(EG(function_table), LAMBDA_TEMP_FUNCNAME, sizeof(LAMBDA_TEMP_FUNCNAME));
-    RETURN_STRINGL(function_name, function_name_length, 0);
-}
-</code></pre><p>通过create_function创建<code>匿名函数</code>有一些缺点：</p>
-<ol>
-<li>函数的定义是通过将函数拼接为一个字符串来处理的。<a href="http://www.laruence.com/2010/06/20/1602.html" target="_blank" rel="noopener">深入理解php之匿名函数解释</a>，这样的话就无法进行基本的语法检查</li>
-<li>这种函数与普通函数没有本质区别，无法实现闭包的效果</li>
-</ol>
-<h3 id="真正的匿名函数"><a href="#真正的匿名函数" class="headerlink" title="真正的匿名函数"></a>真正的匿名函数</h3><ol>
-<li><p><code>__invoke</code>魔术方法<br> 这个魔术方法被调用的时机是：当一个对象当做函数调用的时候。通过<code>__invoke</code>方法可以把一个对象当做函数调用。</p>
-</li>
-<li><p>匿名函数的实现</p>
-<p> 匿名函数的实现就是通过<code>__invoke</code>方式实现的。匿名函数是一个普通的类，类名是<a href="http://php.net/manual/zh/class.closure.php" target="_blank" rel="noopener">Closure</a>。</p>
-</li>
-<li><p>闭包的使用</p>
-<p> PHP使用闭包（Closure）来实现匿名函数。匿名函数在定义的时候如果需要使用作用域外的变量需要使用关键字<code>use</code>。</p>
-<p> 特别注意的是，在PHP中是通过<code>拷贝</code>的方式将上层变量传入匿名函数的。如果需要改变上层变量的值则需要通过引用的方式传递。</p>
-</li>
-</ol>
-<pre><code>通过下面的代码看一下func的内容
-
-    &lt;?php
-    $b = 1;
-    $func = function($a) use($b) {
-        $b = $b+1;
-        echo $b . &quot;\n&quot;;
-    };
-    var_dump($func);
-可以看到
-
-    object(Closure)#1 (2) {
-      [&quot;static&quot;]=&gt;
-      array(1) {
-        [&quot;b&quot;]=&gt;
-        int(1)
-      }
-      [&quot;parameter&quot;]=&gt;
-      array(1) {
-        [&quot;$a&quot;]=&gt;
-        string(10) &quot;&lt;required&gt;&quot;
-      }
-    }
-
-将代码中的`use ($b)` 改为`use (&amp;$b)`，可以看到输出是：
-
-    object(Closure)#1 (2) {
-      [&quot;static&quot;]=&gt;
-      array(1) {
-        [&quot;b&quot;]=&gt;
-        &amp;int(1)
-      }
-      [&quot;parameter&quot;]=&gt;
-      array(1) {
-        [&quot;$a&quot;]=&gt;
-        string(10) &quot;&lt;required&gt;&quot;
-      }
-    }
-</code></pre><ol start="4">
-<li><p>闭包的实现</p>
-<p> 匿名函数是通过闭包来实现的，现在我们来看看闭包（类）是怎么实现的。匿名函数和普通函数除了是否有变量名以外并没有区别，闭包的实现代码在<code>Zend/zend_closure.c</code>中。</p>
-<p> 使用关键字use引入的父作用域的变量会作为闭包类的静态变量，从上面的var_dump中也可以看出。</p>
-<p> 在<code>ZEND_DECLARE_LAMBDA_FUNCTION_SPEC_CONST_CONST_HANDLER</code>中调用<code>zend_create_closure</code>创建一个闭包对象。在<code>zend_create_closure</code>中会将<code>zval_copy_static_var</code>作为回调函数传递给<code>zend_hash_apply_with_arguments</code>。每次读取到hash表中的值以后都会由这个函数进行处理，而这个函数对所有use语句定义的变量值赋值给这个匿名函数的静态变量， 这样匿名函数就能访问到use的变量了。</p>
-</li>
-</ol>
-<p>##参考文章</p>
-<ol>
-<li><a href="http://dhorrigan.com/post/29209695084/anonymous-functions-vs-closures" target="_blank" rel="noopener">Anonymous Functions VS Closures</a></li>
-<li><a href="http://www.php-internals.com/book/?p=chapt04/04-04-anonymous-function" target="_blank" rel="noopener">匿名函数及闭包</a></li>
-<li><a href="http://www.laruence.com/2010/06/20/1602.html" target="_blank" rel="noopener">深入理解PHP之匿名函数</a></li>
-<li><a href="http://php.net/manual/zh/functions.anonymous.php" target="_blank" rel="noopener">PHP匿名函数基本用法</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="cjv83u3q8000pxus6m2yejfmq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="cjvl1evvy005clws6nxlyzmsc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -1164,7 +1165,7 @@ ZEND_FUNCTION(create_function)
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 15px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1186,6 +1187,10 @@ ZEND_FUNCTION(create_function)
       <ul>
         
           <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
@@ -1199,10 +1204,6 @@ ZEND_FUNCTION(create_function)
         
           <li>
             <a href="/2019/03/20/golang-包导入/">golang包导入</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/14/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
       </ul>

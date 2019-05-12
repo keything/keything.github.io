@@ -5,20 +5,22 @@
   
 
   
-  <title>linux下CPU核数查看 | Keything的日志</title>
+  <title>字符编码和字符集 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="概念 物理cpu 插槽上的CPU个数，物理cpu数量等于不同physical id的个数。 cat /proc/cpuinfo | grep ‘pysical id’ | sort | uniq | wc -l  cpu核数   一颗CPU上面能处理数据的芯片组的数量 cat /proc/cpuinfo| grep “cpu cores”| uniq  逻辑cpu核数  一般来说，物理CPU个数">
+  <meta name="description" content="计算机底层使用二进制数来存储和传输数据；人类使用文字、数字、图形来表达信息；因此二者之间需要进行某种转换。文字、数字等字符转换为二进制数被称为编码二进制数转换为文字、数字称为解码。文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。 字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集 A">
 <meta name="keywords" content="linux">
 <meta property="og:type" content="article">
-<meta property="og:title" content="linux下CPU核数查看">
-<meta property="og:url" content="http://keything.github.io/2017/10/08/linux下CPU核数查看/index.html">
+<meta property="og:title" content="字符编码和字符集">
+<meta property="og:url" content="http://keything.github.io/2019/05/12/字符编码和字符集/index.html">
 <meta property="og:site_name" content="Keything的日志">
-<meta property="og:description" content="概念 物理cpu 插槽上的CPU个数，物理cpu数量等于不同physical id的个数。 cat /proc/cpuinfo | grep ‘pysical id’ | sort | uniq | wc -l  cpu核数   一颗CPU上面能处理数据的芯片组的数量 cat /proc/cpuinfo| grep “cpu cores”| uniq  逻辑cpu核数  一般来说，物理CPU个数">
+<meta property="og:description" content="计算机底层使用二进制数来存储和传输数据；人类使用文字、数字、图形来表达信息；因此二者之间需要进行某种转换。文字、数字等字符转换为二进制数被称为编码二进制数转换为文字、数字称为解码。文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。 字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集 A">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2018-10-03T08:24:25.000Z">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/10175366-da25c0ec4c5c2113.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/974/format/webp">
+<meta property="og:updated_time" content="2019-05-12T14:36:37.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="linux下CPU核数查看">
-<meta name="twitter:description" content="概念 物理cpu 插槽上的CPU个数，物理cpu数量等于不同physical id的个数。 cat /proc/cpuinfo | grep ‘pysical id’ | sort | uniq | wc -l  cpu核数   一颗CPU上面能处理数据的芯片组的数量 cat /proc/cpuinfo| grep “cpu cores”| uniq  逻辑cpu核数  一般来说，物理CPU个数">
+<meta name="twitter:title" content="字符编码和字符集">
+<meta name="twitter:description" content="计算机底层使用二进制数来存储和传输数据；人类使用文字、数字、图形来表达信息；因此二者之间需要进行某种转换。文字、数字等字符转换为二进制数被称为编码二进制数转换为文字、数字称为解码。文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。 字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集 A">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/10175366-da25c0ec4c5c2113.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/974/format/webp">
   
     <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
   
@@ -65,10 +67,10 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main"><article id="post-linux下CPU核数查看" class="article article-type-post" itemscope itemprop="blogPost">
+        <section id="main"><article id="post-字符编码和字符集" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2017/10/08/linux下CPU核数查看/" class="article-date">
-  <time datetime="2017-10-08T06:01:54.000Z" itemprop="datePublished">2017-10-08</time>
+    <a href="/2019/05/12/字符编码和字符集/" class="article-date">
+  <time datetime="2019-05-12T13:39:53.000Z" itemprop="datePublished">2019-05-12</time>
 </a>
     
   </div>
@@ -79,7 +81,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      linux下CPU核数查看
+      字符编码和字符集
     </h1>
   
 
@@ -87,32 +89,31 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><ol>
-<li><p>物理cpu</p>
-<p>插槽上的CPU个数，物理cpu数量等于不同physical id的个数。</p>
-<p>cat /proc/cpuinfo | grep ‘pysical id’ | sort | uniq | wc -l</p>
-</li>
-<li><p>cpu核数</p>
-</li>
-</ol>
-<p>一颗CPU上面能处理数据的芯片组的数量</p>
-<p>cat /proc/cpuinfo| grep “cpu cores”| uniq</p>
-<ol start="3">
-<li>逻辑cpu核数</li>
-</ol>
-<p>一般来说，物理CPU个数 X cpu cores = 逻辑CPU的个数。<br>如果不相等的话，则表示服务器的CPU支持超线程技术。</p>
-<p>cat /proc/cpuinfo | grep ‘processor’ | wc -l</p>
-<ol start="4">
-<li>超线程技术<br>cat /proc/cpuinfo| grep “siblings”| uniq</li>
-</ol>
-<p>超线程的数量 是 “siblings”/“cpu cores”</p>
-<h2 id="查看方式"><a href="#查看方式" class="headerlink" title="查看方式"></a>查看方式</h2><p>$  cat /proc/cpuinfo| grep “physical id”| sort| uniq| wc -l<br>2<br>$  cat /proc/cpuinfo| grep “cpu cores”| uniq<br>cpu cores    : 12<br>$  cat /proc/cpuinfo| grep “siblings”| uniq<br>siblings    : 24<br>$ cat /proc/cpuinfo| grep “processor”| wc -l<br>48</p>
-<h2 id="cpu核数取决因素"><a href="#cpu核数取决因素" class="headerlink" title="cpu核数取决因素"></a>cpu核数取决因素</h2><p>cpu的个数只与processor 、physical id、siblings 、cpu cores 四个参数有关，其他参数值可以不用考虑</p>
+        <p>计算机底层使用二进制数来存储和传输数据；<br>人类使用文字、数字、图形来表达信息；<br>因此二者之间需要进行某种转换。<br>文字、数字等字符转换为二进制数被称为编码<br>二进制数转换为文字、数字称为解码。<br>文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。</p>
+<p>字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集</p>
+<p>ASCII码 使用一个字节表示，第一个bit是0，用7个bit来表示，只能表示128个字符。<br>GB2312是针对汉字的字符集，使用两个字节来表示；但如果每个国家都有自己的字符集，那字符集太多了，有没有一种字符集可以包括所有字符呢？</p>
+<p>Unicode：囊括所有字符，但只是字符集，没有规定字符是如何存储和传输的。 而UTF(unicode transformation format)规定了字符如何传输和存储的。常用的是UTF-8。</p>
+<p>UTF-8是变长的编码方式：</p>
+<ul>
+<li>对于单字节的符号，字节的第一位置0，后面7位为这个符号的Unicode码。因此，对于英语字母，UTF-8编码和ASCII码是相同的</li>
+<li>对于n个字节的字符（n&gt;1）,第一个字节的前n位都置为1，第n+1位置为0，后面字节的前两位一律置为10。剩下的没有提及的二进制位，全部为这个符号的Unicode码<br><img src="https://upload-images.jianshu.io/upload_images/10175366-da25c0ec4c5c2113.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/974/format/webp" alt="图片"></li>
+</ul>
+<p>UTF8和unicode之间转换</p>
+<p>这里只介绍Unicode转换为UTF-8 ，以汉字 “柯” 为例。已知 “柯” 的Unicode码是 \u 67ef(0110 0111 1110 1111)，根据上表，我们可以知道 “柯”这个Unicode对应的UTF-8编码需要3个字节。然后，从0110 0111 1110 1111从由往左依次取数放入到1110 xxxx 10xx xxxx 10xx xxxx中，得到最终的结果是 1110 0110 1001 1111 1010 1111，转换成十六进制是E6 9F AF。</p>
+<p>golang代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	&quot;unicode/utf8&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	s := &quot;hello, 世界&quot;</span><br><span class="line">	fmt.Println(&quot;byte=&quot;, len(s))</span><br><span class="line">	fmt.Println(&quot;utf8 cnt=&quot;, utf8.RuneCountInString(s))</span><br><span class="line"></span><br><span class="line">	for i := 0; i &lt; len(s); &#123;</span><br><span class="line">		r, size := utf8.DecodeRuneInString(s[i:])</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">		i += size</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Println(&quot;range start&quot;)</span><br><span class="line">	for i, r := range s &#123;</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">	&#125;</span><br><span class="line">	fmt.Println(&quot;range end&quot;)</span><br><span class="line"></span><br><span class="line">	s2 := &quot;柯&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s2) //utf8编码</span><br><span class="line">	r := []rune(s2)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r) //unicode 码点序列</span><br><span class="line">	s3 := &quot;燕&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s3) //utf8编码</span><br><span class="line">	r3 := []rune(s3)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r3) //unicode 码点序列</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如何实现汉字转拼音呢？</p>
+<p>首先有一个汉字的unicode码点到拼音的映射表，如<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,//对应汉字   柯</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;, //对应汉字 燕</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
+<p>汉字-&gt; unicode码点 -&gt; 映射表 -&gt; 拼音</p>
+<p>如何实现拼音转汉字</p>
+<p>拼音-&gt; 映射表 -&gt; unicode码点 -&gt; 汉字</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">	han2 := &quot;我是&quot;</span><br><span class="line">	fmt.Println(&quot;len=&quot;, len([]rune(han2)))</span><br><span class="line"></span><br><span class="line">	unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;,</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han1 := &quot;柯&quot;</span><br><span class="line">	strHan1 := fmt.Sprintf(&quot;%x&quot;, ([]rune(han1))[0])</span><br><span class="line">	fmt.Println(&quot;str han1=&quot;, strHan1)</span><br><span class="line">	if v, ok := unicodeMapPinyin[strHan1]; ok &#123;</span><br><span class="line">		fmt.Printf(&quot;%s pinyin is %s\n&quot;, han1, v)</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		fmt.Println(&quot;not ok&quot;)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han3 := string([]rune(han1)[0])</span><br><span class="line">	fmt.Println(&quot;han3=&quot;, han3)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>参考<br><a href="https://www.jianshu.com/p/4a043c3f8108" target="_blank" rel="noopener">https://www.jianshu.com/p/4a043c3f8108</a></p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/10/08/linux下CPU核数查看/" data-id="cjvl1evtl002zlws6w1ieueuo" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjvl1evvz005elws64naobyoa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -123,19 +124,10 @@
     
 <nav id="article-nav">
   
-    <a href="/2017/10/08/linux硬盘是否是ssd判断/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          linux硬盘是否是ssd判断
-        
-      </div>
-    </a>
   
-  
-    <a href="/2017/10/08/free命令详解/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2019/05/03/linux进程间通信/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">free命令详解</div>
+      <div class="article-nav-title">linux进程间通信</div>
     </a>
   
 </nav>
