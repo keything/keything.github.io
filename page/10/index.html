@@ -62,6 +62,68 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-escape-character" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/04/escape-character/" class="article-date">
+  <time datetime="2016-01-04T14:00:01.000Z" itemprop="datePublished">2016-01-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/01/04/escape-character/">转义字符</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h2><p>转义字符标志着在一个字符序列中出现在它之后的后续几个字符是一种替代解释。</p>
+<p>判断某字符是否为转义字符由上下文确定。转义字符标志着转义序列escape sequence开始的那个字符。</p>
+<p>转义字符原本是指ASCII的十进制27，16进制1B，8进制033所定义的字符，对应标准键盘的ESC键，老式键盘”Ctrl+[“。</p>
+<p>后来将狭义的转义字符的含义引申开来，在各种计算机语言和协议中，标志着一个转义序列开始的那个字符，都叫做Escape character.</p>
+<pre><code>在C语言中 \是转义字符。
+在Shell语言中 \033是转义字符
+在URL协议中 %是转义字符
+</code></pre><h2 id="1-定义"><a href="#1-定义" class="headerlink" title="1. 定义"></a>1. 定义</h2><p>转义序列通常有两种功能。第一个是编码一个句法上的实体，如设备命令或者无法被字母表直接表示的特殊数据。第二种功能，也叫字符引用，用于表示无法在当前上下文中被键盘录入的字符（如字符串中的回车符），或者在当前上下文中会有不期望的含义的字符（如C语言字符串中的双引号字符”，不能直接出现，必须用转义序列表示</p>
+<p>控制字符与转义字符是两个不同的概念。转义字符不属于控制字符；控制字符也不属于转义字符。<br>大多数ASCII控制字符单独都具有控制功能，因此它们不是转义字符</p>
+<h2 id="2-举例"><a href="#2-举例" class="headerlink" title="2. 举例"></a>2. 举例</h2><ol>
+<li><p>shell 输出红色hello</p>
+<pre><code>echo -e &quot;\e[0;31mhello\e[0m&quot;
+</code></pre></li>
+<li><p>shell 将出现WARN这一行绿色字体显示；出现ERR这一行加上红色背景色</p>
+<pre><code>echo &quot;ERRhello&quot; &gt; aa.txt
+echo &quot;WARNdfajo&quot; &gt;&gt; aa.txt
+cat aa.txt | sed -e &apos;s/.*WARN.*/\x1b[0;36m&amp;\x1b[0m/i&apos; -e &apos;s/.*ERR.*/\x1b[93;41m&amp;\x1b[0m/i&apos;
+</code></pre></li>
+<li><p>url 中转义字符是%。其中%后面跟一个ASCII码，可以在<a href="http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg" target="_blank" rel="noopener">http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg</a> 图中找到该ASCII码对应的字符</p>
+<pre><code>http://www.baidu.com/helo=fw fwe&amp;str=sfa
+该urlurlencode后对应的是
+http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
+</code></pre></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="cjwhtmg6q001z3us6u3rt5e3p" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-mac安装storm" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/01/03/mac安装storm/" class="article-date">
@@ -110,7 +172,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="cjvl1evu2003elws6pynnol0b" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="cjwhtmg8p003f3us6n9f43o04" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -210,7 +272,7 @@ hbase(main):013:0&gt; drop &apos;test&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjvl1evu3003hlws6aaxbf9k5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjwhtmg9v00463us6gzi6v3bf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -316,7 +378,7 @@ start-yarn.sh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjvl1evtv0036lws6wnwkc3vj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjwhtmg8f00353us69u3usj66" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -453,7 +515,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjvl1evst0024lws651e20377" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjwhtmg6s00203us6uhznew50" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -591,7 +653,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjvl1evqo000blws6b4chparf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjwhtmg45000c3us646caiqtf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -631,7 +693,7 @@ git reset --hard HEAD~2
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -640,7 +702,7 @@ git reset --hard HEAD~2
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -651,6 +713,10 @@ git reset --hard HEAD~2
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+          </li>
         
           <li>
             <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
@@ -666,10 +732,6 @@ git reset --hard HEAD~2
         
           <li>
             <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

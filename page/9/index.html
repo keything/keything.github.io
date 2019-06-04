@@ -62,6 +62,75 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-memcache获取所有的key及value" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/18/memcache获取所有的key及value/" class="article-date">
+  <time datetime="2016-04-18T01:32:56.000Z" itemprop="datePublished">2016-04-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/18/memcache获取所有的key及value/">6. memcache获取所有的key及value</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-特别注意："><a href="#0-特别注意：" class="headerlink" title="0. 特别注意："></a>0. 特别注意：</h2><pre><code>通过cachedump命令只能获取1M的数据，无法获取更多的数据。
+</code></pre><h2 id="1-命令行来查看memcache的key及取值"><a href="#1-命令行来查看memcache的key及取值" class="headerlink" title="1. 命令行来查看memcache的key及取值"></a>1. 命令行来查看memcache的key及取值</h2><ol>
+<li><p>stats slabs  查看有哪些slab</p>
+<p> STAT 18:chunk_size 4544<br> STAT 18:chunks_per_page 230<br> STAT 18:total_pages 1<br> STAT 18:total_chunks 230<br> STAT 18:used_chunks 0<br> STAT 18:free_chunks 7<br> STAT 18:free_chunks_end 223<br> STAT 18:mem_requested 18446744073709551411<br> STAT 18:get_hits 777<br> STAT 18:cmd_set 103<br> STAT 18:delete_hits 0<br> STAT 18:incr_hits 0<br> STAT 18:decr_hits 0<br> STAT 18:cas_hits 0<br> STAT 18:cas_badval 0</p>
+</li>
+<li><p>stats cachedump slab_id limit</p>
+<p> 将slab为slab_id的数据展示出来。 limit是展示的个数，如果取值为0， 则不作限制（其实是限制了1m）</p>
+</li>
+</ol>
+<p><a href="http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/" target="_blank" rel="noopener">http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/</a><br><a href="http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats" target="_blank" rel="noopener">http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats</a></p>
+<h2 id="2-php代码来获取"><a href="#2-php代码来获取" class="headerlink" title="2. php代码来获取"></a>2. php代码来获取</h2><pre><code>&lt;?php
+$mcobj = new Memcache();
+$mcobj-&gt;addServer(&apos;xxx&apos;,9150);
+
+$to_mcobj = new Memcache();
+$to_mcobj-&gt;addServer(&apos;xxx&apos;, 21212);
+
+$allSlabs = $mcobj-&gt;getExtendedStats(&apos;slabs&apos;);
+$items    = $mcobj-&gt;getExtendedStats(&apos;items&apos;);
+foreach ($allSlabs as $server =&gt; $slabs) {
+    foreach ($slabs as $slabId =&gt; $slabMeta) {
+        $cdump = $mcobj-&gt;getExtendedStats(&apos;cachedump&apos;, (int)$slabId, 0);
+        foreach ($cdump as $keys =&gt; $vals) {
+            foreach ((array)$vals as $k =&gt; $v) {
+                $real_val = $mcobj-&gt;get($k);
+                $set_res = $to_mcobj-&gt;set($k, $real_val);
+                error_log(&apos;|slabId=&apos;.$slabId.&apos;set--&apos;.&apos;|key=&apos;.$k.&apos;|val=&apos;.json_encode($real_val).&apos;|res=&apos;.$set_res.&quot;\n&quot;,3,&apos;/tmp/yk.log&apos;);
+            }
+        }
+   }
+                                                                                            }
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjwhtmg9n003z3us6snzzc4r4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-memcache参考文章" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/04/17/memcache参考文章/" class="article-date">
@@ -97,7 +166,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjvl1evuo003mlws6s0e74pzx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjwhtmg90003p3us6h4jrsaxb" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -210,7 +279,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjvl1evv2003slws61hhmfidn" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjwhtmg93003r3us6ehtpoje8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -317,7 +386,7 @@ static unsigned int sizes[LARGEST_ID];
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjvl1evun003klws6aln08nui" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjwhtmg8u003k3us624t8hxid" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -427,7 +496,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjvl1evu4003ilws6lia987yg" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjwhtmg9l003w3us641hqt5nr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -489,7 +558,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjvl1evuy003qlws61xd7913w" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjwhtmga0004b3us6q8bz5pml" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -572,7 +641,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjvl1evsx0029lws6t5l4l6sv" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjwhtmg7100273us6bo87beq0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -631,7 +700,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjvl1evvs004zlws6secmyp13" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjwhtmgal004v3us6m80418eq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -683,7 +752,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjvl1evvw0057lws6hlvwd907" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjwhtmgb0005a3us690ab9z2w" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1004,72 +1073,10 @@ set @@tx_isolation=&apos;read-committed&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjvl1evv90041lws6i18yeylr" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjwhtmg9t00443us63oxpfgfk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-escape-character" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/01/04/escape-character/" class="article-date">
-  <time datetime="2016-01-04T14:00:01.000Z" itemprop="datePublished">2016-01-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/01/04/escape-character/">转义字符</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h2><p>转义字符标志着在一个字符序列中出现在它之后的后续几个字符是一种替代解释。</p>
-<p>判断某字符是否为转义字符由上下文确定。转义字符标志着转义序列escape sequence开始的那个字符。</p>
-<p>转义字符原本是指ASCII的十进制27，16进制1B，8进制033所定义的字符，对应标准键盘的ESC键，老式键盘”Ctrl+[“。</p>
-<p>后来将狭义的转义字符的含义引申开来，在各种计算机语言和协议中，标志着一个转义序列开始的那个字符，都叫做Escape character.</p>
-<pre><code>在C语言中 \是转义字符。
-在Shell语言中 \033是转义字符
-在URL协议中 %是转义字符
-</code></pre><h2 id="1-定义"><a href="#1-定义" class="headerlink" title="1. 定义"></a>1. 定义</h2><p>转义序列通常有两种功能。第一个是编码一个句法上的实体，如设备命令或者无法被字母表直接表示的特殊数据。第二种功能，也叫字符引用，用于表示无法在当前上下文中被键盘录入的字符（如字符串中的回车符），或者在当前上下文中会有不期望的含义的字符（如C语言字符串中的双引号字符”，不能直接出现，必须用转义序列表示</p>
-<p>控制字符与转义字符是两个不同的概念。转义字符不属于控制字符；控制字符也不属于转义字符。<br>大多数ASCII控制字符单独都具有控制功能，因此它们不是转义字符</p>
-<h2 id="2-举例"><a href="#2-举例" class="headerlink" title="2. 举例"></a>2. 举例</h2><ol>
-<li><p>shell 输出红色hello</p>
-<pre><code>echo -e &quot;\e[0;31mhello\e[0m&quot;
-</code></pre></li>
-<li><p>shell 将出现WARN这一行绿色字体显示；出现ERR这一行加上红色背景色</p>
-<pre><code>echo &quot;ERRhello&quot; &gt; aa.txt
-echo &quot;WARNdfajo&quot; &gt;&gt; aa.txt
-cat aa.txt | sed -e &apos;s/.*WARN.*/\x1b[0;36m&amp;\x1b[0m/i&apos; -e &apos;s/.*ERR.*/\x1b[93;41m&amp;\x1b[0m/i&apos;
-</code></pre></li>
-<li><p>url 中转义字符是%。其中%后面跟一个ASCII码，可以在<a href="http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg" target="_blank" rel="noopener">http://www.searchtb.com/wp-content/uploads/2012/04/ascii0.jpg</a> 图中找到该ASCII码对应的字符</p>
-<pre><code>http://www.baidu.com/helo=fw fwe&amp;str=sfa
-该urlurlencode后对应的是
-http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
-</code></pre></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="cjvl1evss0023lws6syeovecj" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
 
     </footer>
   </div>
@@ -1106,7 +1113,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1115,7 +1122,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1126,6 +1133,10 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+          </li>
         
           <li>
             <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
@@ -1141,10 +1152,6 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
         
           <li>
             <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

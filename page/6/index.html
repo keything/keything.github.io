@@ -62,6 +62,81 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-匿名函数与闭包" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/21/匿名函数与闭包/" class="article-date">
+  <time datetime="2016-09-21T14:36:50.000Z" itemprop="datePublished">2016-09-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/21/匿名函数与闭包/">匿名函数与闭包</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文章翻译了<a href="http://dhorrigan.com/post/29209695084/anonymous-functions-vs-closures" target="_blank" rel="noopener">Anonymous Functions VS Closures</a></p>
+<p>是不是很想知道匿名函数和闭包之间的关系？Lambda呢？这些在PHP中是如何实现的呢？在这个领域有很多困惑，现在让我们来深挖并回答这些问题。</p>
+<p>第一件事：<code>Lambda</code>是匿名函数的别称。在一些编程语言（如python）中使用Lambda。</p>
+<p>接下来让我们看看匿名函数和闭包到底是什么。如果现在你很困惑，不用担心，接下来我希望能够让你明白，下面是两者的一个简单定义：</p>
+<ul>
+<li>匿名函数：一个匿名函数是一个定义的偶尔触发的函数，不需要与标识符绑定。（An Anonymous Function is a function that is defined, and occasionally invoked, without being bound to an identifier. It also has the variable scoping characteristics of a Closure (see below)）。</li>
+<li>闭包函数：闭包是一个能够捕获当前包含作用域，能够获取父作用域的函数。闭包将非局部变量的引用绑定到了闭包创建时的作用域。（A Closure is a function that captures the current containing scope, then provides access to that scope when the Closure is invoked. The Closure binds non-local variable references to the corresponding variables in scope at the time the Closure is created.）</li>
+</ul>
+<p>从这儿可以看到：所有的匿名函数都是闭包，但并不是所有的闭包都是匿名函数。</p>
+<p>用外行的话来说：</p>
+<p>所有的匿名函数都是没有名字的闭包。闭包是一个函数，在闭包定义的时候会将非局部变量绑定为函数的局部变量。（原文：An Anonymous Function is a Closure without a name. A Closure is a function which binds references to non-local variables to local variables inside the function at the time of the Closure definition.）</p>
+<h3 id="关于PHP呢？"><a href="#关于PHP呢？" class="headerlink" title="关于PHP呢？"></a>关于PHP呢？</h3><p>事情变得有趣了。在PHP5.3中加入了匿名函数和闭包。但是，有一些取巧的地方（其中一个已经在PHP5.4中修复）</p>
+<p>匿名函数的实现是Closure对象。PHP贯彻了观点<code>匿名函数是一个无名的闭包</code>。</p>
+<p>有一个简单的匿名函数传递给<code>array_map</code>函数，目的是将所有的整数都乘以2。</p>
+<pre><code>$arr = array_map(function ($val) {
+return is_int($val) ? $val * 2 : $val;
+}, $arr);
+</code></pre><p>很简答，对不？现在问一下自己：如果你想在函数内部访问非局部变量（non-local variables）？毕竟匿名函数也是闭包。当然可以，但是你必须清晰告诉PHP使用哪些非局部变量，这是诸多取巧的第一个。现在开始深挖。</p>
+<p>####取巧1：<br>当使用非局部变量时，必须使用关键字<code>use</code>将这些非局部变量绑定到闭包的作用域。这与大部分其他语言都不一样。</p>
+<pre><code>$foo = &apos;foo&apos;;
+$bar = &apos;bar&apos;;
+
+$baz = function () use ($foo, $bar) {
+    echo $foo, $bar;
+};
+</code></pre><p>【译者备注】这儿绑定到闭包的作用域，是将这些非局部变量作为了闭包的静态变量</p>
+<p>####取巧2：<br>绑定的非局部变量是复制，而不是引用。如果你想在闭包中改变变量的值，那么你必须使用引用传递。</p>
+<pre><code>$foo = &apos;foo&apos;;
+$bar = &apos;bar&apos;;
+
+$baz = function () use (&amp;$foo, &amp;$bar) {
+    $foo = &apos;Hello &apos;;
+    $bar = &apos;World!&apos;;
+};
+$baz();
+echo $foo, $bar; // Outputs &quot;Hello World!&quot;;
+</code></pre><p>####取巧3：<br>在PHP5.3中，在类中使用闭包，闭包不能使用<code>$this</code>。你必须传递this的引用，而不能直接传递<code>$this</code>。<br>在PHP5.4中修复，可以直接传递<code>$this</code>。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="cjwhtmgbg005s3us62a9lzaam" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-PHP函数之匿名函数" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/09/21/PHP函数之匿名函数/" class="article-date">
@@ -202,7 +277,7 @@ ZEND_FUNCTION(create_function)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="cjvl1evqx000llws69rnk4gqs" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="cjwhtmg4q000q3us6mt37jh98" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -258,7 +333,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="cjvl1evq70004lws6bxzi5vj1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="cjwhtmg3o00053us67r923ppc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -300,7 +375,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="cjvl1evpl0001lws6lf1basn5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="cjwhtmg3400023us6lk06ck4e" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -396,7 +471,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="cjvl1evrj000vlws6rfj4zkuf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="cjwhtmg3j00043us6rpw1rofa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -496,7 +571,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="cjvl1evqb0005lws6pej8sjz5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="cjwhtmg3w00083us6poqb54z0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -588,7 +663,7 @@ extern ZEND_API zend_executor_globals executor_globals;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="cjvl1evpt0002lws67dx1tr7y" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="cjwhtmg2w00013us6zmsp2c3u" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -820,7 +895,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="cjvl1evr6000olws6howrlh9e" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="cjwhtmg50000u3us69ap08rxz" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -903,7 +978,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjvl1evre000tlws67z5llci4" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjwhtmg4s000r3us6jque009w" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -979,58 +1054,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjvl1evvh004ilws6qtcaasyc" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-php一些bug列表" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/07/php一些bug列表/" class="article-date">
-  <time datetime="2016-09-07T11:46:33.000Z" itemprop="datePublished">2016-09-07</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/07/php一些bug列表/">php一些bug列表</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>在读<a href="http://www.laruence.com/" target="_blank" rel="noopener">Laruence</a>的文章时，有很多好的文章。<br>有一些不会出现或者出现概率很低的文章，现在将读过的文章，自己记录一下，方便查阅</p>
-<ol>
-<li><p><a href="http://www.laruence.com/2009/12/05/1172.html" target="_blank" rel="noopener">PHP5.2x + APC的一个bug定位</a> </p>
-<p> 出现原因是：session模块和apc模块加载顺序和模块关闭顺序导致。<br> 模块载入顺序和模块关闭函数很有关系了. 总体来说, 就是PHP会根据模块载入的顺序的反序来在每次请求处理结束后依次调用各个扩展的请求关闭函数.</p>
-<p> 因为我们环境的Session是静态编译进PHP的, 所以Session模块一定先于动态编译进PHP的APC被载入, 也就是说, 在请求关闭时期, APC的请求关闭函数, 一定会先于Session的请求关闭函数被调用.</p>
-<p> APC在模块请求关闭函数时期, 清空了执行全局标量中的类定义表EG(classs_table)，当Session的请求关闭函数调用的时候, 执行环境的Class Table已经为空, 当然也就会抛出类找不到的fatalerror了。</p>
-</li>
-<li><p><a href="http://www.laruence.com/2008/12/31/647.html" target="_blank" rel="noopener">一个低概率的PHP CoreDump</a></p>
-<p> 出现原因：php正在出错处理函数中，这个时候php execute limit time信号到来被响应，再次载入php_error_cb函数，就会出现。</p>
-<p> 自己尝试：在php5.5环境下复现</p>
-</li>
-<li><a href="http://www.laruence.com/2010/09/27/1754.html" target="_blank" rel="noopener">PHP stream未能及时清理现场导致Core的bug</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="cjvl1evvb0045lws6vgfi0a3x" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjwhtmga9004j3us6ocuy1uhp" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -1070,7 +1094,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1079,7 +1103,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1090,6 +1114,10 @@ STANDARD_SAPI_MODULE_PROPERTIES
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+          </li>
         
           <li>
             <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
@@ -1105,10 +1133,6 @@ STANDARD_SAPI_MODULE_PROPERTIES
         
           <li>
             <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

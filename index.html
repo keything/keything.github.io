@@ -62,6 +62,89 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-go版thrift读写超时时间处理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/04/go版thrift读写超时时间处理/" class="article-date">
+  <time datetime="2019-06-04T12:13:48.000Z" itemprop="datePublished">2019-06-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在golang的thrift调用中，如果我们设置的是<br><code>socket,err := thrift.NewTSocket(host)
+defer socket.Close()
+socket.SetTimeout(time.Duration(3) * time.Millisecond)</code></p>
+<p>在<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go" target="_blank" rel="noopener">socket.go</a>中看<code>func (p *TSocket) Write(buf []byte) (int,error) {</code> 中 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go#L68" target="_blank" rel="noopener">p.pushDeadline(false, true)</a> 中看到 <code>p.conn.SetWriteDeadline(t)</code><br>可以看到读写的超时时间都是socket.SetTimeout中设置的。</p>
+<p>在<code>func (p *TSocket) Open() error{</code>中可以到DialTimeout的连接超时也是socket.SetTimeout中设置的。</p>
+<p>因此如果要想实现thrift的连接、读、写超时，那么就必须修改socket.go中的pushDeadline，分别为读写设置超时时间。</p>
+<p>但如果去更改<code>vendor/git.apache.org/thrift.git/lib/go/thrift/socket.go</code>文件，那么会造成很难维护，那么我们能否在我们代码里面实现socket.go 而不影响原有的包呢?</p>
+<p>答案是可以的。</p>
+<p>首先看一段thrift调用的代码:<br><code>socket,err := thrift.NewTSocket(host)
+defer socket.Close()
+socket.SetTimeout(time.Duration(3) * time.Millisecond)
+tf_transport := transportFactory.GetTransport(socket)
+defer tf_transport.Close()
+err = socket.Open()
+...</code><br>那么从这儿来看，只要我们自己实现TSocket即可。</p>
+<p>当然了，我们看一下TSocket到底是什么呢？</p>
+<p>二、thrift的核心概念<br>在文章<a href="https://www.ibm.com/developerworks/cn/java/j-lo-apachethrift/index.html" target="_blank" rel="noopener">thrift介绍</a>中给出了thrift的整体结构。</p>
+<p>我们知道thrift有几大概念：</p>
+<ol>
+<li>数据类型</li>
+<li><p>协议protocol<br>2.1 TBinaryProtocol 二进制编码格式进行数据传输<br>2.2 TCompactProtocol 高效率的、密集的二进制编码格式进行数据传输<br>2.3 TJSONProtocol —— 使用 JSON 的数据编码协议进行数据传输<br>2.4 TSimpleJSONProtocol —— 只提供 JSON 只写的协议，适用于通过脚本语言解析</p>
+</li>
+<li><p>传输层<br>3.1 TSocket —— 使用阻塞式 I/O 进行传输，是最常见的模式<br>3.2 TFramedTransport —— 使用非阻塞方式，按块的大小进行传输。若使用 TFramedTransport 传输层，其服务器必须修改为非阻塞的服务类型。<br>3.3 TNonblockingTransport —— 使用非阻塞方式，用于构建异步客户端</p>
+</li>
+<li><p>服务器端类型<br>4.1 TSimpleServer —— 单线程服务器端使用标准的阻塞式 I/O<br>4.2 TThreadPoolServer —— 多线程服务器端使用标准的阻塞式 I/O<br>4.3 TNonblockingServer —— 多线程服务器端使用非阻塞式 I/O</p>
+</li>
+</ol>
+<p>三、thrift的golang实现</p>
+<ol>
+<li><p>protocol 接口定义 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/protocol.go</a><br> 1.1 TJSONProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/json_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/json_protocol.go</a><br> 1.2 TBinaryProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/binary_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/binary_protocol.go</a><br> 1.3 TCompactProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/compact_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/compact_protocol.go</a><br> 1.4 TSimpleJsonProtocol实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/simple_json_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/simple_json_protocol.go</a></p>
+</li>
+<li><p><a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/transport.go" target="_blank" rel="noopener">transport 接口定义</a><br> 2.1 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go" target="_blank" rel="noopener">TSocket</a> 这个socket实现了transport接口。虽然叫Socket但确实是transport接口的一个实现。</p>
+<p>  NewTSocket创建了一个连接后端服务的TTransport。</p>
+<p> 2.2 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go" target="_blank" rel="noopener">TFramedTransport</a></p>
+<p> 从伪代码里面我们可以看到，我们是把TSocket作为参数传递给了TFramedTransport的。那么二者关系是什么呢？</p>
+</li>
+<li><p>TSocket和TFramedTransport关系</p>
+<p>首先看一下<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/transport_factory.go" target="_blank" rel="noopener">TransportFactory</a> 这是一个工厂类，GetTransport(trans Transport) 返回的就是trans</p>
+<p>再看一下<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go#L31" target="_blank" rel="noopener">TFramedTransportFactory</a>，其实现的<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go#L50" target="_blank" rel="noopener">GetTransport(trans Transport)</a>，<code>return &amp;TFramedTransport{transport: transport, reader: bufio.NewReader(transport), maxLength: maxLength}</code>中 transport即之前我们赋值的TSocket。</p>
+</li>
+</ol>
+<ol start="4">
+<li>最后回到如何实现控制连接、读、写的超时时间呢？</li>
+</ol>
+<p>我们自己实现一个TSocket即可。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwhtmg7i002j3us6xjudmuyk" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-字符编码和字符集" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/12/字符编码和字符集/" class="article-date">
@@ -108,7 +191,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjvl1evvz005elws64naobyoa" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjwhtmgbl005x3us6jqmrz1xa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -294,7 +377,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjvl1evty003alws6ufyhqhpv" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjwhtmg8r003h3us65ud8vg5b" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -353,7 +436,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjvl1evt8002llws65jpcsqgh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjwhtmg7n002l3us69c7i6jpx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -599,7 +682,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjvl1evvm004plws6hhepqb1s" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjwhtmgad004o3us6zpqombww" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -681,7 +764,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjvl1evt1002dlws691kjnnl2" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjwhtmg78002a3us6n1sxlb5f" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -709,7 +792,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjvl1evo60000lws6pt4ce6lm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjwhtmg0r00003us66ikmwls7" class="article-share-link">Share</a>
       
       
     </footer>
@@ -857,7 +940,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjvl1evs4001flws6qe7yb7bn" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjwhtmg5o001b3us6v7bhe4kc" class="article-share-link">Share</a>
       
       
     </footer>
@@ -895,7 +978,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjvl1evsv0026lws6wl5z6gcw" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjwhtmg7600293us6cwwaxo2x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -987,97 +1070,11 @@ type InterfaceAction func(hosts []string, is_high_node, is_primary bool) (bool, 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjvl1evt5002jlws6v7yk25yc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjwhtmg7b002d3us6q7wjg4h1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
 
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-elasticsearch路由规则学习" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/02/04/elasticsearch路由规则学习/" class="article-date">
-  <time datetime="2019-02-04T04:36:10.000Z" itemprop="datePublished">2019-02-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol>
-<li><p>查询时是否查询所有分片。 </p>
-<p> 如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。<br> 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。<br> routing字段有两个位置：</p>
-<pre><code>a. query string中加入。 _search?routing=hello,mmm 的方式
-b. _msearch的header中加入 {&quot;index&quot;:&quot;myindex&quot;,&quot;routing&quot;:&quot;hello,mm&quot;}
-</code></pre><p> 打开trace日志，观察查询过程。可以清晰看到是query then fetch的执行过程。<br> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/search-multi-search.html" target="_blank" rel="noopener">链接</a></p>
-</li>
-<li><p>写入时路由规则指定。</p>
-<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/docs-bulk.html" target="_blank" rel="noopener">bulk接口文档</a></p>
-<p> bulk是用于创建、删除、更新索引使用。<br> 其中routing是要放在query string中才生效。 </p>
-<p> 写入举例：<br> <code>curl  -s -H &quot;Content-Type: application/x-ndjson&quot; -XPOST localhost:9201/_bulk -d &#39;
- {&quot;index&quot;:{&quot;_index&quot;:&quot;index_sorting_2&quot;,&quot;_type&quot;:&quot;prod&quot;}, &quot;routing&quot;:&quot;hello&quot;}
- {&quot;address&quot;:&quot;北京我爱你&quot;,&quot;address_nor_pre&quot;:&quot;北京我爱你&quot;,&quot;click_score&quot;:6}
- &#39;</code></p>
-</li>
-<li><p>关于search_type解释</p>
-<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html" target="_blank" rel="noopener">search_type文档</a></p>
-<p> 注意：在es5.3版本后，已经移除search_type=query_and_fetch的选项。 </p>
-<p> 原因：query_and_fetch 主要是用来进行内部优化的，如果你只有一个分片，你完全不需要分两个阶段（记住，你只有一个分片，不用管其他分片的情况），先拿一次分片下的得分信息再拿具体的文档，不如一次性拿回来就好了。因此query_and_fetch从来不是直接给用户使用的。 </p>
-<p> search_type=QUERY_THEN_FETCH 从日志来看</p>
-<p> <code>[2019-02-04T09:50:43,512][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0]
- [2019-02-04T09:50:43,513][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][1]
- [2019-02-04T09:50:43,514][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [query] Moving to next phase: [fetch], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
- [2019-02-04T09:50:43,517][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [fetch] Moving to next phase: [expand], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
- [2019-02-04T09:50:43,518][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [expand] Moving to next phase: [response], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)</code></p>
-</li>
-<li><p>reroute操作</p>
-<p> <a href="">reroute接口文档</a></p>
-<p> 举例：<br> `<br> curl -XPOST -H”Content-Type: application/json” ‘localhost:9200/_cluster/reroute’ -d ‘{<br> “commands” : [ </p>
-<pre><code>{  
-    &quot;move&quot; :   {  
-          &quot;index&quot; : &quot;index_sorting_1&quot;, 
-          &quot;shard&quot; : 3,   
-          &quot;from_node&quot; : &quot;ToJiwmL&quot;, 
-          &quot;to_node&quot; : &quot;Febek5M&quot;  
-    }  
-}
-</code></pre><p> ]<br> }’<br> `</p>
-</li>
-<li><p>磁盘空间阈值的设置</p>
-<p> 在本地mac电脑执行reroute时报错：</p>
-<p> NO(the node is above the low watermark cluster setting [cluster.routing.allocation.disk.watermark.low=85%], using more disk space than the maximum allowed [85.0%]</p>
-</li>
-</ol>
-<pre><code>[文章](https://elasticsearch.cn/question/4911)中介绍了：
-1. 这个参数是对“未分配过的&quot;主分片无效，即新创建的索引的场景。 也就是说一个结点的磁盘空间消耗达到low watermark以后，新创建的索引不受限制，依然可以分配到上面
-2. 不能够分配上去的场景主要是以下两个:
-集群有结点挂掉或者用户更改了集群的复制片数量， 需要挑选某个结点复制分片的时候
-集群触发了rebalance的时候
-
-
-在我们的case中需要做的是：
-`
-curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cluster/settings&quot; -d &apos;
-{
-    &quot;transient&quot;:{
-        &quot;cluster.routing.allocation.disk.watermark.low&quot;:&quot;90%&quot;
-    }  
-}
-&apos;`
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/02/04/elasticsearch路由规则学习/" data-id="cjvl1evse001rlws616h9biqb" class="article-share-link">Share</a>
-      
-      
     </footer>
   </div>
   
@@ -1113,7 +1110,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.5px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.25px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.5px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.25px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.25px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.25px;">linux</a> <a href="/tags/mac/" style="font-size: 13.75px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.75px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.75px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.75px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.5px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.5px;">redis</a> <a href="/tags/spark/" style="font-size: 12.5px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.75px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1122,7 +1119,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1133,6 +1130,10 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+          </li>
         
           <li>
             <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
@@ -1148,10 +1149,6 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
         
           <li>
             <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>
