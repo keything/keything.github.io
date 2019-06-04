@@ -7,18 +7,18 @@
   
   <title>go版thrift读写超时时间处理 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="在golang的thrift调用中，如果我们设置的是socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond) 在socket.go中看func (p *TSocket) Write(buf []byte) (int,error)">
+  <meta name="description" content="在golang的thrift调用中，如果我们设置的是`socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond)` 这种设置的其实是连接超时、读超时、写超时分别是3毫秒。为什么这样讲呢? 在socket.go中看func (p *T">
 <meta name="keywords" content="thrift">
 <meta property="og:type" content="article">
 <meta property="og:title" content="go版thrift读写超时时间处理">
 <meta property="og:url" content="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/index.html">
 <meta property="og:site_name" content="Keything的日志">
-<meta property="og:description" content="在golang的thrift调用中，如果我们设置的是socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond) 在socket.go中看func (p *TSocket) Write(buf []byte) (int,error)">
+<meta property="og:description" content="在golang的thrift调用中，如果我们设置的是`socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond)` 这种设置的其实是连接超时、读超时、写超时分别是3毫秒。为什么这样讲呢? 在socket.go中看func (p *T">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-06-04T13:10:26.000Z">
+<meta property="og:updated_time" content="2019-06-04T13:13:26.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="go版thrift读写超时时间处理">
-<meta name="twitter:description" content="在golang的thrift调用中，如果我们设置的是socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond) 在socket.go中看func (p *TSocket) Write(buf []byte) (int,error)">
+<meta name="twitter:description" content="在golang的thrift调用中，如果我们设置的是`socket,err := thrift.NewTSocket(host) defer socket.Close() socket.SetTimeout(time.Duration(3) * time.Millisecond)` 这种设置的其实是连接超时、读超时、写超时分别是3毫秒。为什么这样讲呢? 在socket.go中看func (p *T">
   
     <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
   
@@ -87,9 +87,10 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>在golang的thrift调用中，如果我们设置的是<br><code>socket,err := thrift.NewTSocket(host)
-defer socket.Close()
-socket.SetTimeout(time.Duration(3) * time.Millisecond)</code></p>
+        <p>在golang的thrift调用中，如果我们设置的是<br>`<br>socket,err := thrift.NewTSocket(host)</p>
+<p>defer socket.Close()</p>
+<p>socket.SetTimeout(time.Duration(3) * time.Millisecond)<br>`</p>
+<p>这种设置的其实是连接超时、读超时、写超时分别是3毫秒。为什么这样讲呢?</p>
 <p>在<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go" target="_blank" rel="noopener">socket.go</a>中看<code>func (p *TSocket) Write(buf []byte) (int,error) {</code> 中 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go#L68" target="_blank" rel="noopener">p.pushDeadline(false, true)</a> 中看到 <code>p.conn.SetWriteDeadline(t)</code><br>可以看到读写的超时时间都是socket.SetTimeout中设置的。</p>
 <p>在<code>func (p *TSocket) Open() error{</code>中可以到DialTimeout的连接超时也是socket.SetTimeout中设置的。</p>
 <p>因此如果要想实现thrift的连接、读、写超时，那么就必须修改socket.go中的pushDeadline，分别为读写设置超时时间。</p>
@@ -136,7 +137,7 @@ err = socket.Open()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwhtmg7i002j3us6xjudmuyk" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwhtoeit002j63s6icpk15hs" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
