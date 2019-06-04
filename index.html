@@ -93,13 +93,13 @@
 <p>因此如果要想实现thrift的连接、读、写超时，那么就必须修改socket.go中的pushDeadline，分别为读写设置超时时间。</p>
 <p>但如果去更改<code>vendor/git.apache.org/thrift.git/lib/go/thrift/socket.go</code>文件，那么会造成很难维护，那么我们能否在我们代码里面实现socket.go 而不影响原有的包呢?</p>
 <p>答案是可以的。</p>
-<p>首先看一段thrift调用的代码:<br><code>socket,err := thrift.NewTSocket(host)
-defer socket.Close()
-socket.SetTimeout(time.Duration(3) * time.Millisecond)
-tf_transport := transportFactory.GetTransport(socket)
-defer tf_transport.Close()
-err = socket.Open()
-...</code><br>那么从这儿来看，只要我们自己实现TSocket即可。</p>
+<p>首先看一段thrift调用的代码:<br>`<br>socket,err := thrift.NewTSocket(host)</p>
+<p>defer socket.Close()</p>
+<p>socket.SetTimeout(time.Duration(3) * time.Millisecond)</p>
+<p>tf_transport := transportFactory.GetTransport(socket)</p>
+<p>defer tf_transport.Close()</p>
+<p>err = socket.Open()</p>
+<p>…<br>`<br>那么从这儿来看，只要我们自己实现TSocket即可。</p>
 <p>当然了，我们看一下TSocket到底是什么呢？</p>
 <p>二、thrift的核心概念<br>在文章<a href="https://www.ibm.com/developerworks/cn/java/j-lo-apachethrift/index.html" target="_blank" rel="noopener">thrift介绍</a>中给出了thrift的整体结构。</p>
 <p>我们知道thrift有几大概念：</p>
@@ -134,7 +134,7 @@ err = socket.Open()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwhtoeit002j63s6icpk15hs" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwhtu0d0002h7ws60iodbaho" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -192,7 +192,7 @@ err = socket.Open()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjwhtoels005i63s689ofm22i" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjwhtu0ge005t7ws6v271c82w" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -378,7 +378,7 @@ err = socket.Open()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjwhtoely005s63s64tabvvyo" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjwhtu0dm00377ws6bgf0qb4z" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -437,7 +437,7 @@ err = socket.Open()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjwhtoeir002g63s65hnq6m5j" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjwhtu0cv002b7ws6rhm286ok" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -683,7 +683,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjwhtoel4004o63s6u6kh9b1d" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjwhtu0g3005h7ws6munbvedv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -765,7 +765,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjwhtoeig002763s62zqxj0jh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjwhtu0ct00297ws6kuvv2me8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -793,7 +793,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjwhtoed6000063s654a5zq7p" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjwhtu07h00007ws6pvxz7f00" class="article-share-link">Share</a>
       
       
     </footer>
@@ -941,7 +941,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjwhtoehc001563s65qe6d0le" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjwhtu0d6002l7ws6cnga42fw" class="article-share-link">Share</a>
       
       
     </footer>
@@ -979,7 +979,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjwhtoeid002463s65j8jweqe" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="cjwhtu0co00247ws61195tzmn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -1071,7 +1071,7 @@ type InterfaceAction func(hosts []string, is_high_node, is_primary bool) (bool, 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjwhtoeil002b63s62z7hg4o3" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="cjwhtu0cq00277ws69wyddr8v" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
