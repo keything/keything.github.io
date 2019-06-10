@@ -62,6 +62,151 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-unix-inode-学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/28/unix-inode-学习/" class="article-date">
+  <time datetime="2016-04-28T10:00:01.000Z" itemprop="datePublished">2016-04-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/28/unix-inode-学习/">Unix/Linux文件系统--目录，inode，硬链接</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-简介：文件和Inodes"><a href="#1-简介：文件和Inodes" class="headerlink" title="1. 简介：文件和Inodes"></a>1. 简介：文件和Inodes</h2><p>在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes）</p>
+<h3 id="1-1-甚至硬件设备都有文件名"><a href="#1-1-甚至硬件设备都有文件名" class="headerlink" title="1.1 甚至硬件设备都有文件名"></a>1.1 甚至硬件设备都有文件名</h3><p>Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。</p>
+<pre><code>你的电脑内存是 /dev/mem
+你的第一块硬盘是 /dev/sda
+你的终端是 /dev/tty1
+...
+</code></pre><p>举例</p>
+<pre><code>$ ls -li /dev/mem /dev/sda /dev/tty1
+5792 crw-r----- 1 root kmem 1, 1 Oct 13 02:30 /dev/mem
+ 888 brw-rw---- 1 root disk 8, 0 Oct 13 02:30 /dev/sda
+5808 crw-rw---- 1 root tty  4, 1 Oct 13 02:31 /dev/tty1
+</code></pre><p>在Linux中大多数的输入输出设备和目录都被看做文件。如果你有足够的权限，你可以使用它们的文件系统的名字来读取这些设备。</p>
+<h3 id="1-2-Index-Nodes-inodes"><a href="#1-2-Index-Nodes-inodes" class="headerlink" title="1.2 Index Nodes = inodes"></a>1.2 Index Nodes = inodes</h3><p>文件系统的内容都不是以名字的形式存储，而是以数字的形式存储。Linux是以序号化结构来存储每个硬盘对象（disk object, 如文件或目录）的数据和信息。这个序号化的结构称之为index node或inode。</p>
+<p>每个inode都是由唯一的inode number来标识，可以使用ls -i选项查看。</p>
+<pre><code>$ ls -l -i /usr/bin/perl*
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl5.14.2
+266331 -rwxr-xr-x 2 root root 45183 Mar 18  2013 /usr/bin/perlbug
+266328 -rwxr-xr-x 1 root root   224 Mar 18  2013 /usr/bin/perldoc
+</code></pre><p>Unix的目录将文件系统的名字与inode number进行关联。正如上面例子，/usr/bin/perl与inode number 266327关联。当你到达perl程序的时候，系统将会在目录中找到perl这个名字，与perl名字相关联的inode number是266327，这个inode存有真正的数据，系统通过inode找到真正的数据。文件数据与inode number关联，而不是与名字关联。</p>
+<p>在目录中，每个文件有自己名字和与之关联的inode number。每个文件名字可以映射到一个inode number，但是一个inode number可以有多个名字。</p>
+<p>Inode numbers are specific to a file system inside a disk partition. Every file on a file system (in that partition) has a unique inode number. Numbering is done separately for each file system, so different disk partitions may have file system objects with the same inode numbers.</p>
+<p>每个文件系统初始化的时候会有大量可用的inodes，可以使用<code>df -i</code>列出可用的inodes。</p>
+<h2 id="2-文件系统示意图"><a href="#2-文件系统示意图" class="headerlink" title="2. 文件系统示意图"></a>2. 文件系统示意图</h2><p>大多数关于文件系统的示意图都是错误的，下面是真相。<br>inodes的名字（如文件、目录、设备等的名字）是在目录中存储的。目录中只存储了名字和inodenumber的关联关系。文件中数据的真正存储的硬盘空间是在inode中，而不是在目录中。目录中保存的是名字和inode number，名字不会与数据有关联。</p>
+<p>目录中，每个名字有一个inode number，inode number指出了存储数据的硬盘空间的位置。通过<code>ls -i</code>看到名字和inode对应关系。</p>
+<pre><code>$ ls -i /usr/bin/perl*
+266327 /usr/bin/perl        266329 /usr/bin/perldoc.stub
+266327 /usr/bin/perl5.14.2  266330 /usr/bin/perlivp
+266331 /usr/bin/perlbug     266331 /usr/bin/perlthanks
+266328 /usr/bin/perldoc
+</code></pre><p>最重要的事情是知道名字和数据真正存储的位置是分开的。大多数示意图都会把ROOT的名字搞成命名的。这会造成对unix/linux文件和目录的误解。</p>
+<pre><code>WRONG - names on things      RIGHT - names above things
+=======================      ==========================
+
+    R O O T            ---&gt;         [etc,bin,home]   &lt;-- ROOT directory
+   /   |   \                         /    |      \
+etc   bin   home       ---&gt;  [passwd]  [ls,rm]  [abcd0001]
+ |   /   \    \                 |      /    \       |
+ |  ls   rm  abcd0001  ---&gt;     |  &lt;data&gt;  &lt;data&gt;  [.bashrc]
+ |               |              |                   |
+passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
+</code></pre><p>目录是名字和数字的列表，右侧示意图以中括号的方式列出，在示意图中忽略了innode number。目录中每一个对象（文件、目录、特殊文件等）的名字与真正的存储空间是分开的。这就允许一个inode可以有多个名字和多个目录。使用相同的inode number，所有的名字指向相同的存储空间。</p>
+<p>右侧示意图中，树中目录有自己的名字。右侧最顶层目录是ROOT目录的inode，包含了etc,bin,home..的名字列表。因为在ROOT目录上面没有目录，因此ROOT目录是没有名字的。</p>
+<p>ROOT目录下的名字bin与之关联的inodenumber是一个目录的inodenumber，包含了在bin目录下的names的列表，names列表包含名字ls和rm。从bin目录下的ls往下走就是文件/bin/ls的数据节点了。数据节点中不会包含文件的名字，名字在文件的目录中保存。</p>
+<p>ROOT节点没有名字，因为ROOT节点上面没有目录了。其他目录有名字是因为在这些目录上面还有目录，上层目录包含了其名字。</p>
+<h2 id="3-Inodes-Manage-disk-blocks"><a href="#3-Inodes-Manage-disk-blocks" class="headerlink" title="3 Inodes Manage disk blocks"></a>3 Inodes Manage disk blocks</h2><p>每个Uninx文件或目录储存在硬盘的真正数据是由序号化的硬盘数据结构进行管理的，序号化的硬盘数据结构称为Inodes。每个文件和每个目录都分配一个inode。</p>
+<p>Unix节点管理每个文件或目录的硬盘存储空间。inode中包含了一系列指针，指向属于那个文件或目录的硬盘块（disk blocks）。文件或目录越大，inode中需要的硬盘块指针就越多。inode还存储文件或目录的属性（权限、所有者、group、size，access/modify times, etc.) ，唯独没有文件或目录的名字。Inodes只有数字、属性和硬盘块–没有名字。名字分开存储，在目录中进行保存。</p>
+<h2 id="4-目录节点保存所有的名字"><a href="#4-目录节点保存所有的名字" class="headerlink" title="4. 目录节点保存所有的名字"></a>4. 目录节点保存所有的名字</h2><p>文件有硬盘块用于包含文件数据，目录同样有硬盘块，保存的是名字和inode number的对应关系。</p>
+<p>像大多数其他的节点，目录节点也包含了节点的属性信息（权限、所有者等等）和一个或多个硬盘块指针用来存储数据。但是，目录的硬盘块存储的不是文件数据而是目录的数据：名字和inode numbers。</p>
+<h2 id="5-多个名字–硬连接"><a href="#5-多个名字–硬连接" class="headerlink" title="5. 多个名字–硬连接"></a>5. 多个名字–硬连接</h2><p>因为</p>
+<pre><code>1. 一个唯一数字的inode管理一个文件
+2. inode中不会保存文件的名字
+3. 目录中保存文件的名字和inodenumber对应关系
+</code></pre><p>因此</p>
+<pre><code>一个unix文件可以在一个或多个目录中有多个name-and-inode对，从而有多个名字。
+</code></pre><h3 id="5-1-Link-Counts-count-names"><a href="#5-1-Link-Counts-count-names" class="headerlink" title="5.1 Link Counts count names"></a>5.1 Link Counts count names</h3><p>硬链接hardlinks：相同inode有多个名字。<br><code>ln</code>命令为目录中已经存在的节点创建一个新的名字。系统在每个inode中维持一个<code>link count</code>的字段，用于对inode指向的names进行计数。<code>rm</code>命令从目录中删除一个名字（hark link），并减少link count。当一个inode的link count减为0以后，inode就没有名字了，inode就会被回收，所有与inode关联的存储和数据都被释放了。</p>
+<p>rm命令不是删除文件，而是删除文件的名字。当所有的名字都没有了，系统会删除文件并且释放空间</p>
+<h2 id="6-Tracing-Inodes-in-Pathnames"><a href="#6-Tracing-Inodes-in-Pathnames" class="headerlink" title="6. Tracing Inodes in Pathnames"></a>6. Tracing Inodes in Pathnames</h2><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html" target="_blank" rel="noopener">http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjwq1x8n500771os6fzax8bp6" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Lvs学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/26/Lvs学习笔记/" class="article-date">
+  <time datetime="2016-04-26T09:02:01.000Z" itemprop="datePublished">2016-04-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/26/Lvs学习笔记/">Lvs学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在使用lvs的过程中，我一直担心一个问题：lvs能够抗住最大的并发是多少？当并发非常大的时候，lvs这一台机器的性能会不会变得很差？</p>
+<p>我去查看了章文嵩的文章<a href="http://www.linuxvirtualserver.org/zh/lvs1.html" target="_blank" rel="noopener">http://www.linuxvirtualserver.org/zh/lvs1.html</a><br>发现以下几个点：</p>
+<h2 id="1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"><a href="#1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式" class="headerlink" title="1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"></a>1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式</h2><h2 id="2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。"><a href="#2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。" class="headerlink" title="2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。"></a>2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。</h2><p>基于IP负载调度技术中，当一个TCP连接的初始SYN报文到达时，调度器就选择一台服务器，将报文转发给它。此后通过查发报文的IP和TCP报文头地址，保证此连接的后继报文被转发到该服务器。这样，IPVS无法检查到请求的内容再选择服务器，这就要求后端服务器组提供相同的服务，不管请求被发送到哪 一台服务器，返回结果都是一样的</p>
+<h2 id="3-VS-NT-virtual-server-via-Network-Address-Translation"><a href="#3-VS-NT-virtual-server-via-Network-Address-Translation" class="headerlink" title="3. VS/NT virtual server via Network Address Translation"></a>3. VS/NT virtual server via Network Address Translation</h2><p>通过网络地址转换，调度器重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文通过调度器时，报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p>
+<p>假如结构如下图所示，client要与服务器端建立连接，在lvs层ip包的目的地址被改为node1，那么该TCP连接的初始SYN报文送到node1，node1返回ACK报文给lvs层，lvs将ACK报文的源地址修改为lvs。以后通过查找发报文的IP和TCP报文头地址，保证此连接的后续报文被转发到node1。 如果我们在client通过tcpdump抓包的话，看到的都是client和lvs之间的交互。</p>
+<pre><code>                 _ _ _ node1
+                /
+client---&gt; lvs ------  node2
+                \_ _ _ _ node3
+</code></pre><h2 id="4-LVS集群的性能"><a href="#4-LVS集群的性能" class="headerlink" title="4. LVS集群的性能"></a>4. LVS集群的性能</h2><p>LVS服务器集群系统具有良好的伸缩性，可支持几百万个并发连接。配置100M网卡，采用VS/TUN或VS/DR调度技术，集群系统的吞吐量可高达1Gbits/s；如配置千兆网卡，则系统的最大吞吐量可接近10Gbits/s。</p>
+<p>因为工作在IP层，只用作分发，因此没有流量产生，内存和CPU资源消耗很低，IO性能不会受到大流量的影响</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjwq1x7rg000d1os68qaeiewj" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-memcache获取所有的key及value" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/04/18/memcache获取所有的key及value/" class="article-date">
@@ -119,7 +264,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjwhtu0e5003p7ws6bouvcczx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjwq1x8ce003n1os6j1iooiiq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -166,7 +311,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjwhtu0du003h7ws6oqhkkm6j" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjwq1x8bs003i1os68j7qa576" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -279,7 +424,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjwhtu0e7003r7ws6lfpufpfx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjwq1x8c0003l1os6fhnnfj5k" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -386,7 +531,7 @@ static unsigned int sizes[LARGEST_ID];
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjwhtu0ds003f7ws69e0jw829" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjwq1x8bl003g1os6h8a45l3j" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -496,7 +641,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjwhtu0e9003u7ws62ub1fkev" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjwq1x8ih005q1os630duk2lt" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -558,7 +703,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjwhtu0e0003m7ws6bqef8lzi" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjwq1x8dk003r1os6e81d1zuq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -641,7 +786,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjwhtu0cg00207ws6t568b734" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjwq1x7z6001u1os6pvb5lme4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -700,383 +845,10 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjwhtu0fq00547ws6grsqo69y" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjwq1x8gd004w1os6cczsscv7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-zsh基础知识" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/02/07/zsh基础知识/" class="article-date">
-  <time datetime="2016-02-06T23:02:01.000Z" itemprop="datePublished">2016-02-07</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/02/07/zsh基础知识/">zsh基础知识</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="一-安装和配置Zshell"><a href="#一-安装和配置Zshell" class="headerlink" title="一. 安装和配置Zshell"></a>一. 安装和配置Zshell</h2><ol>
-<li><p>安装</p>
-<p> sudo yum install zsh</p>
-</li>
-<li>配置<br>自动化安装<br> curl -L <a href="http://install.ohmyz.sh" target="_blank" rel="noopener">http://install.ohmyz.sh</a> | sh</li>
-</ol>
-<p>手动安装</p>
-<pre><code>a. git clone git://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
-b. cp ~/.zshrc ~/.zshrc.orig
-c. cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
-d. chsh -s /bin/zsh
-e. restart zsh
-</code></pre><h2 id="二-Zshell的好处"><a href="#二-Zshell的好处" class="headerlink" title="二. Zshell的好处"></a>二. Zshell的好处</h2><p>请直接转到这篇文章<br><a href="http://blog.jobbole.com/80620/" target="_blank" rel="noopener">http://blog.jobbole.com/80620/</a></p>
-<h2 id="三-参考文章"><a href="#三-参考文章" class="headerlink" title="三. 参考文章"></a>三. 参考文章</h2><p><a href="http://blog.jobbole.com/80620/" target="_blank" rel="noopener">http://blog.jobbole.com/80620/</a><br><a href="http://www.unixmen.com/install-oh-zsh-ubuntu-arch-linux-fedora/?utm_source=tuicool&amp;utm_medium=referral" target="_blank" rel="noopener">http://www.unixmen.com/install-oh-zsh-ubuntu-arch-linux-fedora/?utm_source=tuicool&amp;utm_medium=referral</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjwhtu0fs00577ws6qqjr18ku" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-mysql-锁的问题" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/01/09/mysql-锁的问题/" class="article-date">
-  <time datetime="2016-01-09T06:52:01.000Z" itemprop="datePublished">2016-01-09</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/01/09/mysql-锁的问题/">mysql 锁的问题</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 锁问题</h1><h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。</p>
-<h2 id="1-脏读"><a href="#1-脏读" class="headerlink" title="1. 脏读"></a>1. 脏读</h2><p>脏数据是指未提交的数据，如果读到了脏数据，即一个事务可以读到另外一个事务中未提交的数据，则显然违反了数据库的隔离性。脏读指的就是在不同的事务下，当前事务可以读到另外事务未提交的数据，简单来说就是可以读到脏数据。</p>
-<p>在下表中，事务的隔离级别由默认的可重复读（repeatable read)变成了未提交读( read uncommitted).SessionB读取了SessionA中没有提交的数据，违反了数据库的隔离性。</p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>set @@tx_isolation=’read-uncommitted’</td>
-<td>–</td>
-</tr>
-<tr>
-<td>2</td>
-<td>–</td>
-<td>set @@tx_isolation=’read-uncommitted’</td>
-</tr>
-<tr>
-<td>3</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>select mtime from learn2 where id = 9; <strong><em> 9.row </em></strong> mtime = 9000</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>–</td>
-<td>select * from learn2 where id = 9 mtime = 8900</td>
-</tr>
-</tbody>
-</table>
-<p>在MysqlInnoDb中虽然是脏读，但如果在sessionB中执行update learn2 set mtime = mtime - 100 where id = 9;依然需要等待，sessionA中为id=9这一行加锁了</p>
-<h2 id="2-不可重复读"><a href="#2-不可重复读" class="headerlink" title="2. 不可重复读"></a>2. 不可重复读</h2><ol>
-<li>在一个事务的两次查询之中数据不一致，这可能是两次查询过程中间插入了一个事务更新的原有的数据。在第一个书屋的两次读数据之间，由于第二个事务的修改并提交commit以后，那么第一个事务的两次读到的数据就可能不一样，这样在一个事务内两次读到的数据是不一样的情况，称为不可重复读。</li>
-<li>不可重复读和脏读区别    </li>
-</ol>
-<table>
-<thead>
-<tr>
-<th>脏读</th>
-<th>不可重复读</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>读取到没有提交的数据</td>
-<td>读取到其他事务已经提交的数据</td>
-</tr>
-<tr>
-<td>违反了隔离性</td>
-<td>违反了一致性</td>
-</tr>
-</tbody>
-</table>
-<p>举例</p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>set @@tx_isolation=’read-committed’</td>
-<td>–</td>
-</tr>
-<tr>
-<td>2</td>
-<td>–</td>
-<td>set @@tx_isolation=’read-ncommitted’</td>
-</tr>
-<tr>
-<td>3</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>select mtime from learn2 where id = 9; ### <strong><em> 9.row </em></strong> mtime = 8900</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>–</td>
-<td>select * from learn2 where id = 9 #mtime = 999</td>
-</tr>
-<tr>
-<td>7</td>
-<td>commit;</td>
-<td>—</td>
-</tr>
-<tr>
-<td>8</td>
-<td>—</td>
-<td>select * from learn2 where id = 9 #mtime = 8800</td>
-</tr>
-</tbody>
-</table>
-<p>在会话A step5更新后，会话B step6没有发生脏读现象。但在commit以后，会话B step8得到的mtime与会话B step6的mtime取值不同。</p>
-<p>在InnoDB存储引擎中，通过使用Next-Key Lock算法来避免不可重复读的问题。在MySQL官方文档中将不可重复读的问题定义为Phantom Problem即幻像问题。在Next-Key Lock算法下，对于索引的扫描，不仅是锁住扫描到的索引，而且还锁住这些索引覆盖的范围（gap）。因此在这个范围内的插入都是不允许的。这样就避免了另外的事务在这个范围内插入数据导致的不可重复读的问题。因此，InnoDB存储引擎的默认事务隔离级别是READ REPEATABLE，采用Next-Key Lock算法，避免了不可重复读的现象。 </p>
-<h2 id="3-更新丢失"><a href="#3-更新丢失" class="headerlink" title="3. 更新丢失"></a>3. 更新丢失</h2><p>case1 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9; mtime = 9999</td>
-<td>select * from learn2 where id = 9 mtime = 9999</td>
-</tr>
-<tr>
-<td>3</td>
-<td>update learn2 set mtime = mtime - 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = mtime - 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 8900</td>
-<td>select * from learn2 where id = 9 mtime = 8900</td>
-</tr>
-</tbody>
-</table>
-<p>第3步update操作锁住id=9这一行（排它锁），第4步sessionB更新的时候进行等待，只有第5步commit以后第4步的update才更新成功。<br>由于排它锁的存在并且update基于是mtime的数据库取值，保证了不会存在<code>丢失更新</code>的问题。但如果update xx set mtime = some_value 这样的操作，那么就会出现<code>丢失更新</code>的现象。 </p>
-<p>case2 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9; mtime = 9999</td>
-<td>select * from learn2 where id = 9 mtime = 9999</td>
-</tr>
-<tr>
-<td>3</td>
-<td>update learn2 set mtime = 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 100</td>
-<td>select * from learn2 where id = 9 mtime = 100</td>
-</tr>
-</tbody>
-</table>
-<p>如何避免这种<code>丢失更新</code>的情况发生呢<br>case3 </p>
-<table>
-<thead>
-<tr>
-<th>step</th>
-<th>session A</th>
-<th>sessionB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>start transaction</td>
-<td>start transaction</td>
-</tr>
-<tr>
-<td>2</td>
-<td>select * from learn2 where id = 9 for update; mtime = 9999</td>
-<td>—</td>
-</tr>
-<tr>
-<td>3</td>
-<td>—</td>
-<td>select * from learn2 where id = 9 for update; # 等待 其真正发生是在sessionA的commit以后</td>
-</tr>
-<tr>
-<td>4</td>
-<td>一系列操作</td>
-<td>一系列操作</td>
-</tr>
-<tr>
-<td>5</td>
-<td>update learn2 set mtime = 999 where id = 9</td>
-<td>–</td>
-</tr>
-<tr>
-<td>4</td>
-<td>–</td>
-<td>update learn2 set mtime = 100 where id = 9</td>
-</tr>
-<tr>
-<td>5</td>
-<td>commit</td>
-<td>—</td>
-</tr>
-<tr>
-<td>6</td>
-<td>—</td>
-<td>commit</td>
-</tr>
-<tr>
-<td>7</td>
-<td>select * from learn2 where id = 9; mtime = 100</td>
-<td>select * from learn2 where id = 9 mtime = 100</td>
-</tr>
-</tbody>
-</table>
-<p>在这个例子中，sessionB的select ..for update操作是在sessionA commit以后才会发生。commit之前，sessionB一直处于等待状态。sessionA提交以后，select的结果是mtime = 999;</p>
-<p>在上述的例子中为什么不直接允许UPDATE语句，而首先要进行SELECT…FOR UPDATE的操作。的确，直接使用UPDATE可以避免丢失更新的问题发生。在实际应用中，应用程序可能需要首先检测用户的余额信息，查看是否可以进行转账操作，然后再进行最后的UPDATE操作，因此在SELECT与UPDATE操作之间可能还存在一些其他的SQL操作。</p>
-<p>有用的mysql命令</p>
-<pre><code>查询隔离级别
-SELECT @@global.tx_isolation; 
-SELECT @@session.tx_isolation; 
-SELECT @@tx_isolation;
-设置隔离级别
-set @@tx_isolation=&apos;read-committed&apos;
-</code></pre><p>参考文章：<br>    <a href="http://techlog.cn/article/list/10182853" target="_blank" rel="noopener">http://techlog.cn/article/list/10182853</a><br>    姜承尧. “MySQL技术内幕：InnoDB存储引擎 第2版”</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjwhtu0f3004f7ws6gbks5ca1" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
 
     </footer>
   </div>
@@ -1103,7 +875,7 @@ set @@tx_isolation=&apos;read-committed&apos;
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1113,7 +885,7 @@ set @@tx_isolation=&apos;read-committed&apos;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1135,6 +907,14 @@ set @@tx_isolation=&apos;read-committed&apos;
       <ul>
         
           <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
           </li>
         
@@ -1144,14 +924,6 @@ set @@tx_isolation=&apos;read-committed&apos;
         
           <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

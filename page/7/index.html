@@ -62,6 +62,165 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-PHP源码之准备工作和背景知识" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/18/PHP源码之准备工作和背景知识/" class="article-date">
+  <time datetime="2016-09-18T05:37:16.000Z" itemprop="datePublished">2016-09-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/18/PHP源码之准备工作和背景知识/">PHP源码之准备工作和背景知识</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>深入理解PHP内核–学习版<br>说明：<a href="http://www.php-internals.com/" target="_blank" rel="noopener">深入理解PHP内核</a>是非常非常好的书，当然书中内容只有你详细尝试过，走一遍代码才能理解的更深刻，这几篇文章，当做自己的一个学习笔记。</p>
+<h2 id="一、学习环境搭建"><a href="#一、学习环境搭建" class="headerlink" title="一、学习环境搭建"></a>一、学习环境搭建</h2><ol>
+<li>php源代码： 我下载的是php5.6.25。</li>
+<li>编译环境：由于会涉及到nginx，php，mysql等等，为了快速搭建lnmp的环境，建议使用<a href="http://lnmp.org/" target="_blank" rel="noopener">lnmp</a>先安装所需要的各种软件包。</li>
+<li><p>编译语句：<br> 因为我是在一个全新的centos虚拟机上进行学习，因此安装目录是/usr/local/php。</p>
+<p> <code>&#39;./configure&#39;  &#39;--prefix=/usr/local/php&#39; &#39;--with-config-file-path=/usr/local/php/etc&#39; &#39;--enable-fpm&#39; &#39;--with-fpm-user=www&#39; &#39;--with-fpm-group=www&#39; &#39;--with-mysql=mysqlnd&#39; &#39;--with-mysqli=mysqlnd&#39; &#39;--with-pdo-mysql=mysqlnd&#39; &#39;--with-iconv-dir=libiconv&#39; &#39;--with-freetype-dir=/usr/local/freetype&#39; &#39;--with-jpeg-dir&#39; &#39;--with-png-dir&#39; &#39;--with-zlib&#39; &#39;--with-libxml-dir=/usr&#39; &#39;--enable-xml&#39; &#39;--disable-rpath&#39; &#39;--enable-bcmath&#39; &#39;--enable-shmop&#39; &#39;--enable-sysvsem&#39; &#39;--enable-inline-optimization&#39; &#39;--with-curl&#39; &#39;--enable-mbregex&#39; &#39;--enable-mbstring&#39; &#39;--with-mcrypt&#39; &#39;--enable-ftp&#39; &#39;--with-openssl&#39; &#39;--with-mhash&#39; &#39;--enable-pcntl&#39; &#39;--enable-sockets&#39; &#39;--enable-zip&#39; &#39;--enable-soap&#39; &#39;--with-gettext&#39; &#39;--disable-fileinfo&#39; &#39;--enable-opcache&#39; &#39;--enable-intl&#39; &#39;--with-xsl&#39;</code></p>
+<p> 此时试一下php是否可以运行</p>
+</li>
+<li><p>php的源码目录结构</p>
+<ul>
+<li>build：放置一些和源码编译相关的一些文件。比如开始构建之前的buildconf脚本等文件</li>
+<li>ext 官方扩展目录，包括了绝大多数PHP的函数定义和实现，如array系列，pdo系列，spl系列等函数实现</li>
+<li>main：这里存放的是PHP最为核心的文件了，主要实现php的基本设施。</li>
+<li>zend：zend引擎的实现目录，比如脚本的词法语法解析，opcode的执行和扩展机制的实现等等</li>
+<li>pear：php扩展与应用仓库</li>
+<li>sapi：包含了各种服务器抽象层的代码，如apache的mod_php，cgi，fastcgi以及fpm等接口</li>
+<li>TSRM：</li>
+<li>tests</li>
+<li>win32</li>
+</ul>
+</li>
+</ol>
+<ol start="5">
+<li><p>php源码阅读工具</p>
+<p> 使用vim+ctags阅读</p>
+<ul>
+<li>安装ctags: <code>yum install ctags</code></li>
+<li>生成tags: <code>cd /your/php/source/directory  &amp;&amp; ctags -R</code></li>
+<li>在.vimrc中添加ctags路径：<code>set tags+=/your/php/source/directory/tags</code></li>
+<li>使用：“使用 Ctrl+] 就可以自动跳转至定义，Ctrl+t 可以返回上一次查看位置。这样就可以快速的在代码之间“游动”了。</li>
+</ul>
+</li>
+</ol>
+<ol start="6">
+<li><p>PHP源码中的常用代码</p>
+<ul>
+<li>双井号(##)：”##”被称为 连接符（concatenator），它是一种预处理运算符， 用来把两个语言符号(Token)组合成单个语言符号。 这里的语言符号不一定是宏的变量。并且双井号不能作为第一个或最后一个元素存在</li>
+<li>单井号(#):”#”是一种预处理运算符，它的功能是将其后面的宏参数进行 字符串化操作 ， 简单说就是在对它所引用的宏变量通过替换后在其左右各加上一个双引号， 用比较官方的话说就是将语言符号(Token)转化为字符串</li>
+<li>宏定义中的do-while循环</li>
+<li><code>#line</code>预处理:用于改变当前的行号（<strong>LINE</strong>）和文件名（<strong>FILE</strong>）</li>
+<li>PHP中的全局变量宏，如PG()， EG()之类的函数，他们都是PHP中定义的宏，这系列宏主要的作用是解决线程安全所写的全局变量包裹宏。在PHP代码的其他地方也存在很多类似的宏，这些宏和PG宏一样，都是为了将线程安全进行封装，同时通过约定的 G 命名来表明这是全局的， 一般都是个缩写，因为这些全局变量在代码的各处都会使用到，这也算是减少了键盘输入。</li>
+</ul>
+</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt01/01-00-prepare-and-background" target="_blank" rel="noopener">第一章 准备工作和背景知识</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjwq1x7se000l1os67d2ygclt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php原理好文章列表" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/10/php原理好文章列表/" class="article-date">
+  <time datetime="2016-09-10T00:24:56.000Z" itemprop="datePublished">2016-09-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/10/php原理好文章列表/">php原理-鸟哥的文章列表</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol start="0">
+<li><p>概述</p>
+<p> <a href="http://www.laruence.com/2008/08/11/147.html" target="_blank" rel="noopener">深入浅出PHP</a></p>
+</li>
+<li><p>变量</p>
+<p> <a href="http://www.laruence.com/2008/08/22/412.html" target="_blank" rel="noopener">深入理解PHP原理之变量</a><br> <a href="http://www.laruence.com/2008/08/26/463.html" target="_blank" rel="noopener">深入理解PHP原理之变量作用域(Scope in PHP) </a><br> <a href="http://www.laruence.com/2008/09/19/520.html" target="_blank" rel="noopener">深入理解PHP原理之变量分离/引用</a><br> <a href="http://www.php-internals.com/book/?p=chapt06/06-06-copy-on-write" target="_blank" rel="noopener">深入理解php内核之写时复制</a><br> 到了引用这儿还是有点懵逼<br> <a href="http://www.laruence.com/2008/11/07/581.html" target="_blank" rel="noopener">PHP的GET/POST等大变量生成过程</a><br> <a href="http://www.laruence.com/2009/12/26/1198.html" target="_blank" rel="noopener">深入理解PHP原理之变量生命期(一)</a><br> <a href="http://www.laruence.com/2011/10/10/2212.html" target="_blank" rel="noopener">Array dereferencing</a><br> <a href="http://www.laruence.com/2010/12/08/1716.html" target="_blank" rel="noopener">如何获取一个变量的名字</a><br> 如何获取一个变量的名字中提到了<code>活动符号表</code><br> 而在PHP中, 所有的变量都存储在称为”符号表”的HastTable结构中. 在解析执行的过程中, 依旧保留着着”符号”信息, 所以, 肯定是可以获取到的.</p>
+<p> <a href="http://php.net/manual/zh/internals2.variables.php" target="_blank" rel="noopener">变量的使用</a></p>
+<p> 而在PHP中, 符号的作用域是和活动符号表相关联的. 同一时间, 只有一个活动符号表.</p>
+<p> 那么怎么理解活动符号表和符号表呢?</p>
+<p> 对于PHP来说, 当前活动的符号表是保存在全局变量EG(active_symbol_table)中的, 而于此同时, 还有个全局符号表保存在EG(symbol_table)中, 在进入一个函数调用的执行体之前, 会生成一个新的active_symbol_table, 并且会保持一个调用栈式样的符号表栈:EG(symtable_cache), 以便在退出函数调用的时候, 恢复之前的活动符号表(作用域).</p>
+<p> 同时在PHP中, 不能实现作用域继承, 也就是不能直接访问作用域外层的符号(需要加上golbal声明), 而如果加上global的声明的话, 也会在当前的活动作用域生成一个copy, 也就是说, 不存在在当前作用域可见的符号是保存在全局符号表的</p>
+</li>
+<li><p>函数</p>
+<p> <a href="http://www.laruence.com/2008/08/12/164.html" target="_blank" rel="noopener">深入理解PHP原理之函数(Introspecting PHP Function)</a><br> 函数分为两种zend_internal_function(对应结构体_zend_internal_function)和用户自定义函数(对应结构体_zend_op_array)。还有一个结构体zend_function.<br> 首先你要理解他的设计目标： zend_internal_function, zend_function,zend_op_array可以安全的互相转换(The are not identical structs, but all the elements that are in “common” they hold in common, thus the can safely be casted to each other);<br> 具体来说，当在op code中通过ZEND_DO_FCALL调用一个函数的时候，ZE会在函数表中，根据名字（其实是lowercase的函数名字，这也就是为什么PHP的函数名是大小写不敏感的)查找函数， 如果找到，返回一个zend_function结构的指针(仔细看这个上面的zend_function结构), 然后判断type,如果是ZEND_INTERNAL_FUNCTION， 那么ZE就调用zend_execute_internal,通过zend_internal_function.handler来执行这个函数， 如果不是，就调用zend_execute来执行这个函数包含的zend_op_array.</p>
+<p> 【todo】现在不明白的是zend_op_array里面到底存的是什么?<br> <a href="http://www.laruence.com/2011/10/10/2229.html" target="_blank" rel="noopener">函数类型提示(Callable typehint) </a><br> <a href="http://www.laruence.com/2010/06/20/1602.html" target="_blank" rel="noopener">深入理解PHP之匿名函数</a></p>
+</li>
+<li><p>opcode</p>
+<p> <a href="http://www.laruence.com/2008/06/18/221.html" target="_blank" rel="noopener">深入理解PHP原理之opcodes</a><br> <a href="http://www.laruence.com/2008/09/23/539.html" target="_blank" rel="noopener">使用PHP embed sapi实现opcodes查看器</a><br> <a href="http://www.laruence.com/2012/08/16/2701.html" target="_blank" rel="noopener">关于PHP的编译和执行分离</a><br> <a href="http://www.laruence.com/2010/08/03/1697.html" target="_blank" rel="noopener">深入理解PHP原理之异常机制</a><br> <a href="http://www.laruence.com/2008/08/24/377.html" target="_blank" rel="noopener">PHP源码分析之Global关键字</a><br> 也就是说， 如果你global了一个变量，那么Zend就会去全局symbol_table去寻找，如果找不到，就会在全局symbol_table中分配相应的变量。通过这样的机制，实现了全局变量</p>
+</li>
+<li><p>对象</p>
+<p> <a href="http://www.laruence.com/2010/05/18/1482.html" target="_blank" rel="noopener">深入理解PHP原理之对象(一)</a><br> <a href="http://www.laruence.com/2008/08/24/427.html" target="_blank" rel="noopener">PHP5多重继承顺序的bug</a></p>
+</li>
+<li><p>数组</p>
+<p> <a href="http://www.laruence.com/2008/10/31/574.html" target="_blank" rel="noopener">关于一笔试题(Iterator模式)</a><br> <a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a><br> <a href="http://www.laruence.com/2009/07/23/994.html" target="_blank" rel="noopener">PHP中的Hash算法</a><br> <a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组（遍历顺序)</a></p>
+</li>
+<li><p>扩展</p>
+<p> <a href="http://www.laruence.com/2008/08/16/301.html" target="_blank" rel="noopener">扩展PHP(一)</a><br> <a href="http://www.laruence.com/2011/09/13/2139.html" target="_blank" rel="noopener">关于PHP扩展开发的一些资源</a><br> <a href="http://www.laruence.com/2009/04/28/719.html" target="_blank" rel="noopener">用C/C++扩展你的PHP</a><br> <a href="http://www.laruence.com/2009/08/18/1042.html" target="_blank" rel="noopener">保证PHP扩展的依赖关系</a><br> <a href="http://www.laruence.com/2009/06/14/945.html" target="_blank" rel="noopener">深入理解PHP原理之扩展载入过程</a></p>
+</li>
+<li><p>内存管理</p>
+<p> <a href="http://www.laruence.com/2011/11/09/2277.html" target="_blank" rel="noopener">PHP原理之内存管理中难懂的几个点</a><br> <a href="http://www.laruence.com/2011/03/04/1894.html" target="_blank" rel="noopener">深入理解PHP内存管理之谁动了我的内存</a></p>
+</li>
+<li><p>SAPI<br> <a href="http://www.laruence.com/2008/08/12/180.html" target="_blank" rel="noopener">深入理解ZendSAPIs</a><br> <a href="http://docs.php.net/manual/zh/features.gc.php" target="_blank" rel="noopener">垃圾回收机制</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">第二节 SAPI概述</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-03-fastcgi" target="_blank" rel="noopener">fastcgi</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-02-embedding-php" target="_blank" rel="noopener">嵌入式sapi</a></p>
+</li>
+<li><p>其他<br> <a href="http://www.laruence.com/2009/07/27/1020.html" target="_blank" rel="noopener">深入理解PHP原理之错误抑制与内嵌HTML</a><br> <a href="http://www.laruence.com/2011/05/31/2018.html" target="_blank" rel="noopener">PHP Performance Optimization</a><br> <a href="http://www.laruence.com/2011/12/19/2399.html" target="_blank" rel="noopener">关于PHP浮点数你应该知道的</a><br> <a href="http://www.laruence.com/2013/03/26/2884.html" target="_blank" rel="noopener">PHP浮点数的一个场景问题的解答</a><br> <a href="http://www.laruence.com/2008/11/07/586.html" target="_blank" rel="noopener">深入理解PHP原理之文件上传</a><br> <a href="http://www.laruence.com/2009/05/31/889.html" target="_blank" rel="noopener">PHP受locale影响的函数</a><br> <a href="http://www.laruence.com/2009/08/22/1059.html" target="_blank" rel="noopener">字符编码详解</a><br> <a href="http://www.laruence.com/2009/12/09/1180.html" target="_blank" rel="noopener">isset与is_null的不同</a><br> isset是语句 is_null是函数，判断是否为null时可以使用===<br> <a href="http://www.laruence.com/2010/04/15/1414.html" target="_blank" rel="noopener">深入理解ob_flush和flush的区别</a><br> <a href="http://www.laruence.com/2015/05/28/3038.html" target="_blank" rel="noopener">在php中使用协程实现多任务调度</a><br> <a href="http://www.laruence.com/2008/04/16/98.html" target="_blank" rel="noopener">使用fsock实现异步调用php</a><br> <a href="http://www.laruence.com/2011/12/06/2381.html" target="_blank" rel="noopener">更简单的重现PHP core调用栈</a><br> <a href="http://www.laruence.com/2011/10/19/2247.html" target="_blank" rel="noopener">Zend Signal in PHP5.4</a><br> <a href="http://www.laruence.com/2011/03/24/858.html" target="_blank" rel="noopener">一些PHP Coding Tips</a></p>
+</li>
+<li><p>Dtrace<br><a href="http://php.net/manual/zh/features.dtrace.php" target="_blank" rel="noopener">Dtrace</a><br><a href="http://php.net/manual/zh/internals2.preface.php" target="_blank" rel="noopener">php骇客指南</a></p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjwq1x8f2004d1os6m4irmu14" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-php一些bug列表" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/09/07/php一些bug列表/" class="article-date">
@@ -101,7 +260,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="cjwhtu0ff004s7ws6h70x1bxo" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="cjwq1x8eo00451os6tk627rrb" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -192,7 +351,7 @@ Program terminated with signal 7, Bus error
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="cjwhtu0f2004d7ws6idusmgkw" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="cjwq1x8ex004a1os6b5o5bnec" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -256,7 +415,7 @@ $ ulimit -c unlimited
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="cjwhtu0f9004n7ws6h85ms3kn" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="cjwq1x8fg004i1os6k4wunu6p" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -323,7 +482,7 @@ execute stmt1 using @a;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="cjwhtu0ar000l7ws62jwnaz3j" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="cjwq1x7ue000t1os6d0sx7n4r" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -400,7 +559,7 @@ MAILTO=root HOME=/
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="cjwhtu0di00307ws699wnoffm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="cjwq1x866002r1os6d8mjmk20" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -595,7 +754,7 @@ cluster-require-full-coverage &lt;yes/no&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="cjwhtu0b4000x7ws6ew0q4xkz" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="cjwq1x7w7000v1os6hkoh5nnf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -674,7 +833,7 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="cjwhtu0ee003y7ws67k3krj85" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="cjwq1x8dp003u1os6laa6si5x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -735,166 +894,10 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="cjwhtu0b700107ws6kmnc2kqj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="cjwq1x8hu005j1os6wuy92lc1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-缓存替换" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/12/缓存替换/" class="article-date">
-  <time datetime="2016-07-12T01:39:14.000Z" itemprop="datePublished">2016-07-12</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/12/缓存替换/">缓存替换</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="零-概述"><a href="#零-概述" class="headerlink" title="零 概述"></a>零 概述</h1><p>在业务中不可避免的需要使用缓存，当缓存数据很少时，只需要几台缓存服务器即可满足需求。 但是当业务增多时，就需要N个业务M个缓存服务器。缓存服务器不管使用memcache还是redis，都是需要业务方来管理缓存服务器的host和port。</p>
-<p>我们业务中使用的memcache服务器接近千台，还需要业务方告知相关人员来处理memcache的问题（memcache机器宕机或者连接数打满）。而实际上，对于我们业务方而言，只需要使用缓存服务器即可，业务方不需要关注缓存服务器的重启和健康检查。当然了，业务方还是需要关注访问缓存服务器的访问时间。</p>
-<h2 id="一-我们对缓存服务的要求"><a href="#一-我们对缓存服务的要求" class="headerlink" title="一 我们对缓存服务的要求"></a>一 我们对缓存服务的要求</h2><ol>
-<li>单个请求耗时在2ms以内</li>
-<li>能够抗住30w qps的压力</li>
-</ol>
-<h2 id="二-我们的尝试"><a href="#二-我们的尝试" class="headerlink" title="二 我们的尝试"></a>二 我们的尝试</h2><h3 id="I-首先尝试twitter的twemproxy"><a href="#I-首先尝试twitter的twemproxy" class="headerlink" title="I. 首先尝试twitter的twemproxy"></a>I. 首先尝试twitter的twemproxy</h3><ol>
-<li><p>Twemproxy介绍</p>
-<p> Twemproxy是一个使用C语言编写、以代理的方式实现的、轻量级的代理服务器，通过引入一个代理层，将应用程序后端的多台Redis实例进行统一管理，使应用程序只需要在Twemproxy上进行操作，而不用关心后面具体有多少个真实的Redis或Memcached实例，从而实现了基于Redis和Memcached的集群服务。当某个节点宕掉时，Twemproxy可以自动将它从集群中剔除，而当它恢复服务时，Twemproxy也会自动连接。<br> Twemproxy的缺点：1. 无法平滑地扩容/缩容， 2. 运维不友好，没有控制面板（对于业务方而言，这个不是问题）3. 经过一层代理，对性能有损耗。</p>
-</li>
-</ol>
-<ol start="2">
-<li><p>我们测试的结果</p>
-<p> a. 压测方式一：</p>
-<p> 使用twitter自家的<a href="https://github.com/twitter/twemperf" target="_blank" rel="noopener">mcperf</a>压测工具来压测twemproxy。</p>
-<p> 压测命令：</p>
-<pre><code>/bin/mcperf --timeout=0.2 --conn-rate=1000 --call-rate=5000000 --num-calls=1000 --num-conns=100 --sizes=u32,1024 -s 10.10.10.10 -p 11211
-</code></pre><p> 压测结果：</p>
-<p> |case| 直连memcache|连接twemproxy|<br> |—|—|—|<br> |数据在32字节和1k字节之间|57750 qps, 耗时100ms以内|25589 qps，耗时100ms以上非常多|<br> |数据在4k和8k字节之间|18156 qps | 12376 qps|</p>
-<p> b. 压测方式二：使用n个php进程压测，这种压测方法并不能够得到一个<code>mcperf</code>的准确的qps，但是更接近我们的应用场景，也能够看出一些问题。这种方式压测中发现的问题：</p>
-<p> 1) twemproxy所在机器TIME_WAIT和CLOSE_WAIT非常高<br> 2) 单次请求耗时增加，连接twemproxy的qps小于直连memcache</p>
-<p> <code>TIME_WAIT</code>及<code>CLOSE_WAIT</code>非常高的原因：</p>
-<p>  php端设置超时时间是100ms，即server端100ms内没有响应时，php端就会主动断开连接。上面提到mcperf压测时超过100ms的请求非常多，那么100ms没有收到响应时php段就会主动断开连接。由于twemproxy服务器过于繁忙，没有调用close从而导致twemproxy处于<code>CLOSE_WAIT</code>状态。</p>
-<p> 对于<code>TIME_WAIT</code>而言，则是twemproxy向memcache服务器发送请求，等待某个时间（twemproxy中设置），如果没有响应，twemproxy就会主动断开连接；当大量从twemproxy到达memcache的请求超时时，就会出现<code>TIME_WAIT</code>过多。</p>
-</li>
-</ol>
-<h3 id="II-可以考虑方案"><a href="#II-可以考虑方案" class="headerlink" title="II 可以考虑方案"></a>II 可以考虑方案</h3><p>我们将可以考虑的方案列一下，360的bada，360的<a href="https://github.com/Qihoo360/pika" target="_blank" rel="noopener">pika</a>，豌豆荚的<a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">codis</a>。 </p>
-<p>先来说一下豌豆荚的codis，它跟twemproxy一样都是经过一层代理，首先经过一层代理必然会造成一定的性能损耗，其次在内存拷贝上codis并没有进行优化，官方开发者spinlock在<a href="https://github.com/CodisLabs/codis/issues/309" target="_blank" rel="noopener">答疑</a>中提到:a. <code>twemproxy只有redis性能一半</code>, b. <code>codis比twemproxy慢</code>。</p>
-<p>也就是说，不管是twemproxy还是codis，这种经过一层代理的方式都会造成一定的性能损耗；并且在高并发的情况下，代理会带来更多的问题；综合考虑，我们不使用这种代理的方式</p>
-<p>再来说一下公司的pika，数据存在硬盘并且底层是rocksdb，单个请求和并发都不满足需求。</p>
-<p>再来说一下公司的bada，qps在10w以上，但是平均耗时比redis多。</p>
-<p>综合考虑，我们决定测试一下RedisCluster，看是否满足我们的需求。</p>
-<h3 id="III-RedisCluster"><a href="#III-RedisCluster" class="headerlink" title="III RedisCluster"></a>III RedisCluster</h3><ol>
-<li>压测环境<br>Redis3.0.5版的<a href="https://github.com/antirez/redis/issues/2191" target="_blank" rel="noopener">Redis-benchmark并不支持对RedisCluster的压力测试</a>。看了一下常见的压测工具都没有直接对RedisCluster进行压测的工具。没有办法，只好使用25台测试机，单机进程总数，每个进程请求数量10w个，通过日志记录每个请求的耗时时间，对日志进行分析。</li>
-<li><p>qps粗略计算</p>
-<p> 采用php直接压测，qps的粗略计算：</p>
-<pre><code>机器数*每台机器的php进程数*1000（1s=1000ms)/ 单个请求耗时（单位ms）
-</code></pre><p> 如果单次请求是5ms，则预计是<code>25*5*1000/5=2.5w</code></p>
-<p> 当然还可以通过redis-trib.rb得到，将数字部分累加即可。</p>
-<pre><code>$./redis-trib.rb call 10.138.113.202:16001 info | grep -iE &quot;instantaneous_ops_per_sec&quot;
-
-instantaneous_ops_per_sec:3963
-instantaneous_ops_per_sec:3842
-instantaneous_ops_per_sec:4219
-instantaneous_ops_per_sec:3590 
-</code></pre><p> 对RedisCluster，Memcache，Redis进行压力测试，主要是测试在高并发情况下三者的耗时。耗时位于0-5ms的比例Redis好于Memcache好于Cluster。解释：</p>
-<p> 因为RedisCluster在创建对象的时候需要发送<code>cluster slots</code>命令获取一次集群的节点信息，导致耗时比redis和memcache要久。当然这也是其比memcache明智的地方， 因为memcache需要业务方维护一份节点信息，一旦需要更换节点，则需要业务方进行更改；而cluster的节点信息是由cluster的管理员维护。</p>
-<p> 对于单个http请求而言，与memcache和Redis相比，只是多了获取节点信息的操作</p>
-</li>
-<li><p>压测中发现<a href="https://github.com/phpredis/phpredis" target="_blank" rel="noopener">phpredis驱动</a>的一个问题：</p>
-<p> 压测过程中发现单个redis-cluster节点接受cluster-slots命令是4000qps.（该命令获取集群节点映射信息），当大于4000qps时，耗时就会急剧增加。</p>
-<p> 对于这个问题，可以通过增加cluster节点来解决。</p>
-<p> 当然最好的方法是修改phpredis的cluster驱动，能够缓存cluster节点信息，不用每次创建对象的时候都发送clusterslots命令</p>
-</li>
-</ol>
-<h2 id="我们最后的选择"><a href="#我们最后的选择" class="headerlink" title="我们最后的选择"></a>我们最后的选择</h2><ol>
-<li><p>基于上面的压测，我们决定使用RedisCluster，原因有二：</p>
-<p> a. 对于单个http请求（里面可能有多个缓存操作）而言，相比直连memcache或者redis，只是多了一步获取节点信息的耗时，耗时在2ms左右，这点性能损耗我们是可以忍受的。</p>
-<p> b. 对于DBA而言，维护简单，扩容方便；对于业务方而言，我只需要获取RedisCluster的一个节点进行连接即可，跟使用普通Redis差别不大。 </p>
-</li>
-<li><p>使用RedisCluster中存在的问题</p>
-<p> 前端机连接RedisCluster使用短连接，因此造成前端机TIMEWAIT过高，从而导致大量的连接超时。这儿要说明两个问题，第一个是为何使用短连接，因为使用长连接的话就不会存在TIMEWAIT过高的问题。第二个是TIMEWAIT过高的解决方式。</p>
-<p> 问题1：使用短连接而不使用长连接</p>
-<p> 原因是：使用长连接可能造成前端机或cluster机器端口不够用</p>
-<p> 先确定采用长连接时Cluster服务器连接数的计算方式：<code>前端机数量*每台前端机fpm进程数量</code>。如果前端机数量非常多，比如300台，每台前端机fpm128个，那么与某台cluster建立的长连接数量是38400，会造成cluster上连接数过多。<br> 而对于前端机而言，则可能会造成端口不够用。端口范围由net.ipv4.ip_local_port_range决定）。<br> 为了避免出现这个问题，我们使用短连接而不是长连接</p>
-<p> 问题2：TIMEWAIT</p>
-<p> TIMEWAIT出现原因：发送方主动断开连接时，收到接收方发来的FIN以后处于的状态，这是TCP四次挥手的正常状态。但是由于TIMEWAIT状态时，连接依然占有端口和fd，因此可能会出现端口不够用或套接字不够用的情况，从而导致连接失败。<br> TIMEWAIT解决方法：我们采用的是修改net.ipv4.tcp_max_tw_buckets = 5000。</p>
-</li>
-</ol>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="https://github.com/CodisLabs/codis/issues/309" target="_blank" rel="noopener">codis, redis, twemproxy对比</a></p>
-<p><a href="http://chuansong.me/n/1271889" target="_blank" rel="noopener">redis cluster浅析与bada对比</a></p>
-<p><a href="http://www.infoq.com/cn/articles/effective-ops-part-03" target="_blank" rel="noopener">Redis集群技术及Codis实践</a></p>
-<p><a href="https://github.com/phpredis/phpredis/blob/develop/README.markdown" target="_blank" rel="noopener">PhpRedis集群介绍</a></p>
-<p><a href="https://github.com/antirez/redis/issues/2191" target="_blank" rel="noopener">redis-benchmark cannot work on Redis Cluster</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="cjwhtu0gc005r7ws6nqp3szaj" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-内核参数-tcp-syncookies" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/09/内核参数-tcp-syncookies/" class="article-date">
-  <time datetime="2016-07-09T13:05:09.000Z" itemprop="datePublished">2016-07-09</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/09/内核参数-tcp-syncookies/">内核参数 tcp_syncookies-- 默认开启tcp_syncookies</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>提问：<br>基于下面的信息，是否可以默认开启<code>/proc/sys/net/ipv4/tcp_syncookies</code>。缺点呢？</p>
-<p>一种流行的服务攻击是给你的服务器发送许多（可能伪造的）的SYN包，但从不通过三次握手完成TCP请求。这样很快用尽内核中半打开队列（unp中叫 incompelete connection queue), 阻止了合法连接的完成。因为一个连接不需要完成，那么被攻击机器上就不需要资源，那么这就很容易处理和维护了。</p>
-<p>如果设置了<code>tcp_syncookies</code>变量（需要内核使用<code>CONFIG_SYNCOOKIES</code>编译），那么在队列满的时候，内核也能够处理TCP SYN包了，这就是SYN cookie功能的关键所在。</p>
-<p>SYN cookie完全不使用SYN队列就能工作。正常的情况，内核会发送SYN|ACK作为对SYN包的响应，但是，SYN cookie是发送一个特定的TCP 序号，这个序号是对<code>源地址</code>，<code>目的地址</code>，<code>源端口</code>，<code>目的端口</code>和<code>发送包的时间</code>的编码。一个执行SYN 洪水的攻击者拿不到这个包，也就没法响应。一个合法的连接将会包含这个序号来发送三次握手中的第三个包，服务器将会确认这个包是对合法SYN cookie的响应，并允许建立连接，即使在SYN队列中没有对应的位置了。</p>
-<p>开启SYN cookie是一种抵御SYN洪水攻击的简单方式，只是多了一点建立cookie和确认cookie的CPU时间。相比拒绝所有到来的连接，开始SYNcookie是一种明智的选择。</p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="https://www.redhat.com/archives/rhl-devel-list/2005-January/msg00447.html" target="_blank" rel="noopener">https://www.redhat.com/archives/rhl-devel-list/2005-January/msg00447.html</a><br><a href="https://ckdake.com/content/2007/disadvantages-of-tcp-syn-cookies.html" target="_blank" rel="noopener">https://ckdake.com/content/2007/disadvantages-of-tcp-syn-cookies.html</a><br><a href="http://coolshell.cn/articles/11564.html" target="_blank" rel="noopener">http://coolshell.cn/articles/11564.html</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="cjwhtu0fu00597ws68oidq7kf" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tcp/">tcp</a></li></ul>
 
     </footer>
   </div>
@@ -921,7 +924,7 @@ instantaneous_ops_per_sec:3590
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -931,7 +934,7 @@ instantaneous_ops_per_sec:3590
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -953,6 +956,14 @@ instantaneous_ops_per_sec:3590
       <ul>
         
           <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
           </li>
         
@@ -962,14 +973,6 @@ instantaneous_ops_per_sec:3590
         
           <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

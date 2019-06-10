@@ -62,6 +62,187 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Laravel中日志类" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/10/03/Laravel中日志类/" class="article-date">
+  <time datetime="2016-10-03T08:19:37.000Z" itemprop="datePublished">2016-10-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/10/03/Laravel中日志类/">Laravel中日志类</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="问题描述及改进方法"><a href="#问题描述及改进方法" class="headerlink" title="问题描述及改进方法"></a>问题描述及改进方法</h2><ol>
+<li><p>Laravel中原有的日志门面Log</p>
+<p> 在Laravel中大家都知道Log，其用法是</p>
+<pre><code>use Log;
+Log::info();
+</code></pre><p> 但是这个存在一个问题，通过Log门面打印的日志是打印到一个Log文件中，不利于日志监控。</p>
+</li>
+<li><p>改进的日志门面KLog</p>
+<p> 通过添加一个自定义的日志门面KLog，将日志打印到不同的文件中，并且自动实现日志按天切割。</p>
+</li>
+</ol>
+<h2 id="实现日志门面KLog"><a href="#实现日志门面KLog" class="headerlink" title="实现日志门面KLog"></a>实现日志门面KLog</h2><p>所谓门面facade，简单概括为以静态语法的方式调用底层类。门面的详细解释可以参考<a href="http://laravelacademy.org/post/5820.html" target="_blank" rel="noopener">核心概念 —— 门面（Facades）</a></p>
+<p>在 Laravel 应用中，门面就是一个为容器中对象提供访问方式的类。该机制原理由 Facade 类实现。Laravel 自带的门面，以及我们创建的自定义门面，都会继承自 Illuminate\Support\Facades\Facade 基类。</p>
+<p>门面类只需要实现一个方法：getFacadeAccessor。正是 getFacadeAccessor 方法定义了从容器中解析什么，然后Facade 基类使用魔术方法 __callStatic() 从你的门面中调用解析对象。</p>
+<p>因此门面类KLog的实现如下</p>
+<pre><code>&lt;?php
+// filepath:app/Http/Facades/KLog.php
+namespace App\Http\Facades;
+
+use Illuminate\Support\Facades\Facade;
+
+
+/**
+ * @see \APP\Http\Logic\KLogLogic
+ */
+class KLog extends Facade
+{
+    protected static function getFacadeAccessor()
+    {
+       return &apos;KLog&apos;;//该方法的工作就是返回服务容器绑定类的别名
+    }
+}
+</code></pre><p>KLog门面继承 Facade 基类并定义了 getFacadeAccessor 方法，该方法的工作就是返回服务容器绑定类的别名，当用户引用 KLog类的任何静态方法时，Laravel 从服务容器中解析 KLog绑定，然后在解析出的对象上调用所有请求方法。<code>getFacadeAccessor</code>返回的是在config/app.php中aliases的别名。</p>
+<p>前面提到<code>门面就是一个为容器中对象提供访问方式的类</code>，那么服务容器是什么呢？可以参考<a href="http://laravelacademy.org/post/5805.html" target="_blank" rel="noopener">核心概念-服务容器</a> 。既然提到服务容器，就必然提到<a href="http://laravelacademy.org/post/5809.html" target="_blank" rel="noopener">服务提供者</a>。服务提供者是Laravel应用启动的中心，你自己的应用以及所有Laravel的核心服务都是通过服务提供者启动。</p>
+<p>KLog类的服务提供者实现如下:</p>
+<pre><code>&lt;?php
+// filepath:app/Providers/KLogProvider.php
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+
+class KLogProvider extends ServiceProvider
+{
+    public function register()
+    {
+        $this-&gt;app-&gt;singleton(&apos;KLog&apos;, function () {
+            return new \App\Http\Logic\KLogLogic();
+        });
+    }
+}
+</code></pre><p>在register方法中，你唯一要做的事情就是绑事物到服务容器。</p>
+<p>既然服务提供者和门面类都已经创建好，那么接下来我们需要进行配置，在<code>config/app.php</code>中进行如下配置：</p>
+<p>a. aliases中增加KLog的配置，<br>b. providers中增加KLogProvider</p>
+<pre><code>&apos;aliases&apos; =&gt; [
+    ...
+    &apos;View&apos; =&gt; Illuminate\Support\Facades\View::class,
+    &apos;KLog&apos; =&gt; App\Http\Facades\KLog::class,
+
+],
+&apos;providers&apos; =&gt; [
+    ...
+    App\Providers\RouteServiceProvider::class,
+    App\Providers\KLogProvider::class,
+],
+</code></pre><p>当然我们忘了一件重要的事情，那就是KLogLogic类的实现，这才是真正门面KLog调用的底层类。</p>
+<pre><code>&lt;?php
+namespace App\Http\Logic;
+
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+use Illuminate\Log\Writer;
+
+class KLogLogic 
+{
+    private static $writers = null;
+    const MAX_FILES = 5; // 最多保留MAX_FILES天的日志
+
+    public function getBizProc()
+    {
+        return $this-&gt;getLogger(&apos;biz_proc&apos;);
+    }
+
+    public function getBizProcErr()
+    {
+        return $this-&gt;getLogger(&apos;biz_proc_err&apos;);
+    }
+
+    private function getLogger($channel_name)
+    {
+        if (isset(self::$writers[$channel_name])) {
+            return self::$writers[$channel_name];
+        }
+
+        $new_writer = new Writer(new Logger($channel_name));
+        $log_file_path = storage_path() . &apos;/logs/&apos; . $channel_name . &apos;.log&apos;;
+        $new_writer-&gt;useDailyFiles($log_file_path, self::MAX_FILES);
+
+        self::$writers[$channel_name] = $new_writer;
+        return self::$writers[$channel_name];
+    }
+}
+</code></pre><p>搞定以后，我们如何使用KLog门面呢？很简单，notice和info后面的参数与门面Log一样，因为都是调用的Writer类的接口</p>
+<pre><code>use KLog;
+
+KLog::getBizProcErr()-&gt;info($msg);
+KLog::getBizProcErr()-&gt;notice($msg);
+</code></pre><p>如果要想添加新的日志，那么在KLogLogic中添加新的方法即可。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="cjwq1x7rb000b1os6yns3eykg" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Laravel/">Laravel</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Linux下expect使用教程" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/29/Linux下expect使用教程/" class="article-date">
+  <time datetime="2016-09-29T02:03:55.000Z" itemprop="datePublished">2016-09-29</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/29/Linux下expect使用教程/">Linux下expect使用教程</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="cjwq1x7s1000h1os6j13j755x" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-匿名函数与闭包" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/09/21/匿名函数与闭包/" class="article-date">
@@ -125,7 +306,7 @@ echo $foo, $bar; // Outputs &quot;Hello World!&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="cjwhtu0fz005e7ws6guj3avt1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="cjwq1x8i0005l1os60fwuc144" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -277,7 +458,7 @@ ZEND_FUNCTION(create_function)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="cjwhtu0ai000d7ws6k5t8mjes" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="cjwq1x7so000o1os6vge7isod" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -333,7 +514,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="cjwhtu0a000057ws6psxd5er0" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="cjwq1x7o600021os60sa2mz4k" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -375,7 +556,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="cjwhtu09j00027ws6zh5g1un6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="cjwq1x7lj00011os6y4b03h8x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -471,7 +652,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="cjwhtu09v00047ws64po0r9aq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="cjwq1x7q200051os6vnibur5v" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -571,7 +752,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="cjwhtu0a400067ws64bck86eh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="cjwq1x7q900061os6r8e33qfj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -663,7 +844,7 @@ extern ZEND_API zend_executor_globals executor_globals;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="cjwhtu09c00017ws6sohnk8tk" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="cjwq1x7pm00041os6c7g5n35e" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -895,169 +1076,10 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="cjwhtu0b2000v7ws6f78ajrz6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="cjwq1x7tp000q1os6uzhhaa73" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-PHP源码之准备工作和背景知识" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/18/PHP源码之准备工作和背景知识/" class="article-date">
-  <time datetime="2016-09-18T05:37:16.000Z" itemprop="datePublished">2016-09-18</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/18/PHP源码之准备工作和背景知识/">PHP源码之准备工作和背景知识</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>深入理解PHP内核–学习版<br>说明：<a href="http://www.php-internals.com/" target="_blank" rel="noopener">深入理解PHP内核</a>是非常非常好的书，当然书中内容只有你详细尝试过，走一遍代码才能理解的更深刻，这几篇文章，当做自己的一个学习笔记。</p>
-<h2 id="一、学习环境搭建"><a href="#一、学习环境搭建" class="headerlink" title="一、学习环境搭建"></a>一、学习环境搭建</h2><ol>
-<li>php源代码： 我下载的是php5.6.25。</li>
-<li>编译环境：由于会涉及到nginx，php，mysql等等，为了快速搭建lnmp的环境，建议使用<a href="http://lnmp.org/" target="_blank" rel="noopener">lnmp</a>先安装所需要的各种软件包。</li>
-<li><p>编译语句：<br> 因为我是在一个全新的centos虚拟机上进行学习，因此安装目录是/usr/local/php。</p>
-<p> <code>&#39;./configure&#39;  &#39;--prefix=/usr/local/php&#39; &#39;--with-config-file-path=/usr/local/php/etc&#39; &#39;--enable-fpm&#39; &#39;--with-fpm-user=www&#39; &#39;--with-fpm-group=www&#39; &#39;--with-mysql=mysqlnd&#39; &#39;--with-mysqli=mysqlnd&#39; &#39;--with-pdo-mysql=mysqlnd&#39; &#39;--with-iconv-dir=libiconv&#39; &#39;--with-freetype-dir=/usr/local/freetype&#39; &#39;--with-jpeg-dir&#39; &#39;--with-png-dir&#39; &#39;--with-zlib&#39; &#39;--with-libxml-dir=/usr&#39; &#39;--enable-xml&#39; &#39;--disable-rpath&#39; &#39;--enable-bcmath&#39; &#39;--enable-shmop&#39; &#39;--enable-sysvsem&#39; &#39;--enable-inline-optimization&#39; &#39;--with-curl&#39; &#39;--enable-mbregex&#39; &#39;--enable-mbstring&#39; &#39;--with-mcrypt&#39; &#39;--enable-ftp&#39; &#39;--with-openssl&#39; &#39;--with-mhash&#39; &#39;--enable-pcntl&#39; &#39;--enable-sockets&#39; &#39;--enable-zip&#39; &#39;--enable-soap&#39; &#39;--with-gettext&#39; &#39;--disable-fileinfo&#39; &#39;--enable-opcache&#39; &#39;--enable-intl&#39; &#39;--with-xsl&#39;</code></p>
-<p> 此时试一下php是否可以运行</p>
-</li>
-<li><p>php的源码目录结构</p>
-<ul>
-<li>build：放置一些和源码编译相关的一些文件。比如开始构建之前的buildconf脚本等文件</li>
-<li>ext 官方扩展目录，包括了绝大多数PHP的函数定义和实现，如array系列，pdo系列，spl系列等函数实现</li>
-<li>main：这里存放的是PHP最为核心的文件了，主要实现php的基本设施。</li>
-<li>zend：zend引擎的实现目录，比如脚本的词法语法解析，opcode的执行和扩展机制的实现等等</li>
-<li>pear：php扩展与应用仓库</li>
-<li>sapi：包含了各种服务器抽象层的代码，如apache的mod_php，cgi，fastcgi以及fpm等接口</li>
-<li>TSRM：</li>
-<li>tests</li>
-<li>win32</li>
-</ul>
-</li>
-</ol>
-<ol start="5">
-<li><p>php源码阅读工具</p>
-<p> 使用vim+ctags阅读</p>
-<ul>
-<li>安装ctags: <code>yum install ctags</code></li>
-<li>生成tags: <code>cd /your/php/source/directory  &amp;&amp; ctags -R</code></li>
-<li>在.vimrc中添加ctags路径：<code>set tags+=/your/php/source/directory/tags</code></li>
-<li>使用：“使用 Ctrl+] 就可以自动跳转至定义，Ctrl+t 可以返回上一次查看位置。这样就可以快速的在代码之间“游动”了。</li>
-</ul>
-</li>
-</ol>
-<ol start="6">
-<li><p>PHP源码中的常用代码</p>
-<ul>
-<li>双井号(##)：”##”被称为 连接符（concatenator），它是一种预处理运算符， 用来把两个语言符号(Token)组合成单个语言符号。 这里的语言符号不一定是宏的变量。并且双井号不能作为第一个或最后一个元素存在</li>
-<li>单井号(#):”#”是一种预处理运算符，它的功能是将其后面的宏参数进行 字符串化操作 ， 简单说就是在对它所引用的宏变量通过替换后在其左右各加上一个双引号， 用比较官方的话说就是将语言符号(Token)转化为字符串</li>
-<li>宏定义中的do-while循环</li>
-<li><code>#line</code>预处理:用于改变当前的行号（<strong>LINE</strong>）和文件名（<strong>FILE</strong>）</li>
-<li>PHP中的全局变量宏，如PG()， EG()之类的函数，他们都是PHP中定义的宏，这系列宏主要的作用是解决线程安全所写的全局变量包裹宏。在PHP代码的其他地方也存在很多类似的宏，这些宏和PG宏一样，都是为了将线程安全进行封装，同时通过约定的 G 命名来表明这是全局的， 一般都是个缩写，因为这些全局变量在代码的各处都会使用到，这也算是减少了键盘输入。</li>
-</ul>
-</li>
-</ol>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt01/01-00-prepare-and-background" target="_blank" rel="noopener">第一章 准备工作和背景知识</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjwhtu0an000i7ws6ylm8en5q" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-php原理好文章列表" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/10/php原理好文章列表/" class="article-date">
-  <time datetime="2016-09-10T00:24:56.000Z" itemprop="datePublished">2016-09-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/10/php原理好文章列表/">php原理-鸟哥的文章列表</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol start="0">
-<li><p>概述</p>
-<p> <a href="http://www.laruence.com/2008/08/11/147.html" target="_blank" rel="noopener">深入浅出PHP</a></p>
-</li>
-<li><p>变量</p>
-<p> <a href="http://www.laruence.com/2008/08/22/412.html" target="_blank" rel="noopener">深入理解PHP原理之变量</a><br> <a href="http://www.laruence.com/2008/08/26/463.html" target="_blank" rel="noopener">深入理解PHP原理之变量作用域(Scope in PHP) </a><br> <a href="http://www.laruence.com/2008/09/19/520.html" target="_blank" rel="noopener">深入理解PHP原理之变量分离/引用</a><br> <a href="http://www.php-internals.com/book/?p=chapt06/06-06-copy-on-write" target="_blank" rel="noopener">深入理解php内核之写时复制</a><br> 到了引用这儿还是有点懵逼<br> <a href="http://www.laruence.com/2008/11/07/581.html" target="_blank" rel="noopener">PHP的GET/POST等大变量生成过程</a><br> <a href="http://www.laruence.com/2009/12/26/1198.html" target="_blank" rel="noopener">深入理解PHP原理之变量生命期(一)</a><br> <a href="http://www.laruence.com/2011/10/10/2212.html" target="_blank" rel="noopener">Array dereferencing</a><br> <a href="http://www.laruence.com/2010/12/08/1716.html" target="_blank" rel="noopener">如何获取一个变量的名字</a><br> 如何获取一个变量的名字中提到了<code>活动符号表</code><br> 而在PHP中, 所有的变量都存储在称为”符号表”的HastTable结构中. 在解析执行的过程中, 依旧保留着着”符号”信息, 所以, 肯定是可以获取到的.</p>
-<p> <a href="http://php.net/manual/zh/internals2.variables.php" target="_blank" rel="noopener">变量的使用</a></p>
-<p> 而在PHP中, 符号的作用域是和活动符号表相关联的. 同一时间, 只有一个活动符号表.</p>
-<p> 那么怎么理解活动符号表和符号表呢?</p>
-<p> 对于PHP来说, 当前活动的符号表是保存在全局变量EG(active_symbol_table)中的, 而于此同时, 还有个全局符号表保存在EG(symbol_table)中, 在进入一个函数调用的执行体之前, 会生成一个新的active_symbol_table, 并且会保持一个调用栈式样的符号表栈:EG(symtable_cache), 以便在退出函数调用的时候, 恢复之前的活动符号表(作用域).</p>
-<p> 同时在PHP中, 不能实现作用域继承, 也就是不能直接访问作用域外层的符号(需要加上golbal声明), 而如果加上global的声明的话, 也会在当前的活动作用域生成一个copy, 也就是说, 不存在在当前作用域可见的符号是保存在全局符号表的</p>
-</li>
-<li><p>函数</p>
-<p> <a href="http://www.laruence.com/2008/08/12/164.html" target="_blank" rel="noopener">深入理解PHP原理之函数(Introspecting PHP Function)</a><br> 函数分为两种zend_internal_function(对应结构体_zend_internal_function)和用户自定义函数(对应结构体_zend_op_array)。还有一个结构体zend_function.<br> 首先你要理解他的设计目标： zend_internal_function, zend_function,zend_op_array可以安全的互相转换(The are not identical structs, but all the elements that are in “common” they hold in common, thus the can safely be casted to each other);<br> 具体来说，当在op code中通过ZEND_DO_FCALL调用一个函数的时候，ZE会在函数表中，根据名字（其实是lowercase的函数名字，这也就是为什么PHP的函数名是大小写不敏感的)查找函数， 如果找到，返回一个zend_function结构的指针(仔细看这个上面的zend_function结构), 然后判断type,如果是ZEND_INTERNAL_FUNCTION， 那么ZE就调用zend_execute_internal,通过zend_internal_function.handler来执行这个函数， 如果不是，就调用zend_execute来执行这个函数包含的zend_op_array.</p>
-<p> 【todo】现在不明白的是zend_op_array里面到底存的是什么?<br> <a href="http://www.laruence.com/2011/10/10/2229.html" target="_blank" rel="noopener">函数类型提示(Callable typehint) </a><br> <a href="http://www.laruence.com/2010/06/20/1602.html" target="_blank" rel="noopener">深入理解PHP之匿名函数</a></p>
-</li>
-<li><p>opcode</p>
-<p> <a href="http://www.laruence.com/2008/06/18/221.html" target="_blank" rel="noopener">深入理解PHP原理之opcodes</a><br> <a href="http://www.laruence.com/2008/09/23/539.html" target="_blank" rel="noopener">使用PHP embed sapi实现opcodes查看器</a><br> <a href="http://www.laruence.com/2012/08/16/2701.html" target="_blank" rel="noopener">关于PHP的编译和执行分离</a><br> <a href="http://www.laruence.com/2010/08/03/1697.html" target="_blank" rel="noopener">深入理解PHP原理之异常机制</a><br> <a href="http://www.laruence.com/2008/08/24/377.html" target="_blank" rel="noopener">PHP源码分析之Global关键字</a><br> 也就是说， 如果你global了一个变量，那么Zend就会去全局symbol_table去寻找，如果找不到，就会在全局symbol_table中分配相应的变量。通过这样的机制，实现了全局变量</p>
-</li>
-<li><p>对象</p>
-<p> <a href="http://www.laruence.com/2010/05/18/1482.html" target="_blank" rel="noopener">深入理解PHP原理之对象(一)</a><br> <a href="http://www.laruence.com/2008/08/24/427.html" target="_blank" rel="noopener">PHP5多重继承顺序的bug</a></p>
-</li>
-<li><p>数组</p>
-<p> <a href="http://www.laruence.com/2008/10/31/574.html" target="_blank" rel="noopener">关于一笔试题(Iterator模式)</a><br> <a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a><br> <a href="http://www.laruence.com/2009/07/23/994.html" target="_blank" rel="noopener">PHP中的Hash算法</a><br> <a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组（遍历顺序)</a></p>
-</li>
-<li><p>扩展</p>
-<p> <a href="http://www.laruence.com/2008/08/16/301.html" target="_blank" rel="noopener">扩展PHP(一)</a><br> <a href="http://www.laruence.com/2011/09/13/2139.html" target="_blank" rel="noopener">关于PHP扩展开发的一些资源</a><br> <a href="http://www.laruence.com/2009/04/28/719.html" target="_blank" rel="noopener">用C/C++扩展你的PHP</a><br> <a href="http://www.laruence.com/2009/08/18/1042.html" target="_blank" rel="noopener">保证PHP扩展的依赖关系</a><br> <a href="http://www.laruence.com/2009/06/14/945.html" target="_blank" rel="noopener">深入理解PHP原理之扩展载入过程</a></p>
-</li>
-<li><p>内存管理</p>
-<p> <a href="http://www.laruence.com/2011/11/09/2277.html" target="_blank" rel="noopener">PHP原理之内存管理中难懂的几个点</a><br> <a href="http://www.laruence.com/2011/03/04/1894.html" target="_blank" rel="noopener">深入理解PHP内存管理之谁动了我的内存</a></p>
-</li>
-<li><p>SAPI<br> <a href="http://www.laruence.com/2008/08/12/180.html" target="_blank" rel="noopener">深入理解ZendSAPIs</a><br> <a href="http://docs.php.net/manual/zh/features.gc.php" target="_blank" rel="noopener">垃圾回收机制</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">第二节 SAPI概述</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-03-fastcgi" target="_blank" rel="noopener">fastcgi</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-02-embedding-php" target="_blank" rel="noopener">嵌入式sapi</a></p>
-</li>
-<li><p>其他<br> <a href="http://www.laruence.com/2009/07/27/1020.html" target="_blank" rel="noopener">深入理解PHP原理之错误抑制与内嵌HTML</a><br> <a href="http://www.laruence.com/2011/05/31/2018.html" target="_blank" rel="noopener">PHP Performance Optimization</a><br> <a href="http://www.laruence.com/2011/12/19/2399.html" target="_blank" rel="noopener">关于PHP浮点数你应该知道的</a><br> <a href="http://www.laruence.com/2013/03/26/2884.html" target="_blank" rel="noopener">PHP浮点数的一个场景问题的解答</a><br> <a href="http://www.laruence.com/2008/11/07/586.html" target="_blank" rel="noopener">深入理解PHP原理之文件上传</a><br> <a href="http://www.laruence.com/2009/05/31/889.html" target="_blank" rel="noopener">PHP受locale影响的函数</a><br> <a href="http://www.laruence.com/2009/08/22/1059.html" target="_blank" rel="noopener">字符编码详解</a><br> <a href="http://www.laruence.com/2009/12/09/1180.html" target="_blank" rel="noopener">isset与is_null的不同</a><br> isset是语句 is_null是函数，判断是否为null时可以使用===<br> <a href="http://www.laruence.com/2010/04/15/1414.html" target="_blank" rel="noopener">深入理解ob_flush和flush的区别</a><br> <a href="http://www.laruence.com/2015/05/28/3038.html" target="_blank" rel="noopener">在php中使用协程实现多任务调度</a><br> <a href="http://www.laruence.com/2008/04/16/98.html" target="_blank" rel="noopener">使用fsock实现异步调用php</a><br> <a href="http://www.laruence.com/2011/12/06/2381.html" target="_blank" rel="noopener">更简单的重现PHP core调用栈</a><br> <a href="http://www.laruence.com/2011/10/19/2247.html" target="_blank" rel="noopener">Zend Signal in PHP5.4</a><br> <a href="http://www.laruence.com/2011/03/24/858.html" target="_blank" rel="noopener">一些PHP Coding Tips</a></p>
-</li>
-<li><p>Dtrace<br><a href="http://php.net/manual/zh/features.dtrace.php" target="_blank" rel="noopener">Dtrace</a><br><a href="http://php.net/manual/zh/internals2.preface.php" target="_blank" rel="noopener">php骇客指南</a></p>
-</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjwhtu0f5004i7ws6doat98xw" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
 
     </footer>
   </div>
@@ -1084,7 +1106,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1094,7 +1116,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1116,6 +1138,14 @@ STANDARD_SAPI_MODULE_PROPERTIES
       <ul>
         
           <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
           </li>
         
@@ -1125,14 +1155,6 @@ STANDARD_SAPI_MODULE_PROPERTIES
         
           <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

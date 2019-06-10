@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>linux同步机制 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="日常学习和工作中经常用到linux同步机制，因此进行一个总结。 一、为什么需要同步 很简单，同一个资源的修改只能同时被一个进程或线程修改，不然会出现异常情况。 二、同步的机制  原子操作 自旋锁 信号量 互斥锁 读写锁  三、自旋锁 自旋锁是linux内核中使用非常频繁的锁，而我们在写c++或golang代码时基本不会直接使用自旋锁。 但是我们遇到性能问题时，通过perf top去查看时经常会看到">
+<meta name="keywords" content="linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux同步机制">
+<meta property="og:url" content="http://keything.github.io/2019/06/10/linux同步机制/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="日常学习和工作中经常用到linux同步机制，因此进行一个总结。 一、为什么需要同步 很简单，同一个资源的修改只能同时被一个进程或线程修改，不然会出现异常情况。 二、同步的机制  原子操作 自旋锁 信号量 互斥锁 读写锁  三、自旋锁 自旋锁是linux内核中使用非常频繁的锁，而我们在写c++或golang代码时基本不会直接使用自旋锁。 但是我们遇到性能问题时，通过perf top去查看时经常会看到">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-06-10T07:24:37.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="linux同步机制">
+<meta name="twitter:description" content="日常学习和工作中经常用到linux同步机制，因此进行一个总结。 一、为什么需要同步 很简单，同一个资源的修改只能同时被一个进程或线程修改，不然会出现异常情况。 二、同步的机制  原子操作 自旋锁 信号量 互斥锁 读写锁  三、自旋锁 自旋锁是linux内核中使用非常频繁的锁，而我们在写c++或golang代码时基本不会直接使用自旋锁。 但是我们遇到性能问题时，通过perf top去查看时经常会看到">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-linux同步机制" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/10/linux同步机制/" class="article-date">
+  <time datetime="2019-06-10T07:24:08.000Z" itemprop="datePublished">2019-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      linux同步机制
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>日常学习和工作中经常用到linux同步机制，因此进行一个总结。</p>
+<p>一、为什么需要同步</p>
+<p>很简单，同一个资源的修改只能同时被一个进程或线程修改，不然会出现异常情况。</p>
+<p>二、同步的机制</p>
+<ol>
+<li>原子操作</li>
+<li>自旋锁</li>
+<li>信号量</li>
+<li>互斥锁</li>
+<li>读写锁</li>
+</ol>
+<p>三、自旋锁</p>
+<p>自旋锁是linux内核中使用非常频繁的锁，而我们在写c++或golang代码时基本不会直接使用自旋锁。 但是我们遇到性能问题时，通过perf top去查看时经常会看到spin_lock占了非常多的CPU，这是因为很多锁的底层实现都会使用自旋锁。 </p>
+<p>所谓自旋锁：</p>
+<p>当进程A申请锁成功后，进程B申请锁就会失败，但是进程B不会调度，原地自旋。就在原地转到天昏地暗只为等到进程A释放锁。由于不会睡眠和调度的特性，在中断上下文中，数据的保护一般都是选择自旋锁。</p>
+<p>自旋锁的实现：</p>
+<p>linux中针对每一个spin lock会有两个计数。分别是next和owner（初始值为0）。进程A申请锁时，会判断next和owner的值是否相等。如果相等就代表锁可以申请成功，否则原地自旋。直到owner和next的值相等才会退出自旋。假设进程A申请锁成功，然后会next加1。此时owner值为0，next值为1。进程B也申请锁，保存next得值到局部变量tmp（tmp = 1）中。由于next和owner值不相等，因此原地自旋读取owner的值，判断owner和tmp是否相等，直到相等退出自旋状态。当然next的值还是加1，变成2。进程A释放锁，此时会将owner的值加1，那么此时B进程的owner和tmp的值都是1，因此B进程获得锁。当B进程释放锁后，同样会将owner的值加1。最后owner和next都等于2，代表没有进程持有锁。next就是一个记录申请锁的次数，而owner是持有锁进程的计数值。</p>
+<p>共享数据如果是被进程上下文使用，可以使用信号量和互斥量。<br>共享数据如果是被中断上下文使用，则必须使用自旋锁。 因为在中断上下文中不能使用睡眠的锁。 信号量和互斥量都是睡眠锁。</p>
+<h4 id="Spinlock的特点"><a href="#Spinlock的特点" class="headerlink" title="Spinlock的特点"></a>Spinlock的特点</h4><p>我们可以总结spin lock的特点如下：</p>
+<p>（1）spin lock是一种死等的锁机制。当发生访问资源冲突的时候，可以有两个选择：一个是死等，一个是挂起当前进程，调度其他进程执行。spin lock是一种死等的机制，当前的执行thread会不断的重新尝试直到获取锁进入临界区。</p>
+<p>（2）只允许一个thread进入。semaphore可以允许多个thread进入，spin lock不行，一次只能有一个thread获取锁并进入临界区，其他的thread都是在门口不断的尝试。</p>
+<p>（3）执行时间短。由于spin lock死等这种特性，因此它使用在那些代码不是非常复杂的临界区（当然也不能太简单，否则使用原子操作或者其他适用简单场景的同步机制就OK了），如果临界区执行时间太长，那么不断在临界区门口“死等”的那些thread是多么的浪费CPU啊（当然，现代CPU的设计都会考虑同步原语的实现，例如ARM提供了WFE和SEV这样的类似指令，避免CPU进入busy loop的悲惨境地）</p>
+<p>（4）可以在中断上下文执行。由于不睡眠，因此spin lock可以在中断上下文中适用</p>
+<h4 id="场景分析"><a href="#场景分析" class="headerlink" title="场景分析"></a>场景分析</h4><p>线程A访问共享资源R，线程B访问共享资源R；</p>
+<ol>
+<li><p>没有任何锁机制，<br>当线程A正在访问R 进行写操作时，线程B访问R进行写操作，同一个资源的同时写操作，会导致程序执行不正确。</p>
+</li>
+<li><p>加入自旋锁<br>线程A 先成功获得自旋锁，对R进行写操作。 此时B不能获得自旋锁，则一直在等待，线程B不能做其他事情，只是在等待自旋锁。 </p>
+</li>
+</ol>
+<p>如果线程A在对R进行写操作时，现在发生中断并执行的是线程B，那么线程B等待自旋锁会一直在等待；而A由于发生中断又不会释放锁，因此出现死锁 。</p>
+<p>为了解决这样的问题，linux kernel采用了这样的办法：如果涉及到中断上下文的访问，spin lock需要和禁止本CPU上的中断联合使用。</p>
+<h2 id="四、信号量"><a href="#四、信号量" class="headerlink" title="四、信号量"></a>四、信号量</h2><p>信号量（semaphore）是进程间通信处理同步互斥的机制。是在多线程环境下使用的一种措施，它负责协调各个进程，以保证他们能够正确、合理的使用公共资源。 它和spin lock最大的不同之处就是：无法获取信号量的进程可以睡眠，因此会导致系统调度。</p>
+<p>信号量实现：</p>
+<p>一个count计数：标记当前可用资源数量<br>一个链表：记录等待的进程</p>
+<h2 id="五、读写锁"><a href="#五、读写锁" class="headerlink" title="五、读写锁"></a>五、读写锁</h2><p>不管是自旋锁、信号量、还是互斥锁 在同一时间只能有一个进程进入临界区。对于有些情况，我们是可以区分读写操作的。因此，我们希望对于读操作的进程可以并发进行。对于写操作只限于一个进程进入临界区。而这种同步机制就是读写锁。读写锁一般具有以下几种性质：</p>
+<ul>
+<li>同一时间有且仅有一个写进程进入临界区。</li>
+<li>在没有写进程进入临界区的时候，同时可以有多个读进程进入临界区。</li>
+<li>读进程和写进程不可以同时进入临界区。</li>
+</ul>
+<p>对于某个给定资源的共享访问也称为共享-独占（shared-exclusive)上锁，因为获取一个读写锁用于读称为共享锁（shared lock)；获取一个读写锁用于写称为独占锁（exclusive lock）。</p>
+<h3 id="使用互斥锁和条件变量实现读写锁"><a href="#使用互斥锁和条件变量实现读写锁" class="headerlink" title="使用互斥锁和条件变量实现读写锁"></a>使用互斥锁和条件变量实现读写锁</h3><p>在UNP 8.4 中介绍了使用互斥锁和条件变量实现读写锁。</p>
+<p>TODO 待定</p>
+<h2 id="六、互斥锁"><a href="#六、互斥锁" class="headerlink" title="六、互斥锁"></a>六、互斥锁</h2><p>前文提到的semaphore在初始化count计数的时候，可以分为计数信号量和互斥信号量（二值信号量）。mutex和初始化计数为1的二值信号量有很大的相似之处。他们都可以用做资源互斥。但是mutex却有一个特殊的地方：只有持锁者才能解锁。但是，二值信号量却可以在一个进程中获取信号量，在另一个进程中释放信号量。如果是应用在嵌入式应用的RTOS，针对mutex的实现还会考虑优先级反转问题。</p>
+<p>互斥锁指代相互排斥(mutual exclusion)，是最基本的同步形式，用于保护临界区(critical region)，以保证任何时刻只有一个线程在执行其中代码。保护一个临界区的通常轮廓是：</p>
+<blockquote>
+<blockquote>
+<p>lock_the_mutex(…)<br>临界区<br>unlock_the_mutex(…)</p>
+</blockquote>
+</blockquote>
+<p>互斥锁保护的是临界区，实际上保护的是在临界区中被操纵的数据（data）。也就是说，互斥锁通常用于保护由多个线程分享的共享数据（shared data）</p>
+<h3 id="6-1-生产者和消费者问题"><a href="#6-1-生产者和消费者问题" class="headerlink" title="6.1 生产者和消费者问题"></a>6.1 生产者和消费者问题</h3><p>在UNP 第7章中讲述了典型的生产者和消费者的问题。</p>
+<h4 id="场景一：生产者全部生产以后，消费者再消费"><a href="#场景一：生产者全部生产以后，消费者再消费" class="headerlink" title="场景一：生产者全部生产以后，消费者再消费"></a>场景一：生产者全部生产以后，消费者再消费</h4><p>UNP给出的实现是多生产者单消费者的方式，因此生产者需要对buff加互斥锁。而消费者只需要顺序消费buff中内容即可。 </p>
+<h4 id="场景二：边生产边消费"><a href="#场景二：边生产边消费" class="headerlink" title="场景二：边生产边消费"></a>场景二：边生产边消费</h4><p>那么消费者所在线程会有两种情况：一种是buff内有数据，直接消费；第二种是buff内没有数据，那么消费者线程就必须一直等待，直到有数据到来，才开始消费。 </p>
+<p>UNP中给出了一个实现（UNP中给出的是一个函数，我是直接写的）：</p>
+<p> while(true) {<br>    lock_the_mutex(..)<br>    if (buf.empty) {<br>        unlock_the_mutex(…)<br>        continue<br>    } else {<br>        unlock_the_mutex(…)<br>        break<br>    }<br>}<br>operate buf data</p>
+<p>上面例子中，当期待的数据没有准备好时，我们的做法是：一次次循环，每次给互斥锁解锁、上锁。这称为轮询（polling），是一种对CPU时间的浪费。</p>
+<p>当然我们也许可以睡眠很短的一段时间，但是不知道应该睡眠多久，这儿需要的是另外一种类型的同步，它允许一个线程（或进程）睡眠到发生某个事件为止。</p>
+<h2 id="七、条件变量"><a href="#七、条件变量" class="headerlink" title="七、条件变量"></a>七、条件变量</h2><p>互斥锁用于上锁，条件变量用于等待。 </p>
+<p>那么在消费者进程中实现可以变为：</p>
+<p>pthread_mutex_lock(mutex_)<br>while (ready == 0) {<br>    pthread_cond_wait(cond,mutex)<br>}<br>pthread_mutex_unlock(mutex_)</p>
+<p>在生产者进程中实现变为</p>
+<p>pthread_mutex_lock(mutex_)<br>pthread_cond_signal(cond_)<br>pthread_mutex_unlock(mutex_)</p>
+<h3 id="7-1-使用条件变量实现一个消息队列"><a href="#7-1-使用条件变量实现一个消息队列" class="headerlink" title="7.1 使用条件变量实现一个消息队列"></a>7.1 使用条件变量实现一个消息队列</h3><p>实现代码：<a href="https://github.com/keything/learning-golang/blob/master/sync/block_queue.cpp" target="_blank" rel="noopener">https://github.com/keything/learning-golang/blob/master/sync/block_queue.cpp</a></p>
+<p>在调试代码中，会遇到死锁的问题，可以通过pstack {pid}的方式去看一下进程的调用栈来解决问题。 </p>
+<p>参考文章：</p>
+<p><a href="http://www.wowotech.net/kernel_synchronization/445.html" target="_blank" rel="noopener">Linux中常见同步机制设计原理
+</a></p>
+<p><a href="http://www.wowotech.net/kernel_synchronization/spinlock.html" target="_blank" rel="noopener">Linux内核同步机制之（四）：spin lock</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/06/10/linux同步机制/" data-id="cjwq1x85v002p1os6bm6e9kkb" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/06/08/spinlock/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">spinlock</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

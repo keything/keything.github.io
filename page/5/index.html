@@ -62,6 +62,271 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-spark-learn" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/31/spark-learn/" class="article-date">
+  <time datetime="2017-03-31T15:07:37.000Z" itemprop="datePublished">2017-03-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/03/31/spark-learn/">spark_learn</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="RDD介绍"><a href="#RDD介绍" class="headerlink" title="RDD介绍"></a>RDD介绍</h2><p>在Spark集群背后，有一个非常重要的分布式数据架构，即弹性分布式数据集（resilient distributed dataset, RDD)，它是逻辑集中的实体，在集群中的多台机器上进行数据分区。通过多台机器上不同RDD分区的控制，就能够减少机器之间的数据重排（data shuffling）。Spark提供了<code>partitionBy</code>运算符，能够通过集群中多台机器对原始RDD进行数据再分配来创建一个新的RDD。</p>
+<p>RDD是Spark的核心数据结构，通过RDD的依赖关系形成Spark的调度顺序。通过对RDD的操作形成整个Spark程序。</p>
+<p>###一、 RDD的两种创建方式</p>
+<h4 id="1-代码中并行化一个已经存在的集合-Parallelized-Collections"><a href="#1-代码中并行化一个已经存在的集合-Parallelized-Collections" class="headerlink" title="1. 代码中并行化一个已经存在的集合(Parallelized Collections)"></a>1. 代码中并行化一个已经存在的集合(Parallelized Collections)</h4><pre><code>从已经存在集合中创建
+
+    data = [1, 2, 3, 4, 5]
+    distData = sc.parallelize(data)
+
+
+集合并行化（parallel collections）的一个重要参数是：集合切分的分区数。Spark会为集群中每个分区运行一个任务。一般是集群中每个CPU有2-4个分区。通常，Spark会根据集群情况自动设置分区的数量。当然，你也可以手工输入一个数量，作为parallelize的第二个参数（如 `sc.parallelize(data, 10)`)
+一旦创建以后，数据就可以并行处理了。
+</code></pre><h4 id="2-从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源"><a href="#2-从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源" class="headerlink" title="2. 从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源"></a>2. 从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源</h4><p>可以使用SparkContext’s textFile方法创建文本文件RDDs。这个方法使用文件的URL（或者机器的本地文件, hdfs:://, s3n://等等），并作为行的集合进行读取。<br>从Hadoop获取的方式：</p>
+<pre><code>sc.textFile(&quot;your_hdfs_path&quot;)
+</code></pre><p>从Hive中获取：</p>
+<pre><code>import org.apache.spark.sql.SQLContext
+val hc = new org.apache.spark.sql.hive.HiveContext(sc)
+val df = hc.sql(&quot;show databases&quot;)
+df.show
+</code></pre><p>####使用spark读取文件的注意事项：<br>如果使用本地文件系统，If using a path on the local filesystem, the file must also be accessible at the same path on worker nodes. Either copy the file to all workers or use a network-mounted shared file system.</p>
+<p>所有spark的基于文件的输入方法，包含<code>textFile</code>，支持目录、压缩文件、wildcards等。例如，可以使用<code>textFile(&quot;/my/directory&quot;)</code>, <code>textFile(&quot;/my/directory/*.txt&quot;)</code>, <code>textFile(&quot;/my/directory/*.gz&quot;)</code>.</p>
+<p><code>textFile</code>方法可以有第二个参数用于控制分区的个数。默认spark会为每一个文件block创建一个分区（hdfs中默认block是64MB），但是你可以传递更大的分区数。注意，分区数不能少于block数量。</p>
+<p>除了<code>textFile</code>， spark的python api还支持许多其他格式：</p>
+<ul>
+<li><code>SparkContext.wholeTextFiles</code>,</li>
+<li><code>RDD.saveAsPickleFile</code>, <code>SparkContext.pickleFil</code></li>
+<li>SequenceFile and Hadoop Input/Output Formats</li>
+</ul>
+<p>###二、 RDD的操作<br>RDDs支持两种类型的操作：transformations（从已经存在的Rdd创建一个新的数据集合）和 actions（对数据集合运算后返回一个值）。例如：<code>map</code>是一个传入每个数据集合的元素并返回一个新的RDD的transformations。另一方面，<code>reduce</code>是一个action：使用一个函数对RDD中所有元素进行聚合，并返回一个最后结果。</p>
+<p>在Spark中所有的transformations都是惰性的，并不会马上计算。它只是记录了在base dataset上应用了哪些transformations。只有在有actions的时候才会真的计算。这样的设计使得spark的运行更加高效。</p>
+<p>默认，每次进行actions的时候，已经转换过的RDD还需要重新计算。当然，你可以使用<code>persist(or cache)</code>方法进行持久化。</p>
+<ol>
+<li>分类</li>
+</ol>
+<pre><code>+ Transformation和Action两个维度
++ 在Transformation维度会细分为：Value数据类型和Key-value对数据类型。Value类型封装在RDD类中直接使用，Key-Value对数据类型封装在PairRDDFunctions类中，用户需要引入`import org.apache.spark.SparkContext._`才能够使用。
+</code></pre><h3 id="三、RDD的Value型Transformation操作详细说明"><a href="#三、RDD的Value型Transformation操作详细说明" class="headerlink" title="三、RDD的Value型Transformation操作详细说明"></a>三、RDD的Value型Transformation操作详细说明</h3><h4 id="输入分区与输出分区是一对一型"><a href="#输入分区与输出分区是一对一型" class="headerlink" title="输入分区与输出分区是一对一型"></a>输入分区与输出分区是一对一型</h4><ol>
+<li><p>map</p>
+<p> 将函数应用于Rdd的每个元素，并返回结果作为一个新的RDD。<br> Applies a transformation function on each item of the RDD and returns the result as a new RDD.</p>
+</li>
+</ol>
+<pre><code>举例：
+
+
+    &gt;&gt;&gt; data = [&quot;hello&quot;, &quot;world12&quot;, &quot;nihao&quot;]
+    &gt;&gt;&gt; rdd = sc.parallelize(data)
+    &gt;&gt;&gt; maprdd = rdd.map(lambda x: len(x))
+    &gt;&gt;&gt; maprdd.collect()
+        [5, 7, 5]
+    &gt;&gt;&gt; total=maprdd.reduce(lambda a,b:a+b)
+
+    &gt;&gt;&gt; print total
+        17
+</code></pre><p>   实例2：</p>
+<pre><code>&gt;&gt;&gt; m = sc.parallelize([&quot;dog&quot;, &quot;tiger&quot;, &quot;lion&quot;])
+&gt;&gt;&gt; n = m.map(lambda x: (x, 1))
+&gt;&gt;&gt; n.collect()
+[(&apos;dog&apos;, 1), (&apos;tiger&apos;, 1), (&apos;lion&apos;, 1)]
+</code></pre><ol start="2">
+<li><p>flatMap</p>
+<p> 与map类似，但是允许在映射中释放多个元素。</p>
+<p> 举例：</p>
+<pre><code>&gt;&gt;&gt; data = [&quot;hello&quot;, &quot;world12&quot;, &quot;nihao&quot;]
+&gt;&gt;&gt; rdd.map(lambda x: (x,x)).collect()
+    [(&apos;hello&apos;, &apos;hello&apos;), (&apos;world12&apos;, &apos;world12&apos;), (&apos;nihao&apos;, &apos;nihao&apos;)]
+&gt;&gt;&gt; rdd.flatMap(lambda x: (x,x)).collect()
+    [&apos;hello&apos;, &apos;hello&apos;, &apos;world12&apos;, &apos;world12&apos;, &apos;nihao&apos;, &apos;nihao&apos;]
+</code></pre></li>
+<li><p>mapPartitions</p>
+</li>
+<li>glom</li>
+</ol>
+<h4 id="输入分区与输出分区多对一型"><a href="#输入分区与输出分区多对一型" class="headerlink" title="输入分区与输出分区多对一型"></a>输入分区与输出分区多对一型</h4><ol>
+<li><p>union</p>
+<p> 执行标准集合操作：A union B。并不进行去重操作，保存所有元素。如果想去重，可以使用distince()。</p>
+<pre><code>&gt;&gt;&gt; datamm = sc.parallelize([1,2,3,4,5]).union(sc.parallelize([4,5,6,7,8]))
+&gt;&gt;&gt; datamm.collect()
+    [1, 2, 3, 4, 5, 4, 5, 6, 7, 8]
+</code></pre></li>
+<li><p>cartesian</p>
+<p> 对两个RDD内所有元素进行笛卡尔积操作。<br> Computes the cartesian product between two RDDs </p>
+</li>
+</ol>
+<h4 id="输入分区与输出分区多对多"><a href="#输入分区与输出分区多对多" class="headerlink" title="输入分区与输出分区多对多"></a>输入分区与输出分区多对多</h4><ol>
+<li><p>groupBy：将元素按照函数生成相应的key，数据就转换为key-value格式，之后将key相同的元素分为一组。</p>
+<pre><code>&gt;&gt;&gt; m = sc.parallelize([&quot;tiger&quot;, &quot;mmmmm&quot;, &quot;nnn&quot;, &quot;hhh&quot;])
+&gt;&gt;&gt; n = m.groupBy(len)
+&gt;&gt;&gt; n.collect()
+[(5, &lt;pyspark.resultiterable.ResultIterable object at 0x106acbed0&gt;), (3, &lt;pyspark.resultiterable.ResultIterable object at 0x106acbb50&gt;)]
+&gt;&gt;&gt; def tra(k_records):
+...     k = k_records[0]
+...     print &quot;k=&quot;,k
+...     records = k_records[1]
+...     for record in records:
+...         print &quot;record:&quot;, record
+...
+&gt;&gt;&gt; o = n.map(tra)
+&gt;&gt;&gt; o.collect()
+k= 3
+record: nnn
+record: hhh
+k= 5
+record: tiger
+record: mmmmm
+[None, None]
+</code></pre></li>
+</ol>
+<h4 id="输出分区为输入分区子类型"><a href="#输出分区为输入分区子类型" class="headerlink" title="输出分区为输入分区子类型"></a>输出分区为输入分区子类型</h4><ol>
+<li><p>filter: 对元素进行过滤，对每个元素应用f函数，返回值为true的元素保留；反之，过滤。</p>
+<pre><code>&gt;&gt;&gt; def tigerFilter(x):
+...     if x == &quot;tiger&quot;:
+...             return 0
+...     else:
+...             return 1
+...
+&gt;&gt;&gt; m = sc.parallelize([&quot;tiger&quot;, &quot;mmmmm&quot;, &quot;nnn&quot;, &quot;hhh&quot;])
+&gt;&gt;&gt; m.filter(tigerFilter).collect()
+[&apos;mmmmm&apos;, &apos;nnn&apos;, &apos;hhh&apos;]
+</code></pre></li>
+<li>distinct：将RDD中的元素进行去重操作。</li>
+<li>subtract:相当于进行集合的差操作。         </li>
+<li>sample</li>
+<li>cache</li>
+</ol>
+<h3 id="Key-Value型Transformation算子"><a href="#Key-Value型Transformation算子" class="headerlink" title="Key-Value型Transformation算子"></a>Key-Value型Transformation算子</h3><ol>
+<li>mapValues:针对(key, value)中的value进行操作，而不对key进行处理</li>
+<li><p>对单个RDD或两个RDD聚集</p>
+<ul>
+<li>combineByKey</li>
+<li>reduceByKey</li>
+<li>partitionBy</li>
+</ul>
+</li>
+<li><p>连接</p>
+<ul>
+<li>join</li>
+<li>leftOutJoin</li>
+</ul>
+</li>
+</ol>
+<h2 id="Action算子"><a href="#Action算子" class="headerlink" title="Action算子"></a>Action算子</h2><ol>
+<li>无输出 foreach</li>
+<li><p>HDFS</p>
+<ul>
+<li>saveAsTextFile</li>
+<li>saveAsObjectFile</li>
+</ul>
+</li>
+<li><p>Scala集合和数据类型</p>
+<ul>
+<li>collect</li>
+<li>collectAsMap</li>
+<li>lookup</li>
+<li>reduceByKeyLocally</li>
+<li>count</li>
+<li>top</li>
+<li>reduce</li>
+<li>fold</li>
+<li>aggregate</li>
+<li></li>
+</ul>
+</li>
+</ol>
+<h4 id="working-with-key-value-Pairs"><a href="#working-with-key-value-Pairs" class="headerlink" title="working with key-value Pairs"></a>working with key-value Pairs</h4><p>有一些特别的操作只能应用于k/v对。最常见的是分布式重排操作（distributed shuffle)，如通过key进行grouping, aggregating。</p>
+<h2 id="Spark学习"><a href="#Spark学习" class="headerlink" title="Spark学习"></a>Spark学习</h2><h2 id="spark函数学习"><a href="#spark函数学习" class="headerlink" title="spark函数学习"></a>spark函数学习</h2><ol>
+<li><p>spark函数讲解 aggregate</p>
+<ul>
+<li><a href="https://www.iteblog.com/archives/1268" target="_blank" rel="noopener">https://www.iteblog.com/archives/1268</a></li>
+<li><a href="http://lib.csdn.net/article/scala/34642==" target="_blank" rel="noopener">http://lib.csdn.net/article/scala/34642==</a></li>
+</ul>
+</li>
+<li><p>所有spark函数讲解</p>
+<ul>
+<li><a href="http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html" target="_blank" rel="noopener">http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html</a></li>
+</ul>
+</li>
+</ol>
+<h3 id="Spark数据输入"><a href="#Spark数据输入" class="headerlink" title="Spark数据输入"></a>Spark数据输入</h3><ol>
+<li><p>从HDFS读取日志文件</p>
+<p> var file = sc.textFile(“hdfs://xxx”)</p>
+</li>
+</ol>
+<h3 id="Spark中数据处理"><a href="#Spark中数据处理" class="headerlink" title="Spark中数据处理"></a>Spark中数据处理</h3><ol>
+<li><p>过滤</p>
+<p> var errors = file.filter(line =&gt; line.contains(“error”)</p>
+</li>
+</ol>
+<p>aggregate函数</p>
+<p><a href="http://lib.csdn.net/article/scala/34642" target="_blank" rel="noopener">理解Spark RDD中的aggregate函数</a><br><a href="http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html" target="_blank" rel="noopener">learn</a></p>
+<p>groupBy函数</p>
+<p>combineByKey函数<br>countByKey函数<br>reduce<br>reduceByKey<br>sortBy<br>sortByKey</p>
+<p>S</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="cjwq1x8fl004k1os6px12pmhf" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-thrift-demo" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/16/thrift-demo/" class="article-date">
+  <time datetime="2017-01-16T02:54:18.000Z" itemprop="datePublished">2017-01-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/01/16/thrift-demo/">thrift-demo</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="cjwq1x8g9004u1os6gy7d97x0" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-thrift-install" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2017/01/16/thrift-install/" class="article-date">
@@ -98,7 +363,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjwhtu0fo00527ws6uv83ic7k" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjwq1x8gm00511os61bqiyqus" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -251,7 +516,7 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjwhtu0dl00357ws6hzzcinv7" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjwq1x87o00311os6xoiig6qz" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -366,7 +631,7 @@ df.show
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjwhtu0dq003c7ws6jqhj0116" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjwq1x8ah00381os6t1dbkpxr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -505,7 +770,7 @@ string = readString()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjwhtu0be00157ws6n0ljfuy8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjwq1x7xd001a1os6kw51znqc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -740,7 +1005,7 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjwhtu0bp001h7ws64oqs2etj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjwq1x7wl00101os68ull783z" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -784,7 +1049,7 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjwhtu0ba00127ws64m2fg1ic" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjwq1x8ho005g1os6niasoelw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -854,7 +1119,7 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="cjwhtu0dc002t7ws6aq9oy73h" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="cjwq1x84e002h1os6birv0jdv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
@@ -917,192 +1182,11 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="cjwhtu0ae000b7ws67789epgs" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="cjwq1x7qw00091os6kr6xc55l" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
 
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Laravel中日志类" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/10/03/Laravel中日志类/" class="article-date">
-  <time datetime="2016-10-03T08:19:37.000Z" itemprop="datePublished">2016-10-03</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/10/03/Laravel中日志类/">Laravel中日志类</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="问题描述及改进方法"><a href="#问题描述及改进方法" class="headerlink" title="问题描述及改进方法"></a>问题描述及改进方法</h2><ol>
-<li><p>Laravel中原有的日志门面Log</p>
-<p> 在Laravel中大家都知道Log，其用法是</p>
-<pre><code>use Log;
-Log::info();
-</code></pre><p> 但是这个存在一个问题，通过Log门面打印的日志是打印到一个Log文件中，不利于日志监控。</p>
-</li>
-<li><p>改进的日志门面KLog</p>
-<p> 通过添加一个自定义的日志门面KLog，将日志打印到不同的文件中，并且自动实现日志按天切割。</p>
-</li>
-</ol>
-<h2 id="实现日志门面KLog"><a href="#实现日志门面KLog" class="headerlink" title="实现日志门面KLog"></a>实现日志门面KLog</h2><p>所谓门面facade，简单概括为以静态语法的方式调用底层类。门面的详细解释可以参考<a href="http://laravelacademy.org/post/5820.html" target="_blank" rel="noopener">核心概念 —— 门面（Facades）</a></p>
-<p>在 Laravel 应用中，门面就是一个为容器中对象提供访问方式的类。该机制原理由 Facade 类实现。Laravel 自带的门面，以及我们创建的自定义门面，都会继承自 Illuminate\Support\Facades\Facade 基类。</p>
-<p>门面类只需要实现一个方法：getFacadeAccessor。正是 getFacadeAccessor 方法定义了从容器中解析什么，然后Facade 基类使用魔术方法 __callStatic() 从你的门面中调用解析对象。</p>
-<p>因此门面类KLog的实现如下</p>
-<pre><code>&lt;?php
-// filepath:app/Http/Facades/KLog.php
-namespace App\Http\Facades;
-
-use Illuminate\Support\Facades\Facade;
-
-
-/**
- * @see \APP\Http\Logic\KLogLogic
- */
-class KLog extends Facade
-{
-    protected static function getFacadeAccessor()
-    {
-       return &apos;KLog&apos;;//该方法的工作就是返回服务容器绑定类的别名
-    }
-}
-</code></pre><p>KLog门面继承 Facade 基类并定义了 getFacadeAccessor 方法，该方法的工作就是返回服务容器绑定类的别名，当用户引用 KLog类的任何静态方法时，Laravel 从服务容器中解析 KLog绑定，然后在解析出的对象上调用所有请求方法。<code>getFacadeAccessor</code>返回的是在config/app.php中aliases的别名。</p>
-<p>前面提到<code>门面就是一个为容器中对象提供访问方式的类</code>，那么服务容器是什么呢？可以参考<a href="http://laravelacademy.org/post/5805.html" target="_blank" rel="noopener">核心概念-服务容器</a> 。既然提到服务容器，就必然提到<a href="http://laravelacademy.org/post/5809.html" target="_blank" rel="noopener">服务提供者</a>。服务提供者是Laravel应用启动的中心，你自己的应用以及所有Laravel的核心服务都是通过服务提供者启动。</p>
-<p>KLog类的服务提供者实现如下:</p>
-<pre><code>&lt;?php
-// filepath:app/Providers/KLogProvider.php
-namespace App\Providers;
-
-use Illuminate\Support\ServiceProvider;
-
-class KLogProvider extends ServiceProvider
-{
-    public function register()
-    {
-        $this-&gt;app-&gt;singleton(&apos;KLog&apos;, function () {
-            return new \App\Http\Logic\KLogLogic();
-        });
-    }
-}
-</code></pre><p>在register方法中，你唯一要做的事情就是绑事物到服务容器。</p>
-<p>既然服务提供者和门面类都已经创建好，那么接下来我们需要进行配置，在<code>config/app.php</code>中进行如下配置：</p>
-<p>a. aliases中增加KLog的配置，<br>b. providers中增加KLogProvider</p>
-<pre><code>&apos;aliases&apos; =&gt; [
-    ...
-    &apos;View&apos; =&gt; Illuminate\Support\Facades\View::class,
-    &apos;KLog&apos; =&gt; App\Http\Facades\KLog::class,
-
-],
-&apos;providers&apos; =&gt; [
-    ...
-    App\Providers\RouteServiceProvider::class,
-    App\Providers\KLogProvider::class,
-],
-</code></pre><p>当然我们忘了一件重要的事情，那就是KLogLogic类的实现，这才是真正门面KLog调用的底层类。</p>
-<pre><code>&lt;?php
-namespace App\Http\Logic;
-
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-use Illuminate\Log\Writer;
-
-class KLogLogic 
-{
-    private static $writers = null;
-    const MAX_FILES = 5; // 最多保留MAX_FILES天的日志
-
-    public function getBizProc()
-    {
-        return $this-&gt;getLogger(&apos;biz_proc&apos;);
-    }
-
-    public function getBizProcErr()
-    {
-        return $this-&gt;getLogger(&apos;biz_proc_err&apos;);
-    }
-
-    private function getLogger($channel_name)
-    {
-        if (isset(self::$writers[$channel_name])) {
-            return self::$writers[$channel_name];
-        }
-
-        $new_writer = new Writer(new Logger($channel_name));
-        $log_file_path = storage_path() . &apos;/logs/&apos; . $channel_name . &apos;.log&apos;;
-        $new_writer-&gt;useDailyFiles($log_file_path, self::MAX_FILES);
-
-        self::$writers[$channel_name] = $new_writer;
-        return self::$writers[$channel_name];
-    }
-}
-</code></pre><p>搞定以后，我们如何使用KLog门面呢？很简单，notice和info后面的参数与门面Log一样，因为都是调用的Writer类的接口</p>
-<pre><code>use KLog;
-
-KLog::getBizProcErr()-&gt;info($msg);
-KLog::getBizProcErr()-&gt;notice($msg);
-</code></pre><p>如果要想添加新的日志，那么在KLogLogic中添加新的方法即可。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="cjwhtu0a900097ws6u9mxtadq" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Laravel/">Laravel</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Linux下expect使用教程" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/29/Linux下expect使用教程/" class="article-date">
-  <time datetime="2016-09-29T02:03:55.000Z" itemprop="datePublished">2016-09-29</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/29/Linux下expect使用教程/">Linux下expect使用教程</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="cjwhtu0al000g7ws65o4rsnn6" class="article-share-link">Share</a>
-      
-      
     </footer>
   </div>
   
@@ -1128,7 +1212,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1138,7 +1222,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1160,6 +1244,14 @@ KLog::getBizProcErr()-&gt;notice($msg);
       <ul>
         
           <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
           </li>
         
@@ -1169,14 +1261,6 @@ KLog::getBizProcErr()-&gt;notice($msg);
         
           <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

@@ -62,6 +62,97 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-cpp-libconfig" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/05/28/cpp-libconfig/" class="article-date">
+  <time datetime="2018-05-28T02:50:46.000Z" itemprop="datePublished">2018-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/05/28/cpp-libconfig/">cpp_libconfig</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="参考处："><a href="#参考处：" class="headerlink" title="参考处："></a>参考处：</h2><p><a href="https://hyperrealm.github.io/libconfig/" target="_blank" rel="noopener">https://hyperrealm.github.io/libconfig/</a></p>
+<h2 id="简单用法"><a href="#简单用法" class="headerlink" title="简单用法"></a>简单用法</h2><p>libconfig::Config 的方法</p>
+<pre><code>#include &lt;libconfig.h++&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    try {
+        libconfig::Config config;
+        config.readFile(&quot;config.ini&quot;);
+        const libconfig::Setting&amp; serverConf = config.lookup(&quot;server&quot;);
+        int serverPort;
+        bool flag = serverConf.lookupValue(&quot;service_port&quot;, serverPort);
+        std::cout &lt;&lt; &quot;server port &quot; &lt;&lt; serverPort &lt;&lt; std::endl;
+    } catch (const libconfig::ConfigException&amp; e) {
+        std::cout &lt;&lt; &quot;exception:&quot; &lt;&lt; e.what() &lt;&lt; std::endl;
+    }
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="cjwq1x7x800181os6odxcx5v4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-faiss-tutorial" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/04/10/faiss-tutorial/" class="article-date">
+  <time datetime="2018-04-10T07:40:44.000Z" itemprop="datePublished">2018-04-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/04/10/faiss-tutorial/">faiss-tutorial</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="cjwq1x7yx001r1os6gmjlezlf" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-faiss-install" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2018/04/10/faiss-install/" class="article-date">
@@ -162,7 +253,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjwhtu0c3001r7ws6u1l8lqsu" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjwq1x7yi001p1os6ebvgboat" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/faiss/">faiss</a></li></ul>
@@ -201,7 +292,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="cjwhtu0gg005w7ws6ks7kjba5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="cjwq1x8ld00721os6klrdupci" class="article-share-link">Share</a>
       
       
     </footer>
@@ -238,7 +329,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/24/octave操作记录/" data-id="cjwhtu0ez00497ws65jkurnzf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/02/24/octave操作记录/" data-id="cjwq1x8es00481os6v07kcm4b" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/octave/">octave</a></li></ul>
@@ -282,7 +373,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/23/awk使用技巧/" data-id="cjwhtu0bg00177ws68cebayfp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/02/23/awk使用技巧/" data-id="cjwq1x7wt00131os6j15lqkna" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -320,7 +411,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/23/golang-glide版本控制/" data-id="cjwhtu0cm00237ws64cupn0ay" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/01/23/golang-glide版本控制/" data-id="cjwq1x7zd001w1os634boaplr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -367,7 +458,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/23/golang环境变量/" data-id="cjwhtu0cz002f7ws6gtzsvma5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/01/23/golang环境变量/" data-id="cjwq1x82f00251os62anth7en" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -407,7 +498,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/01/21/golang的import介绍/" data-id="cjwhtu0eb003w7ws60evzqqur" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/01/21/golang的import介绍/" data-id="cjwq1x83o002e1os6e5eezpja" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -1348,394 +1439,10 @@ PUT /my_index_v1/_alias/my_index  # 设置别名 my_index指向my_index_v1
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/11/15/ElasticSearch基础知识/" data-id="cjwhtu0at000n7ws6dtucpvdi" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/11/15/ElasticSearch基础知识/" data-id="cjwq1x7qo00081os65imoa8fo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-go源码分析-http处理流程分析" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/10/31/go源码分析-http处理流程分析/" class="article-date">
-  <time datetime="2017-10-31T06:39:54.000Z" itemprop="datePublished">2017-10-31</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/10/31/go源码分析-http处理流程分析/">go源码分析-http处理流程分析</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="【概述】"><a href="#【概述】" class="headerlink" title="【概述】"></a>【概述】</h2><p>GO的web服务器的简单helloword 服务器就是使用net/http库的进行编写。需要看一下http.ListenAndServe的工作原理。</p>
-<pre><code>package main
-import &quot;net/http&quot;
-func main() {
-    http.HandleFunc(&quot;/&quot;, func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte(`hello world`))
-    })
-    http.ListenAndServe(&quot;:3000&quot;, nil)
-}
-</code></pre><p>主要包括：</p>
-<ul>
-<li>uri_path跟handler的对应关系是如何初始化的</li>
-<li>端口接收到请求后，请求是如何处理、以及如何被定义的func处理、响应是如何处理的</li>
-</ul>
-<h2 id="HandleFunc的参数"><a href="#HandleFunc的参数" class="headerlink" title="HandleFunc的参数"></a>HandleFunc的参数</h2><p>HandleFunc的第二个参数是func(ResponseWriter, *Request)，会赋值给HandlerFunc类型</p>
-<pre><code>// The HandlerFunc type is an adapter to allow the use of
-// ordinary functions as HTTP handlers.  If f is a function
-// with the appropriate signature, HandlerFunc(f) is a
-// Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
-
-// ServeHTTP calls f(w, r).
-func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
-    f(w, r)
-}
-</code></pre><h2 id="映射处理"><a href="#映射处理" class="headerlink" title="映射处理"></a>映射处理</h2><p>在src/net/http/server.go中使用<code>HandleFunc</code>进行注册，会将其放入多路复用的结构体<code>ServeMux</code>中。</p>
-<p>src/net/http/server.go</p>
-<pre><code>// HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    mux.Handle(pattern, HandlerFunc(handler))
-}
-// Handle registers the handler for the given pattern
-// in the DefaultServeMux.
-// The documentation for ServeMux explains how patterns are matched.
-func Handle(pattern string, handler Handler) { DefaultServeMux.Handle(pattern, handler) }
-// HandleFunc registers the handler function for the given pattern
-// in the DefaultServeMux.
-// The documentation for ServeMux explains how patterns are matched.
-func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    DefaultServeMux.HandleFunc(pattern, handler)
-}
-
- // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-    mux.Handle(pattern, HandlerFunc(handler))
-}
-
-type Handler interface {
-   ServeHTTP(ResponseWriter, *Request)
-}
-
-func (mux *ServeMux) Handle(pattern string, handler Handler) {
-}
-
-// The HandlerFunc type is an adapter to allow the use of
-// ordinary functions as HTTP handlers.  If f is a function
-// with the appropriate signature, HandlerFunc(f) is a
-// Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
-</code></pre><p>http请求的多路复用结构体<code>ServeMux</code></p>
-<pre><code>// ServeMux is an HTTP request multiplexer.
-// It matches the URL of each incoming request against a list of registered
-// patterns and calls the handler for the pattern that
-// most closely matches the URL.
-//
-// Patterns name fixed, rooted paths, like &quot;/favicon.ico&quot;,
-// or rooted subtrees, like &quot;/images/&quot; (note the trailing slash).
-// Longer patterns take precedence over shorter ones, so that
-// if there are handlers registered for both &quot;/images/&quot;
-// and &quot;/images/thumbnails/&quot;, the latter handler will be
-// called for paths beginning &quot;/images/thumbnails/&quot; and the
-// former will receive requests for any other paths in the
-// &quot;/images/&quot; subtree.
-//
-// Note that since a pattern ending in a slash names a rooted subtree,
-// the pattern &quot;/&quot; matches all paths not matched by other registered
-// patterns, not just the URL with Path == &quot;/&quot;.
-//
-// If a subtree has been registered and a request is received naming the
-// subtree root without its trailing slash, ServeMux redirects that
-// request to the subtree root (adding the trailing slash). This behavior can
-// be overridden with a separate registration for the path without
-// the trailing slash. For example, registering &quot;/images/&quot; causes ServeMux
-// to redirect a request for &quot;/images&quot; to &quot;/images/&quot;, unless &quot;/images&quot; has
-// been registered separately.
-//
-// Patterns may optionally begin with a host name, restricting matches to
-// URLs on that host only.  Host-specific patterns take precedence over
-// general patterns, so that a handler might register for the two patterns
-// &quot;/codesearch&quot; and &quot;codesearch.google.com/&quot; without also taking over
-// requests for &quot;http://www.google.com/&quot;.
-//
-// ServeMux also takes care of sanitizing the URL request path,
-// redirecting any request containing . or .. elements or repeated slashes
-// to an equivalent, cleaner URL.
-type ServeMux struct {
-    mu    sync.RWMutex
-    m     map[string]muxEntry
-    hosts bool // whether any patterns contain hostnames
-}
-</code></pre><h2 id="对外提供服务"><a href="#对外提供服务" class="headerlink" title="对外提供服务"></a>对外提供服务</h2><pre><code>// A Server defines parameters for running an HTTP server.
-// The zero value for Server is a valid configuration.
-type Server struct {
-    Addr           string        // TCP address to listen on, &quot;:http&quot; if empty
-    Handler        Handler       // handler to invoke, http.DefaultServeMux if nil
-    ReadTimeout    time.Duration // maximum duration before timing out read of the request
-    WriteTimeout   time.Duration // maximum duration before timing out write of the response
-    MaxHeaderBytes int           // maximum size of request headers, DefaultMaxHeaderBytes if 0
-    TLSConfig      *tls.Config   // optional TLS config, used by ListenAndServeTLS
-
-    // TLSNextProto optionally specifies a function to take over
-    // ownership of the provided TLS connection when an NPN
-    // protocol upgrade has occurred.  The map key is the protocol
-    // name negotiated. The Handler argument should be used to
-    // handle HTTP requests and will initialize the Request&apos;s TLS
-    // and RemoteAddr if not already set.  The connection is
-    // automatically closed when the function returns.
-    // If TLSNextProto is nil, HTTP/2 support is enabled automatically.
-    TLSNextProto map[string]func(*Server, *tls.Conn, Handler)
-
-    // ConnState specifies an optional callback function that is
-    // called when a client connection changes state. See the
-    // ConnState type and associated constants for details.
-    ConnState func(net.Conn, ConnState)
-
-    // ErrorLog specifies an optional logger for errors accepting
-    // connections and unexpected behavior from handlers.
-    // If nil, logging goes to os.Stderr via the log package&apos;s
-    // standard logger.
-    ErrorLog *log.Logger
-
-    disableKeepAlives int32     // accessed atomically.
-    nextProtoOnce     sync.Once // guards initialization of TLSNextProto in Serve
-    nextProtoErr      error
-}
-</code></pre><p>其中<code>ListenAndServe</code>函数的逻辑，其中tcpKeepAliveListener是开启了tcp的keep-alive</p>
-<pre><code>// ListenAndServe listens on the TCP network address srv.Addr and then
-// calls Serve to handle requests on incoming connections.
-// Accepted connections are configured to enable TCP keep-alives.
-// If srv.Addr is blank, &quot;:http&quot; is used.
-// ListenAndServe always returns a non-nil error.
-func (srv *Server) ListenAndServe() error {
-    addr := srv.Addr
-    if addr == &quot;&quot; {
-        addr = &quot;:http&quot;
-    }
-    ln, err := net.Listen(&quot;tcp&quot;, addr)
-    if err != nil {
-        return err
-    }
-    return srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)}) 
-}
-</code></pre><p>在Serve中在Accept处于等待，当请求到来时，Accept会从Listener l中接收一个到来的连接并创建一个新的goroutine处理请求。这个goroutine会读取请求，调用Server.Handler来处理他们。</p>
-<pre><code>func (srv *Server) Serve(l net.Listener) error {
-    defer l.Close()
-    ....
-    for {
-        rw, e := l.Accept()
-        if e != nil {
-            ....
-            return e
-        }
-        tempDelay = 0
-        c := srv.newConn(rw)
-        c.setState(c.rwc, StateNew) // before Serve can return
-        go c.serve()
-    }
-}
-</code></pre><p>其中newConn是获得一个新连接</p>
-<pre><code>// Create new connection from rwc.
-func (srv *Server) newConn(rwc net.Conn) *conn {
-    c := &amp;conn{
-        server: srv,
-        rwc:    rwc,
-    }
-    if debugServerConnections {
-        c.rwc = newLoggingConn(&quot;server&quot;, c.rwc)
-    }
-    return c
-}
-</code></pre><p>其中conn结构体在net/http/server.go文件中</p>
-<pre><code>// A conn represents the server side of an HTTP connection.
-type conn struct {
-    // server is the server on which the connection arrived.
-    // Immutable; never nil.
-    server *Server
-
-    // rwc is the underlying network connection.
-    // This is never wrapped by other types and is the value given out
-    // to CloseNotifier callers. It is usually of type *net.TCPConn or
-    // *tls.Conn.
-    rwc net.Conn
-
-    // remoteAddr is rwc.RemoteAddr().String(). It is not populated synchronously
-    // inside the Listener&apos;s Accept goroutine, as some implementations block.
-    // It is populated immediately inside the (*conn).serve goroutine.
-    // This is the value of a Handler&apos;s (*Request).RemoteAddr.
-    remoteAddr string
-
-    // tlsState is the TLS connection state when using TLS.
-    // nil means not TLS.
-    tlsState *tls.ConnectionState
-
-    // werr is set to the first write error to rwc.
-    // It is set via checkConnErrorWriter{w}, where bufw writes.
-    werr error
-
-    // r is bufr&apos;s read source. It&apos;s a wrapper around rwc that provides
-    // io.LimitedReader-style limiting (while reading request headers)
-    // and functionality to support CloseNotifier. See *connReader docs.
-    r *connReader
-
-    // bufr reads from r.
-    // Users of bufr must hold mu.
-    bufr *bufio.Reader
-
-    // bufw writes to checkConnErrorWriter{c}, which populates werr on error.
-    bufw *bufio.Writer
-
-    // lastMethod is the method of the most recent request
-    // on this connection, if any.
-    lastMethod string
-
-    // mu guards hijackedv, use of bufr, (*response).closeNotifyCh.
-    mu sync.Mutex
-
-    // hijackedv is whether this connection has been hijacked
-    // by a Handler with the Hijacker interface.
-    // It is guarded by mu.
-    hijackedv bool
-}
-</code></pre><p>serve方法</p>
-<pre><code>// Serve a new connection.
-func (c *conn) serve() {
-    c.remoteAddr = c.rwc.RemoteAddr().String()
-    defer func() {
-        ... // defer处理
-    }()
-
-    ... // tls connection
-
-    c.r = &amp;connReader{r: c.rwc}
-    c.bufr = newBufioReader(c.r)
-    c.bufw = newBufioWriterSize(checkConnErrorWriter{c}, 4&lt;&lt;10)
-
-    for {
-        w, err := c.readRequest() //读取请求
-        ...
-        if err != nil {
-            ....
-            return
-        }
-
-
-        ...     // Expect 100 Continue support
-
-        // HTTP cannot have multiple simultaneous active requests.[*]
-        // Until the server replies to this request, it can&apos;t read another,
-        // so we might as well run the handler in this goroutine.
-        // [*] Not strictly true: HTTP pipelining.  We could let them all process
-        // in parallel even if their responses need to be serialized.
-        serverHandler{c.server}.ServeHTTP(w, w.req)
-
-        ... // finish operation
-    }
-}
-</code></pre><p>看一下这里面最核心的 <code>serverHandler{c.server}.ServeHTTP(w, w.rseq)</code>处理逻辑</p>
-<pre><code>// serverHandler delegates to either the server&apos;s Handler or
-// DefaultServeMux and also handles &quot;OPTIONS *&quot; requests.
-type serverHandler struct {
-    srv *Server
-}
-
-func (sh serverHandler) ServeHTTP(rw ResponseWriter, req *Request) {
-    handler := sh.srv.Handler
-    if handler == nil {
-        handler = DefaultServeMux
-    }
-    if req.RequestURI == &quot;*&quot; &amp;&amp; req.Method == &quot;OPTIONS&quot; {
-        handler = globalOptionsHandler{}
-    }
-    handler.ServeHTTP(rw, req)
-}
-
-
-// ServeHTTP dispatches the request to the handler whose
-// pattern most closely matches the request URL.
-func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
-    if r.RequestURI == &quot;*&quot; {
-        if r.ProtoAtLeast(1, 1) {
-            w.Header().Set(&quot;Connection&quot;, &quot;close&quot;)
-        }
-        w.WriteHeader(StatusBadRequest)
-        return
-    }
-    h, _ := mux.Handler(r)
-    h.ServeHTTP(w, r)
-}
-</code></pre><p>最后的<code>h,_:=mux.Handler</code>获取的是<code>type HandlerFunc func(ResponseWriter, *Request)</code>，调用ServeHTTP也就是调用了我们注册的</p>
-<pre><code>http.HandleFunc(&quot;/&quot;, func(w http.ResponseWriter, r *http.Request) {    
-    w.Write([]byte(`hello world`))
-})
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/10/31/go源码分析-http处理流程分析/" data-id="cjwhtu0cx002c7ws6eajkbxcu" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/go-source-code/">go.source.code</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-linux硬盘是否是ssd判断" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/10/08/linux硬盘是否是ssd判断/" class="article-date">
-  <time datetime="2017-10-08T06:52:56.000Z" itemprop="datePublished">2017-10-08</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/10/08/linux硬盘是否是ssd判断/">linux硬盘是否是ssd判断</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="方法一"><a href="#方法一" class="headerlink" title="方法一"></a>方法一</h2><p>$ cat /sys/block/*/queue/rotational</p>
-<p>判断cat /sys/block/<em>/queue/rotational的返回值（其中</em>为你的硬盘设备名称，例如sda等等），如果返回1则表示磁盘可旋转，那么就是HDD了；反之，如果返回0，则表示磁盘不可以旋转，那么就有可能是SSD了</p>
-<p>这种方法有个问题，那就是/sys/block/下面不只有硬盘，还可能有别的块设备，它们都在干扰你的判断。</p>
-<h2 id="方法二"><a href="#方法二" class="headerlink" title="方法二"></a>方法二</h2><p>使用lsblk命令进行判断，参数-d表示显示设备名称，参数-o表示仅显示特定的列。<br>这种方法的优势在于它只列出了你要看的内容，结果比较简洁明了。还是那个规则，ROTA是1的表示可以旋转，反之则不能旋</p>
-<p>$ lsblk -d -o name,rota</p>
-<p>NAME ROTA<br>sda     1<br>sdb     1</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/10/08/linux硬盘是否是ssd判断/" data-id="cjwhtu0dg002y7ws6y5g5m7fz" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
 
     </footer>
   </div>
@@ -1762,7 +1469,7 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1772,7 +1479,7 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
     </div>
   </div>
 
@@ -1794,6 +1501,14 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
       <ul>
         
           <li>
+            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/08/spinlock/">spinlock</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
           </li>
         
@@ -1803,14 +1518,6 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
         
           <li>
             <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>
