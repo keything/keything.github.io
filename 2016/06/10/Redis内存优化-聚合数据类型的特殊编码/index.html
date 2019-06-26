@@ -8,7 +8,7 @@
   <title>Redis内存优化之小的聚合数据类型的特殊编码 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="Redis内存优化之小的聚合数据类型的特殊编码从Redis2.2开始，很多数据类型被优化为使用更小的空间。对于由数字组成的Hashes，Lists， Sets，Sorted Sets 在某些情况下可以使用使用更加有效的内存方式来进行编码，这种更有效的内存方式可以节约最少5倍最大10倍的内存。那么在什么情况这些数字组成的类型可以使用这种更有效的内存方式呢? 当元素个数小于给定的数量时， 当到了一个最">
-<meta name="keywords" content="redis,nosql">
+<meta name="keywords" content="nosql,redis">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Redis内存优化之小的聚合数据类型的特殊编码">
 <meta property="og:url" content="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/index.html">
@@ -134,7 +134,7 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjxclhjzg000z26s69hhyytb3" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjxcljtel000z35s6sck3yfk5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
