@@ -62,6 +62,150 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-C-编译错误汇总" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/04/04/C-编译错误汇总/" class="article-date">
+  <time datetime="2017-04-04T08:38:24.000Z" itemprop="datePublished">2017-04-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/04/04/C-编译错误汇总/">C++编译错误汇总</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>出现 undefined reference to <code>typeinfo for xxxx</code></li>
+</ol>
+<p>在定义抽象函数的时候 virtual函数的定义有问题。</p>
+<p>You must either provide a definition for virtual functions in your base class or declare them pure：</p>
+<pre><code>class Accel {
+public:
+    virtual void initialize(void) = 0;        //either pure virtual
+    virtual void measure(void) = 0; 
+    virtual void calibrate(void) {};          //or implementation 
+    virtual const int getFlightData(byte) {};
+};
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="cjxclaw1c0004zvs6b9hcz116" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-自动化测试" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/31/自动化测试/" class="article-date">
+  <time datetime="2017-03-31T15:14:55.000Z" itemprop="datePublished">2017-03-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/03/31/自动化测试/">自动化测试</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="自动化测试"><a href="#自动化测试" class="headerlink" title="自动化测试"></a>自动化测试</h2><h3 id="目的"><a href="#目的" class="headerlink" title="目的"></a>目的</h3><p>在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。</p>
+<p>自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。</p>
+<h3 id="简要概括单元测试、集成测试、接口测试"><a href="#简要概括单元测试、集成测试、接口测试" class="headerlink" title="简要概括单元测试、集成测试、接口测试"></a>简要概括单元测试、集成测试、接口测试</h3><ul>
+<li>单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。</li>
+<li>集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。</li>
+<li>接口测试：通过单元测试和集成测试验证了小功能，还需要通过接口测试验证整个链路是否按照预期执行。</li>
+</ul>
+<h2 id="自动化测试之单元测试"><a href="#自动化测试之单元测试" class="headerlink" title="自动化测试之单元测试"></a>自动化测试之单元测试</h2><h3 id="1-单元测试的FIRST准则"><a href="#1-单元测试的FIRST准则" class="headerlink" title="1. 单元测试的FIRST准则"></a>1. 单元测试的FIRST准则</h3><ul>
+<li>Fast：测试不能每跑一次都要耗费大量的时间。</li>
+<li>Independent： 测试与测试之间不应该存在依赖关系。</li>
+<li>Repeatable： 测试应该在任何环境下都能运行，不论是生产环境、测试环境，或者是在家里的笔记本电脑上。</li>
+<li>Self-Validating 测试的结果应该是显而易见的，不应该是靠人去查看它的输出才能判断测试的成功与失败，即使用断言来判断实际是否满足预期。</li>
+<li>Timely： 测试需要在正式代码之前就写好。</li>
+</ul>
+<h3 id="2-单元测试的一些其他要求"><a href="#2-单元测试的一些其他要求" class="headerlink" title="2. 单元测试的一些其他要求"></a>2. 单元测试的一些其他要求</h3><ul>
+<li>单元测试Case就是文档，因为说明了输入和输出</li>
+<li>每个case只测试单一函数的单一行为</li>
+<li>测试用例的名称要清晰表明测试目的，如TestCreateOrder_Failed_Pid_NotExist </li>
+<li>在编写正式代码之前，必须写出其相对应的单元测试；<br>这就是说一定要先写出一个单元测试（因为还没有编写正式代码，所以它肯定会失败），再编写正式代码。</li>
+<li>只要一个单元测试失败了，就不要再编写任何更多的单元测试了；<br>而是要去编写相应的的可以使之通过的正是代码，编译失败也算；</li>
+<li>只要正式代码可以使单元测试通过，就不要再编写更多的正式代码了；<br>正式代码需要满足的唯一目标就是通过单元测试，只要通过单元测试，就表示我们此部分的代码已经写完了。</li>
+</ul>
+<h3 id="3-单元测试的三段式"><a href="#3-单元测试的三段式" class="headerlink" title="3. 单元测试的三段式"></a>3. 单元测试的三段式</h3><p>单元测试的三段式：</p>
+<ul>
+<li>准备测试数据。</li>
+<li>对测试数据进行操作。</li>
+<li>进行判定。</li>
+</ul>
+<h3 id="3-单元测试的三大模块"><a href="#3-单元测试的三大模块" class="headerlink" title="3. 单元测试的三大模块"></a>3. 单元测试的三大模块</h3><ul>
+<li>驱动模块：相当于所测模块的主程序。它接收测试数据，把这些测试数据传送给被测模块，最后再输出实测结果。</li>
+<li>桩模块。由被测模块调用，用以代替由被测单元所调用的模块的功能，返回适当的数据或进行适当的操作使被测单元能继续运行下去，同时还要进行一定的数据处理，如打印入口和返回等，以便检验被测模块与其下级模块的接口</li>
+<li>被测系统 SUT （System Under Test）</li>
+</ul>
+<h3 id="4-测试替身-Test-Double"><a href="#4-测试替身-Test-Double" class="headerlink" title="4. 测试替身 Test Double"></a>4. 测试替身 Test Double</h3><p>前面提到了测试替身。</p>
+<p>替身、依赖注入<br>+参数传入<br>+构造函数<br>+set函数</p>
+<p>设计决定一切</p>
+<p>测试替身有很多种：</p>
+<ol>
+<li>mock是测试替身的一种，复杂的一种</li>
+<li>一般用mock来指定一个测试替身</li>
+<li>为什么用mock object</li>
+<li>返回一个数据</li>
+<li>返回一个true/false 状态，可以使用一个测试替身</li>
+<li>使用mock？是否按照预定顺序，是否执行？</li>
+</ol>
+<p>测试与实现的顺序：<br>先写测试在写实现</p>
+<h2 id="持续集成"><a href="#持续集成" class="headerlink" title="持续集成"></a>持续集成</h2><h3 id="1-持续集成Continuous-integration"><a href="#1-持续集成Continuous-integration" class="headerlink" title="1. 持续集成Continuous integration"></a>1. 持续集成Continuous integration</h3><ul>
+<li>定义：频繁地（一天多次）将代码集成到主干。它的核心措施是，代码集成到主干之前，必须通过自动化测试。只要有一个测试用例失败，就不能集成</li>
+</ul>
+<h3 id="2-持续集成的整个过程分为几步："><a href="#2-持续集成的整个过程分为几步：" class="headerlink" title="2. 持续集成的整个过程分为几步："></a>2. 持续集成的整个过程分为几步：</h3><ul>
+<li>代码提交</li>
+<li>代码测试：代码仓库对commit操作配置钩子（hook），只要提交代码或者合并进主干，就会跑自动化测试。</li>
+<li>构建：</li>
+<li>第二轮测试：进行全面测试，包含单元测试、集成测试、全链路接口测试。以自动化为主，少数无法自动化的测试用例需要人工跑</li>
+<li>部署</li>
+<li>回滚</li>
+</ul>
+<p>参考：</p>
+<p><a href="https://codeship.com/continuous-integration-essentials" target="_blank" rel="noopener">https://codeship.com/continuous-integration-essentials</a></p>
+<p><a href="http://codecloud.net/10516.html" target="_blank" rel="noopener">http://codecloud.net/10516.html</a><br><a href="http://www.uml.org.cn/test/201107085.asp" target="_blank" rel="noopener">http://www.uml.org.cn/test/201107085.asp</a><br><a href="http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd" target="_blank" rel="noopener">http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="cjxclaw7u0062zvs6haogqhp4" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-spark-learn" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2017/03/31/spark-learn/" class="article-date">
@@ -279,7 +423,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="cjwq1x8fl004k1os6px12pmhf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="cjxclaw6z0050zvs6vwl4dbqk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -317,7 +461,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="cjwq1x8g9004u1os6gy7d97x0" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="cjxclaw75005azvs6plnaiy82" class="article-share-link">Share</a>
       
       
     </footer>
@@ -363,7 +507,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjwq1x8gm00511os61bqiyqus" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="cjxclaw7h005nzvs65d1ofzhc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -516,7 +660,7 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjwq1x87o00311os6xoiig6qz" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="cjxclaw5b003czvs6omqn5fpr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -631,7 +775,7 @@ df.show
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjwq1x8ah00381os6t1dbkpxr" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="cjxclaw5o003pzvs6itay33d5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -770,7 +914,7 @@ string = readString()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjwq1x7xd001a1os6kw51znqc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="cjxclaw320019zvs6eevv12ck" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -1005,7 +1149,7 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjwq1x7wl00101os68ull783z" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="cjxclaw35001ezvs6zezipagn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -1049,143 +1193,10 @@ TServer.cpp
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjwq1x8ho005g1os6niasoelw" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="cjxclaw2y0017zvs60r1jm774" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-laravel到lumen" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/10/07/laravel到lumen/" class="article-date">
-  <time datetime="2016-10-07T09:55:38.000Z" itemprop="datePublished">2016-10-07</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/10/07/laravel到lumen/">laravel到lumen</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>在Lumen中，默认不会加载Facades，默认不会注册Provider，可以在bootstrap/app.php中看到。</p>
-<ol>
-<li><p>关于Facades<br> 如果想使用Facades，那么修改bootstrap/app.php</p>
-<pre><code>$app-&gt;withFacades();
-</code></pre><p> 如果你自己定义了Facades的话，那么需要使用如下方式加载:</p>
-<pre><code>$user_facades_alias = [
-    App\Http\Facades\KLog::class =&gt; &apos;KLog&apos;,
-];
-$app-&gt;withFacades(true, $user_facades_alias);
-</code></pre><p> 当然不能忘了加载Provider，</p>
-<pre><code>$app-&gt;register(App\Providers\KLogProvider::class);
-</code></pre></li>
-<li><p>关于加载配置文件</p>
-<p> 在Laravel中，我们已经习惯<code>config(&#39;config_file.config_item&#39;)</code>，但是在Lumen中服务都是按需绑定并加载的。为了与Laravel中代码尽可能保持一致，方便二者代码的迁移，因此依然在bootstrap/app.php中修改，修改如下：</p>
-<pre><code>$cfg_files = [
-    &apos;database_split&apos;,
-    &apos;database&apos;,
-    &apos;didicfg&apos;,
-    &apos;errno&apos;,
-    &apos;timeout&apos;,
-];
-
-foreach ($cfg_files as $cfg_file) {
-    $app-&gt;configure($cfg_file);
-}
-</code></pre></li>
-<li><p>关于异常处理</p>
-<p> 我们知道在app/Exception/Handler.php中可以对特定的异常进行特别处理，对于render返回return []，laravel会自动转为json输出，而对于Lumen必须return json_encode([])才可以。</p>
-</li>
-<li><p>目前我知道的需要改变的地方是这些，以后有的话会继续补充</p>
-</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="cjwq1x84e002h1os6birv0jdv" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Laravel等框架压测" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/10/06/Laravel等框架压测/" class="article-date">
-  <time datetime="2016-10-06T08:05:23.000Z" itemprop="datePublished">2016-10-06</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/10/06/Laravel等框架压测/">Laravel等框架压测</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>在学习Laravel过程中，发现大家都讲到Laravel性能比较差，又了解到Laravel为了性能专门有一个Lumen框架，为了更加客观的知道各个框架的性能，现在进行测试。</p>
-<ol>
-<li><p>压测工具<br> 采用boom</p>
-<p> 安装 pip install boom</p>
-</li>
-<li><p>压测参数</p>
-<p> boom your.domain -c 2000 -n 100</p>
-</li>
-<li><p>压测框架</p>
-<p> 对CI2，YII2，Laravel5.3， Lument5.2进行压测</p>
-</li>
-<li><p>代码及输出</p>
-<p> 都是在TestController中输出json串</p>
-<p> {“hello”:”world”,”hello2”:”world2”}</p>
-</li>
-<li><p>压测结果</p>
-<p> CI2&gt;LUMENT5.2&gt;YII2&gt;LARAVEL5.3(优化过)&gt;LARAVEL5.3(没有优化)<br> 开启OPCACHE以后性能有显著提高，如下图所示：</p>
-<p> <img src="/images/PHP框架QPS对比.png" alt="PHP框架QPS对比.png"></p>
-</li>
-</ol>
-<p>附注：Laravel优化的语句是</p>
-<pre><code>配置信息缓存 php artisan config:cache
-路由缓存 php artisan route:cache
-类映射加载优化 php artisan optimize
-自动加载优化 composer dumpautoload
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="cjwq1x7qw00091os6kr6xc55l" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
 
     </footer>
   </div>
@@ -1222,7 +1233,7 @@ foreach ($cfg_files as $cfg_file) {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1244,6 +1255,14 @@ foreach ($cfg_files as $cfg_file) {
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -1253,14 +1272,6 @@ foreach ($cfg_files as $cfg_file) {
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

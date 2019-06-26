@@ -62,6 +62,242 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-golang模块wiki译文" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/26/golang模块wiki译文/" class="article-date">
+  <time datetime="2019-06-26T01:57:41.000Z" itemprop="datePublished">2019-06-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Go 1.11 Modules</p>
+<p><a href="https://github.com/golang/go/wiki/Modules#quick-start" target="_blank" rel="noopener">译文</a></p>
+<p>Go1.11 中引入了<a href="https://golang.org/design/24301-versioned-go" target="_blank" rel="noopener">之前提到</a>的版本模块(versioned modules)。modules在Go 1.11版本中是实验的性质，计划在Go 1.13中引入最终版本。尽管还有很多细节会改变，但未来版本都会支持Go1.11 或Go1.12中定义的模块。 </p>
+<p>2018年1月提出了原型<a href="https://research.swtch.com/vgo" target="_blank" rel="noopener">vgo</a>。2018年7月 模块登录主仓库。Go1.1在2018正式发布。</p>
+<h2 id="目录内容"><a href="#目录内容" class="headerlink" title="目录内容"></a>目录内容</h2><h3 id="快速开始"><a href="#快速开始" class="headerlink" title="快速开始"></a>快速开始</h3><p>先看一下如何使用，后面再看一下细节。 </p>
+<ol>
+<li><p>在GOPATH目录外创建一个目录</p>
+<p> $ mkdir -p /tmp/scratchpad/hello<br> $ cd /tmp/scratchpad/hello</p>
+</li>
+<li><p>初始化一个新的模块</p>
+<p> go mod init github.com/you/hello</p>
+</li>
+<li><p>编写代码</p>
+<p> $ cat &lt;<eof> hello.go<br> package main</eof></p>
+<p> import (</p>
+<pre><code>&quot;fmt&quot;
+&quot;rsc.io/quote&quot;
+</code></pre><p> )</p>
+<p> func main() {</p>
+<pre><code>fmt.Println(quote.Hello())
+</code></pre><p> }<br> EOF</p>
+</li>
+<li><p>执行</p>
+<p> $ go build<br> $ ./hello</p>
+</li>
+</ol>
+<p><code>go.mod</code>文件会自动更新，明确指定你的依赖的版本，v1.5.2是一个<a href="https://semver.org/" target="_blank" rel="noopener">semver</a> 标记:</p>
+<pre><code>cat go.mod
+module github.com/you/hello
+require rsc.io/quote v1.5.2
+</code></pre><h3 id="日常工作方式"><a href="#日常工作方式" class="headerlink" title="日常工作方式"></a>日常工作方式</h3><p>在上面的例子中不需要使用 <code>go get</code>。<br>你的日常工作方式如下：</p>
+<ul>
+<li>在 <code>.go</code>代码中添加你的语句。 </li>
+<li>标准命令如<code>go build</code> 或 <code>go test</code>会自动添加所需要的依赖，并更新go.mod 并下载新的依赖。 </li>
+<li>如果有需要，可以通过<code>go get foo@v1.2.3</code>，<code>go get foo@master</code>, <code>go get foo@e3702bed2</code>，或者直接更改go.mod</li>
+</ul>
+<p>可能用到的一些功能：</p>
+<ul>
+<li><code>go list -m all</code></li>
+<li><code>go list -u -m all</code></li>
+<li><code>go get -u</code> 或 <code>go get -u=patch</code></li>
+<li><code>go build ./...</code> or <code>go test ./...</code></li>
+<li><code>go mod tidy</code></li>
+<li>replace</li>
+<li><code>go mod vendor</code></li>
+</ul>
+<p>在”New Concepts”中有四个部分，将会了解到关于module的足够的信息。 </p>
+<h2 id="New-Concepts"><a href="#New-Concepts" class="headerlink" title="New Concepts"></a>New Concepts</h2><h3 id="Modules"><a href="#Modules" class="headerlink" title="Modules"></a>Modules</h3><p>Module是相关go package的集合，将这些package聚合在一起作为一个独立单元。 </p>
+<p>Module记录精确的依赖，并创建可复用的构建。</p>
+<p>通常，一个版本控制的仓库在其根目录准确的包含一个模块。当然在一个仓库中也支持多个模块。</p>
+<p>总结仓库、模块、包的关系：</p>
+<ul>
+<li>A repository contains one or more Go modules.</li>
+<li>Each module contains one or more Go packages.</li>
+<li>Each package consists of one or more Go source files in a single directory</li>
+</ul>
+<p>模块必须是根据semver进行语义版本化的，其格式是v(major).(minor).(patch)。比如v0.1.0,v1.2.3,v1.5.0-rc.1。 开头的<code>v</code>是必须的。 如果使用Git，tag就是版本。</p>
+<h3 id="go-mod"><a href="#go-mod" class="headerlink" title="go.mod"></a>go.mod</h3><p>模块是由<code>go.mod</code>文件和go 源码的文件树定义的。 模块源码需要位于<code>GOPATH</code>目录之外。有四个指令：<code>module</code>,<code>require</code>,<code>replace</code>,<code>exclude</code>.</p>
+<p>下面是一个定义模块<code>github.com/my/thing</code>的<code>go.mod</code>文件的例子，</p>
+<pre><code>module github.com/my/thing
+
+require (
+    github.com/some/dependency v1.2.3
+    github.com/another/dependency/v4 v4.0.0
+)
+</code></pre><p>通过<code>module</code>指令表名模块的身份，并提供了<code>module</code> path。引入模块内所有包的话，都使用包的path 作为前缀。 模块路径和包相对路径决定了包的import path。</p>
+<p>例如，创建了模块<code>github.com/my/repo</code>，模块由两个包组成 <code>github.com/my/repo/foo</code> 和 <code>github.com/my/repo/bar</code>组成。<code>go.mod</code>第一行通常声明模块路径，即 <code>module github.com/my/repo</code>，对应到硬盘的目录结构是：</p>
+<pre><code>repo/
+├── go.mod
+├── bar
+│   └── bar.go
+└── foo
+    └── foo.go
+</code></pre><p>在Go源码中，使用包含模块路径的全路径引入包。举例，<code>go.mod</code>文件中声明模块路径是<code>example.com/my/module</code>，一个消费方应该是这样使用:</p>
+<p><code>import &quot;example.com/my/module/mypkg</code></p>
+<p>这就是从模块<code>example.com/my/module</code>中引入包<code>mypkg</code>的做法。 </p>
+<h3 id="版本选择-version-selection"><a href="#版本选择-version-selection" class="headerlink" title="版本选择(version selection)"></a>版本选择(version selection)</h3><ul>
+<li>引入<code>go.mod</code>中不存在的包时，<code>go build</code>和<code>go test</code>命令都会自动找到合适的模块 和 <code>最大版本</code>的依赖，写入到<code>go.mod</code>文件 作为一个<code>require</code>指令。 </li>
+<li>一个构建中，所有模块的版本选择使用<code>最小版本选择(minimal version selection)</code>算法。对于构造中的每个模块而言，使用的是<code>require</code>指令中明确列出的<code>语义最大化</code>的版本。</li>
+</ul>
+<p>举个例子，如果你的模块依赖模块A <code>需要D v1.0.0</code>，你的模块同时依赖模块B <code>需要D v1.1.1</code>，那么根据最小版本选择，那么<code>D v1.1.1</code>会被选择用于构建。即使<code>D v1.2.0</code>可用了，也依然使用<code>D v1.1.1</code>。</p>
+<p>最小版本选择算法的简短介绍可以看<a href="https://github.com/golang/proposal/blob/master/design/24301-versioned-go.md#update-timing--high-fidelity-builds" target="_blank" rel="noopener">High Fidelity Builds</a> 或者看 <a href="https://research.swtch.com/vgo" target="_blank" rel="noopener">more detailed <code>vgo</code> blog series</a></p>
+<h3 id="语义版本化（Semantic-Import-Versioning"><a href="#语义版本化（Semantic-Import-Versioning" class="headerlink" title="语义版本化（Semantic Import Versioning)"></a>语义版本化（Semantic Import Versioning)</h3><p>这么多年以来，Go官方FAQ中关于包版本有这些建议：</p>
+<pre><code>&quot;Packages intended for public use should try to maintain backwards compatibility as they evolve. The Go 1 compatibility guidelines are a good reference here: don&apos;t remove exported names, encourage tagged composite literals, and so on. If different functionality is required, add a new name instead of changing an old one. If a complete break is required, create a new package with a new import path.&quot;
+</code></pre><p>最后一句很重要：如果破坏了兼容性，你就要更改包的引用路径。 在Go1.11 模块中，这些建议被写入<code>import compatibility rule</code>中：</p>
+<p><code>&quot;If an old package and a new package have the same import path, the new package must be backwards compatible with the old package.&quot;</code></p>
+<p>基于Semantic Importing Versioning，Go模块中遵循下面规则：</p>
+<ul>
+<li>遵从semver</li>
+<li>如果模块是v2或更高版本，那么引用路径要加上版本号。如 <code>github.com/my/mode/v2/</code></li>
+<li>如果版本是v0或v1，则不需要在引用路径上加上版本。</li>
+</ul>
+<h2 id="How-to-Use-Modules"><a href="#How-to-Use-Modules" class="headerlink" title="How to Use Modules"></a>How to Use Modules</h2><h3 id="how-to-install-and-activate-module-support"><a href="#how-to-install-and-activate-module-support" class="headerlink" title="how to install and activate module support"></a>how to install and activate module support</h3><h3 id="how-to-define-a-module"><a href="#how-to-define-a-module" class="headerlink" title="how to define a module"></a>how to define a module</h3><ol>
+<li><p>从已经存在的项目中创建<code>go.mod</code></p>
+<ul>
+<li>cd <code>project_root_directory</code><ul>
+<li>注意：目录需要在$GOPATH之外</li>
+</ul>
+</li>
+<li>go mod init<ul>
+<li>如果报错的话，可以 <code>go mod init github.com/my/repo</code></li>
+</ul>
+</li>
+<li><p>构建module</p>
+<ul>
+<li>go build ./…</li>
+</ul>
+</li>
+<li><p>测试</p>
+<ul>
+<li>go test ./…</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="如何升级和降级依赖"><a href="#如何升级和降级依赖" class="headerlink" title="如何升级和降级依赖"></a>如何升级和降级依赖</h2><h2 id="如何发布"><a href="#如何发布" class="headerlink" title="如何发布"></a>如何发布</h2><h2 id="迁移到Module"><a href="#迁移到Module" class="headerlink" title="迁移到Module"></a>迁移到Module</h2><h2 id="其他资源"><a href="#其他资源" class="headerlink" title="其他资源"></a>其他资源</h2>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/06/26/golang模块wiki译文/" data-id="cjxclaw400026zvs6weypoqzm" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-golang模块介绍" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/26/golang模块介绍/" class="article-date">
+  <time datetime="2019-06-25T16:35:43.000Z" itemprop="datePublished">2019-06-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在golang1.11中引入golang模块，最近在看<a href="https://github.com/bilibili/kratos" target="_blank" rel="noopener">kratos</a>，里面用到了go modules。因此进行了学习。学习文档是<a href="https://github.com/golang/go/wiki/Modules" target="_blank" rel="noopener">wiki go modules</a>.</p>
+<h2 id="几个特点"><a href="#几个特点" class="headerlink" title="几个特点:"></a>几个特点:</h2><p>wiki里面又教育大家如何管理包依赖，这次使用起来比较简答。</p>
+<ol>
+<li>不用关心GOPATH。 只要项目不再GOPATH目录下就可以。当然在GOPATH目录下也可以通过GO111MODULE进行调整</li>
+<li>可以直接写代码，<code>go build</code> or <code>go test</code>会自动帮你把对应的代码拉取存到local cache中，并进行编译。<ul>
+<li>通过<code>go env GOCACHE</code>可以查看cache目录，类似git 没啥用</li>
+</ul>
+</li>
+</ol>
+<h2 id="引入了几个新概念："><a href="#引入了几个新概念：" class="headerlink" title="引入了几个新概念："></a>引入了几个新概念：</h2><ol>
+<li>modules</li>
+<li>语义版本</li>
+<li>最小版本选择</li>
+<li>go.mod</li>
+</ol>
+<h2 id="经常用到的使用方式："><a href="#经常用到的使用方式：" class="headerlink" title="经常用到的使用方式："></a>经常用到的使用方式：</h2><ol>
+<li><p>初始化</p>
+<ul>
+<li>go mod init </li>
+<li>go mod init github.com/your/repo</li>
+</ul>
+</li>
+<li><p>添加/指定依赖</p>
+<ul>
+<li>go get github.com/your/dep1</li>
+<li>go get github.com/your/dep1@v2</li>
+<li>go get github.com/your/dep1@commitid</li>
+</ul>
+</li>
+<li><p>补全/清理依赖</p>
+<ul>
+<li>go mod tiny</li>
+</ul>
+</li>
+</ol>
+<h2 id="国内golang包依赖获取"><a href="#国内golang包依赖获取" class="headerlink" title="国内golang包依赖获取"></a>国内golang包依赖获取</h2><ol>
+<li>使用go mod replace</li>
+<li>使用 PROXY</li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
+<li><a href="https://github.com/golang/go/wiki/Modules" target="_blank" rel="noopener">golang wiki modules</a></li>
+<li><a href="https://farer.org/2018/11/11/go-modules-notes/" target="_blank" rel="noopener">真官方依赖管理 Go Modules 怎么玩</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/41627929" target="_blank" rel="noopener">关于go modules的争吵</a></li>
+<li><a href="https://groups.google.com/forum/#!msg/golang-dev/qfa3mHN4ZPA/X2UzjNV1BAAJ" target="_blank" rel="noopener">Go 1.10 cmd/go: build cache, test cache, go install, go vet, test vet</a></li>
+<li><a href="https://shockerli.net/post/go-get-golang-org-x-solution/" target="_blank" rel="noopener">一键解决 go get golang.org/x 包失败</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/06/26/golang模块介绍/" data-id="cjxclaw45002azvs6tey858ot" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-linux同步机制" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/06/10/linux同步机制/" class="article-date">
@@ -158,7 +394,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/10/linux同步机制/" data-id="cjwq1x85v002p1os6bm6e9kkb" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/10/linux同步机制/" data-id="cjxclaw500034zvs6ebzwcr64" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -196,7 +432,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/08/spinlock/" data-id="cjwq1x8g1004r1os6vf0seg85" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/08/spinlock/" data-id="cjxclaw79005dzvs6ymo2nbmn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux-sync/">linux,sync</a></li></ul>
@@ -280,7 +516,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjwq1x8ax003d1os660ehxwnh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjxclaw4k002ozvs6xjdajcxx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -338,7 +574,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjwq1x8h600591os6n9l90dss" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjxclaw7k005szvs612bnbfz1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -524,7 +760,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjwq1x8ed00411os6swgc98ow" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjxclaw59003azvs69gp41k91" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
@@ -583,7 +819,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjwq1x83900291os6bpmrk61f" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjxclaw4c002izvs6rg37ukjt" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -829,7 +1065,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjwq1x8fw004p1os6fz8ok472" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjxclaw6u004vzvs6l91a5pa6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -911,185 +1147,11 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjwq1x82600231os6kjpgaib7" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjxclaw47002czvs6q1pmix0x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
 
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Spark-DataSource-Hive Tables" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/03/14/Spark-DataSource-Hive Tables/" class="article-date">
-  <time datetime="2019-03-14T05:42:14.000Z" itemprop="datePublished">2019-03-14</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Spark-DataSource-Hive Tables/" data-id="cjwq1x7k200001os6ucqocyij" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Starting Point- SparkSession" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/03/14/Starting Point- SparkSession/" class="article-date">
-  <time datetime="2019-03-14T02:54:47.000Z" itemprop="datePublished">2019-03-14</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Starting Point: SparkSession</p>
-<p>SparkSession in Spark 2.0 provides builtin support for Hive features including the ability to write queries using HiveQL, access to Hive UDFs, and the ability to read data from Hive tables. To use these features, you do not need to have an existing Hive setup.</p>
-<h3 id="1-创建DataFrames"><a href="#1-创建DataFrames" class="headerlink" title="1. 创建DataFrames"></a>1. 创建DataFrames</h3><p>With a SparkSession, applications can create DataFrames from an existing RDD, from a Hive table, or from Spark data sources.</p>
-<p>使用SparkSession，应用可以从已经存在的RDD、Hive table、Spark Data sources中创建DataFrames。</p>
-<p>下面的例子是基于json文件的内容创建一个DataFrame</p>
-<pre><code>val df = spark.read.json(&quot;examples/src/main/resources/people.json&quot;)
-
-// Displays the content of the DataFrame to stdout
-df.show()
-// +----+-------+
-// | age|   name|
-// +----+-------+
-// |null|Michael|
-// |  30|   Andy|
-// |  19| Justin|
-// +----+-------+
-</code></pre><h4 id="1-1-Untyped-Dataset-Operations-aka-DataFrame-Operations"><a href="#1-1-Untyped-Dataset-Operations-aka-DataFrame-Operations" class="headerlink" title="1.1  Untyped Dataset Operations (aka DataFrame Operations)"></a>1.1  Untyped Dataset Operations (aka DataFrame Operations)</h4><pre><code>// This import is needed to use the $-notation
-import spark.implicits._
-// Print the schema in a tree format
-df.printSchema()
-// root
-// |-- age: long (nullable = true)
-// |-- name: string (nullable = true)
-
-// Select only the &quot;name&quot; column
-df.select(&quot;name&quot;).show()
-// +-------+
-// |   name|
-// +-------+
-// |Michael|
-// |   Andy|
-// | Justin|
-// +-------+
-
-// Select everybody, but increment the age by 1
-df.select($&quot;name&quot;, $&quot;age&quot; + 1).show()
-// +-------+---------+
-// |   name|(age + 1)|
-// +-------+---------+
-// |Michael|     null|
-// |   Andy|       31|
-// | Justin|       20|
-// +-------+---------+
-
-// Select people older than 21
-df.filter($&quot;age&quot; &gt; 21).show()
-// +---+----+
-// |age|name|
-// +---+----+
-// | 30|Andy|
-// +---+----+
-
-// Count people by age
-df.groupBy(&quot;age&quot;).count().show()
-// +----+-----+
-// | age|count|
-// +----+-----+
-// |  19|    1|
-// |null|    1|
-// |  30|    1|
-// +----+-----+
-</code></pre><h3 id="1-2-Running-SQL-Queries-Programmatically"><a href="#1-2-Running-SQL-Queries-Programmatically" class="headerlink" title="1.2 Running SQL Queries Programmatically"></a>1.2 Running SQL Queries Programmatically</h3><p>The sql function on a SparkSession enables applications to run SQL queries programmatically and returns the result as a DataFrame.</p>
-<pre><code>// Register the DataFrame as a SQL temporary view
-df.createOrReplaceTempView(&quot;people&quot;)
-
-val sqlDF = spark.sql(&quot;SELECT * FROM people&quot;)
-sqlDF.show()
-// +----+-------+
-// | age|   name|
-// +----+-------+
-// |null|Michael|
-// |  30|   Andy|
-// |  19| Justin|
-// +----+-------+
-</code></pre><h3 id="1-3-Global-Temporary-View"><a href="#1-3-Global-Temporary-View" class="headerlink" title="1.3. Global Temporary View"></a>1.3. Global Temporary View</h3><p>Temporary views in Spark SQL are session-scoped and will disappear if the session that creates it terminates. If you want to have a temporary view that is shared among all sessions and keep alive until the Spark application terminates, you can create a global temporary view. Global temporary view is tied to a system preserved database global_temp, and we must use the qualified name to refer it, e.g. SELECT * FROM global_temp.view1.</p>
-<h3 id="2-Creating-Datasets"><a href="#2-Creating-Datasets" class="headerlink" title="2. Creating Datasets"></a>2. Creating Datasets</h3><p>Datasets are similar to RDDs, however, instead of using Java serialization or Kryo they use a specialized Encoder to serialize the objects for processing or transmitting over the network. While both encoders and standard serialization are responsible for turning an object into bytes, encoders are code generated dynamically and use a format that allows Spark to perform many operations like filtering, sorting and hashing without deserializing the bytes back into an object.</p>
-<h3 id="2-1-与RDDs的交互"><a href="#2-1-与RDDs的交互" class="headerlink" title="2.1 与RDDs的交互"></a>2.1 与RDDs的交互</h3><p>有两种方式可以将已经存在RDDs转换为Datasets。</p>
-<ul>
-<li>使用reflection推断RDD的schema。基于reflection的方法代码更简洁</li>
-<li>通过一个可编程的接口，允许用户自己构造一个schema，并将其应用于已经存在的RDD。当columns及其类型在运行时还不确定时，可以用于构造Dataset。 </li>
-</ul>
-<h4 id="2-1-1-使用反射推断schema"><a href="#2-1-1-使用反射推断schema" class="headerlink" title="2.1.1 使用反射推断schema"></a>2.1.1 使用反射推断schema</h4><p>Spark Sql的scala接口自动将一个包含<code>case classes</code>的RDD 转换为DataFrame。<code>case class</code>定义了table的schema。使用反射读取<code>case class</code>中参数名称，这些名称会成为列的名称。 <code>case class</code>可以嵌套 或 包含复杂类型，比如<code>Seqs</code>或 <code>Arrays</code>。<br>RDD可以转换为DataFrame，并在table中注册。Tables可以用subsequent SQL 使用。 </p>
-<pre><code>// For implicit conversions from RDDs to DataFrames
-import spark.implicits._
-case class Person(name: String, age: Long)
-
-// Create an RDD of Person objects from a text file, convert it to a Dataframe
-val peopleDF = spark.sparkContext
-  .textFile(&quot;examples/src/main/resources/people.txt&quot;)
-  .map(_.split(&quot;,&quot;))
-  .map(attributes =&gt; Person(attributes(0), attributes(1).trim.toInt))
-  .toDF()
-// Register the DataFrame as a temporary view
-peopleDF.createOrReplaceTempView(&quot;people&quot;)
-
-// SQL statements can be run by using the sql methods provided by Spark
-val teenagersDF = spark.sql(&quot;SELECT name, age FROM people WHERE age BETWEEN 13 AND 19&quot;)
-
-// The columns of a row in the result can be accessed by field index
-teenagersDF.map(teenager =&gt; &quot;Name: &quot; + teenager(0)).show()
-// +------------+
-// |       value|
-// +------------+
-// |Name: Justin|
-// +------------+
-
-// or by field name
-teenagersDF.map(teenager =&gt; &quot;Name: &quot; + teenager.getAs[String](&quot;name&quot;)).show()
-// +------------+
-// |       value|
-// +------------+
-// |Name: Justin|
-// +------------+
-
-// No pre-defined encoders for Dataset[Map[K,V]], define explicitly
-implicit val mapEncoder = org.apache.spark.sql.Encoders.kryo[Map[String, Any]]
-// Primitive types and case classes can be also defined as
-// implicit val stringIntMapEncoder: Encoder[Map[String, Any]] = ExpressionEncoder()
-
-// row.getValuesMap[T] retrieves multiple columns at once into a Map[String, T]
-teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;, &quot;age&quot;))).collect()
-// Array(Map(&quot;name&quot; -&gt; &quot;Justin&quot;, &quot;age&quot; -&gt; 19))
-</code></pre><h4 id="2-1-2-可编程指定schema"><a href="#2-1-2-可编程指定schema" class="headerlink" title="2.1.2 可编程指定schema"></a>2.1.2 可编程指定schema</h4><h3 id="3-Aggregations"><a href="#3-Aggregations" class="headerlink" title="3. Aggregations"></a>3. Aggregations</h3><h4 id="3-1-Untyped-User-Defined-Aggregate-Functions"><a href="#3-1-Untyped-User-Defined-Aggregate-Functions" class="headerlink" title="3.1 Untyped User-Defined Aggregate Functions"></a>3.1 Untyped User-Defined Aggregate Functions</h4><h4 id="3-2-Type-Safe-User-Defined-Aggregate-Functions"><a href="#3-2-Type-Safe-User-Defined-Aggregate-Functions" class="headerlink" title="3.2 Type-Safe User-Defined Aggregate Functions"></a>3.2 Type-Safe User-Defined Aggregate Functions</h4>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/14/Starting Point- SparkSession/" data-id="cjwq1x8ic005o1os6jrxytjh2" class="article-share-link">Share</a>
-      
-      
     </footer>
   </div>
   
@@ -1125,7 +1187,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1147,6 +1209,14 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -1156,14 +1226,6 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

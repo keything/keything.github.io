@@ -62,6 +62,204 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-nginx配置-最小配置" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx配置-最小配置/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx配置-最小配置/">nginx配置-最小配置</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前述"><a href="#前述" class="headerlink" title="前述"></a>前述</h2><p>很多时候都会提到最小模块。对于Nginx的配置，当然也要有最小配置呢。当然下面的配置也不是最小配置，因为里面有很多配置都是有默认值的。大家可以查看一下nginx.org上的文档说明。</p>
+<h2 id="主配置文件nginx-conf详细说明"><a href="#主配置文件nginx-conf详细说明" class="headerlink" title="主配置文件nginx.conf详细说明"></a>主配置文件nginx.conf详细说明</h2><p>在nginx.conf中包括了事件模块events{}, http模块http{}。并没有看到预想的虚拟主机server{}。因为我们通过include host/*.conf将虚拟主机的配置放在了vhost文件夹中。类似C语言中include。</p>
+<pre><code>##nginx.conf
+error_log  /usr/local/var/log/nginx/error.log  info;
+pid        /usr/local/var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    include vhost/*.conf;
+}
+</code></pre><h2 id="普通HTTP虚拟主机配置"><a href="#普通HTTP虚拟主机配置" class="headerlink" title="普通HTTP虚拟主机配置"></a>普通HTTP虚拟主机配置</h2><p>vhost/basic.conf<br>     basic.conf配置中必要的配置是listen，root，location /, location ~ .php$ {}.<br>其中location ~.php${}的作用是将以php结尾的文件转向FastCGI服务器。</p>
+<pre><code># vhost/basic.conf
+server {
+    listen       80 default;
+    server_name  localhost;
+    access_log  /usr/local/var/log/nginx/access.log;
+
+    charset utf8;
+
+    root   /Users/xx/Documents/Study/nginx/learn_conf;
+    location / {
+        index  index.php index.html index.htm;
+    }
+
+    error_page 404 404.php;
+    fastcgi_intercept_errors on;
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    location ~ \.php$ {
+        fastcgi_pass   localhost:9000;
+        fastcgi_index  index.php;
+        include        fastcgi.conf;
+    }
+}
+</code></pre><h2 id="加密HTTPS虚拟主机配置"><a href="#加密HTTPS虚拟主机配置" class="headerlink" title="加密HTTPS虚拟主机配置"></a>加密HTTPS虚拟主机配置</h2><p>加密HTTPS与普通HTTP虚拟主机的区别在于：<br>1）端口号后加 ssl<br>2）加入ssl_certificate   ssl_certificate_key两个指令</p>
+<p>其他方面二者相同：比如端口号改变，server_name更改</p>
+<pre><code>server {
+    listen 443 ssl;
+    server_name learn.ssl1;
+
+    ssl_certificate /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq.crt;
+    ssl_certificate_key /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq_nopass.key;
+
+    root /Users/Documents/Study/nginx/learn_ssl2;
+    location / {
+        index index.php index.html index.htm;
+    }
+
+    error_page 404 404.php;
+    fastcgi_intercept_errors on;
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    location ~ \.php$ {
+        fastcgi_pass   localhost:9000;
+        fastcgi_index  index.php;
+        include        fastcgi.conf;
+    }
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjxclaw6k004jzvs6eihl404y" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
+<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
+
+location [ = | ~ | ~* | ^~ ] uri { ... }
+location @name { ... }
+
+Default:
+
+—
+
+Context:
+
+server, location
+</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
+<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
+<ol>
+<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
+<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
+<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
+<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
+<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
+<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
+<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
+</ol>
+<p>location检查的策略：</p>
+<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
+2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
+对于匹配正则location并不是所有情况都进行，有两种情况是例外：
+1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
+2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
+
+   简要概述：
+    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
+如下图所示：
+</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
+<p>举例说明：</p>
+<pre><code>location = / {
+    [ configuration A ]
+}
+
+location / {
+    [ configuration B ]
+}
+
+location /documents/ {
+    [ configuration C ]
+}
+
+location ^~ /images/ {
+    [ configuration D ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration E ]
+}
+
+请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
+</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
+<p>参考文章</p>
+<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjxclaw6d0047zvs6n9wa0pmk" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-unix-inode-学习" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/04/28/unix-inode-学习/" class="article-date">
@@ -146,7 +344,7 @@ passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjwq1x8n500771os6fzax8bp6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="cjxclaw7a005fzvs6whk20mwn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -195,7 +393,7 @@ client---&gt; lvs ------  node2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjwq1x7rg000d1os68qaeiewj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="cjxclaw2d000nzvs6gi7b6zvk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -264,7 +462,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjwq1x8ce003n1os6j1iooiiq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="cjxclaw5w003zzvs6nglhlcii" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -311,7 +509,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjwq1x8bs003i1os68j7qa576" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="cjxclaw5u003wzvs6q33jncn1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -424,7 +622,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjwq1x8c0003l1os6fhnnfj5k" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="cjxclaw7w0064zvs69p2p2jv9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -531,7 +729,7 @@ static unsigned int sizes[LARGEST_ID];
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjwq1x8bl003g1os6h8a45l3j" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="cjxclaw5s003uzvs60qjbwpat" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -641,7 +839,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjwq1x8ih005q1os630duk2lt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="cjxclaw5q003rzvs6c47g1mj5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -703,152 +901,10 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjwq1x8dk003r1os6e81d1zuq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="cjxclaw6a0042zvs61txhkwkm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-gitflow工作流" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/03/15/gitflow工作流/" class="article-date">
-  <time datetime="2016-03-15T00:23:25.000Z" itemprop="datePublished">2016-03-15</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/15/gitflow工作流/">gitflow工作流</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><h3 id="一-现有开发方式"><a href="#一-现有开发方式" class="headerlink" title="一. 现有开发方式"></a>一. 现有开发方式</h3><p>在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。</p>
-<p>存在的问题：</p>
-<ol>
-<li>代码不能进行review</li>
-<li>master分支不能保持可用状态</li>
-</ol>
-<h3 id="二-引入pull-request"><a href="#二-引入pull-request" class="headerlink" title="二. 引入pull request"></a>二. 引入pull request</h3><p>我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。</p>
-<p>接下来，我们将会介绍两种工作方式，我们将采用gitflow这种工作流，为了让大家有个更加清晰的了解，我们先介绍单纯采用分支的工作方式，然后再介绍采用gitflow工作流的方式。</p>
-<h3 id="三-最简单的采用分支的工作方式"><a href="#三-最简单的采用分支的工作方式" class="headerlink" title="三. 最简单的采用分支的工作方式"></a>三. 最简单的采用分支的工作方式</h3><p>最简单的方式，我们所有的开发（包括简单的一次修改和复杂的新功能开发）都是走分支，分支开发完毕以后跟master进行比较，从而进行code review。流程简单如下</p>
-<p><img src="/images/gitflow/simple_br.png" alt="simple"></p>
-<pre><code>1. 从master分支checkout出feature/fa分支
-2. 在feature/fa分支进行开发，每个节点代表一次修改和一次commit
-3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
-4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxx..net上创建一个merge request。
-    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
-5. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
-6. 将feature/fa分支合并到mater分支上。
-7. 将master分支推到远程仓库origin的master从而完成开发。
-</code></pre><h3 id="四-引入gitflow工作流"><a href="#四-引入gitflow工作流" class="headerlink" title="四. 引入gitflow工作流"></a>四. 引入gitflow工作流</h3><p>（一） gitflow的简要介绍</p>
-<p>在gitflow中有两个永久存在的分支develop和master分支，有很多临时的功能分支feature,release,hotfix。详细介绍可以看 <a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a></p>
-<p>（二） 我们如何使用gitflow</p>
-<p>结合我们项目特点，目前我们使用阉割版的gitflow，不使用它的hotfix和release分支，仅仅使用master,develop,feature三个分支。流程如下：</p>
-<p><img src="/images/gitflow/gitflow.png" alt="gitflow"></p>
-<pre><code>1. 开辟一个feature分支，我们使用gitflow命令，好处就是他默认从develop分支checkout出一个分支
-2. 正常的分支开发，每个节点代表依次修改和commit
-3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
-4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxxx..net上创建一个merge request。
-    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
-5. 将feature/fa分支合并到develop分支，并删除feature/fa分支，听着很复杂，实际上只需要执行一条命令 git flow feature finish fa即可
-6. 将develop分支推送到远程仓库，之所以这样是为了让小伙伴同步代码
-7. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
-8. 将develop分支合并到mater分支上。
-9. 将master分支推到远程仓库origin的master从而完成开发。
-</code></pre><h3 id="四-受限分支master"><a href="#四-受限分支master" class="headerlink" title="四. 受限分支master"></a>四. 受限分支master</h3><ol>
-<li><p>目前存在问题</p>
-<p> 到目前为止，我们引入了pull request进行codereview，引入工作流gitflow规范大家的开发流程。但是！但是！master分支依然允许所有的人进行操作，那么可能有人不遵循规则，而对master进行修改和上线。</p>
-</li>
-<li><p>解决方法</p>
-<p> 通过gitlab，我们对master分支进行保护，即受限分支。只有具有权限的小伙伴才能对远程仓库的master分支进行操作。当然了，你操作你本地的master分支木有问题，但你想向远程的master分支推送，不好意思，你被禁止了。</p>
-</li>
-<li><p>引入受限分支以后，开发流程的变化</p>
-<p> 在上面描述的流程中，gitflow的7，8，9三步交给具有操作master分支权限的小伙伴来执行。</p>
-</li>
-</ol>
-<h3 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五 参考文章"></a>五 参考文章</h3><p><a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a> </p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjwq1x7z6001u1os6pvb5lme4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-svn迁移git-完美保留日志" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/03/11/svn迁移git-完美保留日志/" class="article-date">
-  <time datetime="2016-03-11T00:20:12.000Z" itemprop="datePublished">2016-03-11</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/11/svn迁移git-完美保留日志/">svn迁移git-完美保留日志</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>迁移流程–完美保留日志</p>
-<ol>
-<li><p>生成用户列表</p>
-<p> <code>svn log --xml | grep author | sort -u |   perl -pe &#39;s/.*&gt;(.*?)&lt;.*/$1 = $1 &lt;$1\@compony.suffix&gt;/&#39; &gt; users.txt</code></p>
-</li>
-<li><p>从svn克隆到新的目录</p>
-<p> git svn clone <a href="https://your_svn_reposity/project_name/" target="_blank" rel="noopener">https://your_svn_reposity/project_name/</a> –authors-file=users.txt –no-metadata -s git_project_name</p>
-</li>
-<li><p>从svn仓库拉取文件到新的目录</p>
-<p> cd git_project_name<br> git svn fetch</p>
-</li>
-<li><p>校验文件是否一致：</p>
-<p> diff -rbB –brief svn_cloudfs git_cloudfs | grep -v .svn</p>
-</li>
-<li><p>添加远程仓库</p>
-<p> git remote add origin <a href="mailto:git@xxxx.net" target="_blank" rel="noopener">git@xxxx.net</a>:xxx.git</p>
-</li>
-<li><p>将代码上传到git仓库</p>
-<p> git push</p>
-</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjwq1x8gd004w1os6cczsscv7" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
 
     </footer>
   </div>
@@ -885,7 +941,7 @@ threads    当前线程数
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -907,6 +963,14 @@ threads    当前线程数
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -916,14 +980,6 @@ threads    当前线程数
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

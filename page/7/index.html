@@ -62,6 +62,330 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-1PHP变量之存储结构" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/19/1PHP变量之存储结构/" class="article-date">
+  <time datetime="2016-09-19T11:52:36.000Z" itemprop="datePublished">2016-09-19</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/19/1PHP变量之存储结构/">1. PHP变量的存储结构</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="基础介绍"><a href="#基础介绍" class="headerlink" title="基础介绍"></a>基础介绍</h2><p>变量具有三个基本组成部分：</p>
+<ul>
+<li>名称</li>
+<li>类型</li>
+<li>值内容</li>
+</ul>
+<p>数据类型：<br>从类型的维度来看，编程语言可以分为三大类：</p>
+<ul>
+<li>静态类型语言：比如C/Java等，类型的检查是在编译期（compile-time）确定的。</li>
+<li>动态语言类型：比如PHP，pythone等各种脚本语言，这类语言的类型在运行时确定的。</li>
+<li>无类型语言：比如汇编语言，汇编语言操作的是底层存储。</li>
+</ul>
+<h2 id="变量的结构"><a href="#变量的结构" class="headerlink" title="变量的结构"></a>变量的结构</h2><p>在官方的PHP实现内部，所有变量使用同一种数据结构zval来保存，而这个结构同时表示PHP中各种数据类型。它不仅仅包含变量的值，也包含变量的类型。这就是PHP弱类型的核心。</p>
+<h3 id="php变量类型及存储结构"><a href="#php变量类型及存储结构" class="headerlink" title="php变量类型及存储结构"></a>php变量类型及存储结构</h3><p>PHP是弱类型语言，但这并不表示PHP没有类型，在PHP中，存在8种变量类型，可以分为三类：<br>标量类型: boolean, integer, float(double), string<br>复合类型: array, object,<br>特殊类型: resource, NULL</p>
+<h3 id="变量存储结构"><a href="#变量存储结构" class="headerlink" title="变量存储结构"></a>变量存储结构</h3><pre><code>// Zend/zend.h
+typedef struct _zval_struct zval;
+...
+struct _zval_struct {
+    /* Variable information */
+    zvalue_value value;     /* value */
+    zend_uint refcount__gc;
+    zend_uchar type;    /* active type */
+    zend_uchar is_ref__gc;
+};
+</code></pre><h3 id="变量类型"><a href="#变量类型" class="headerlink" title="变量类型"></a>变量类型</h3><p>type的值可以是IS_NULL, IS_BOOL, iS_LONG, IS_DOUBLE, IS_STRING, IS_ARRAY, IS_OBJECT, IS_RESOURCE之一。</p>
+<h3 id="变量的值存储"><a href="#变量的值存储" class="headerlink" title="变量的值存储"></a>变量的值存储</h3><p>前面提到变量的值存储在zvalue_value结构体中，结构体定义如下：之所以是联合体是因为一个变量同时只能属于一种类型。</p>
+<pre><code>typedef union _zvalue_value {
+    long lval;                  /* long value */
+    double dval;                /* double value */
+    struct {
+        char *val;
+        int len;
+    } str;
+    HashTable *ht;              /* hash table value */
+    zend_object_value obj;
+} zvalue_value;
+</code></pre><h4 id="字符串string"><a href="#字符串string" class="headerlink" title="字符串string"></a>字符串string</h4><p>字符串的类型标示和其他数据类型一样，不过在存储字符串时多了一个字符串长度的字段。</p>
+<pre><code>struct {
+    char *val;
+    int len;
+}str;
+</code></pre><h4 id="数组Array"><a href="#数组Array" class="headerlink" title="数组Array"></a>数组Array</h4><p>数组是PHP中最常用的，也是最强大的变量类型，可以存储其他类型的数据，而且提供各种内置操作函数。数组的值存储在zvalue_value.ht字段中，是一个HashTable类型的数据。</p>
+<h4 id="对象object"><a href="#对象object" class="headerlink" title="对象object"></a>对象object</h4><p>在面向对象语言中，我们能自己定义自己需要的数据类型，包括类的属性，方法等数据。而对象则是类的一个具体实现。对象有自身的状态和所能完成的操作。<br>PHP的对象是一种复合型的数据，使用一种zend_object_value的结构体来存放。其定义如下：</p>
+<pre><code>typedef struct _zend_object_value {
+    zend_object_handle handle;  //  unsigned int类型，EG(objects_store).object_buckets的索引
+    zend_object_handlers *handlers;
+} zend_object_value;
+</code></pre><p>PHP的对象只有在运行时才会被创建，前面的章节介绍了EG宏，这是一个全局结构体用于保存在运行时的数据。 其中就包括了用来保存所有被创建的对象的对象池，EG(objects_store)即全局变量executor_globals.objects_store，而object对象值内容的zend_object_handle域就是当前 对象在对象池中所在的索引，handlers字段则是将对象进行操作时的处理函数保存起来。 这个结构体及对象相关的类的结构_zend_class_entry，将在第五章作详细介绍。</p>
+<pre><code>#define EG(v) (executor_globals.v)
+extern ZEND_API zend_executor_globals executor_globals;
+</code></pre><p>参考文章：</p>
+<ol>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-00-variables-structure" target="_blank" rel="noopener">变量的结构和类型</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="cjxclaw0z0002zvs6d2iajeho" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-PHP源码之用户代码的执行" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/18/PHP源码之用户代码的执行/" class="article-date">
+  <time datetime="2016-09-18T05:45:57.000Z" itemprop="datePublished">2016-09-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/18/PHP源码之用户代码的执行/">PHP源码之用户代码的执行</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="二-用户代码的执行"><a href="#二-用户代码的执行" class="headerlink" title="二.用户代码的执行"></a>二.用户代码的执行</h1><h2 id="一切的开始：SAPI接口"><a href="#一切的开始：SAPI接口" class="headerlink" title="一切的开始：SAPI接口"></a>一切的开始：SAPI接口</h2><p>SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。<br>脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。</p>
+<h2 id="开始和结束"><a href="#开始和结束" class="headerlink" title="开始和结束"></a>开始和结束</h2><h3 id="PHP开始执行以后会经过两个主要阶段："><a href="#PHP开始执行以后会经过两个主要阶段：" class="headerlink" title="PHP开始执行以后会经过两个主要阶段："></a>PHP开始执行以后会经过两个主要阶段：</h3><ul>
+<li>处理请求之前的开始阶段：又分为两个过程<ul>
+<li>第一个过程：模块初始化阶段（MINIT），在整个SAPI生命周期内只进行一次。比如<code>sudo /etc/init.d/php-fpm start</code>时。例如PHP在MINIT阶段会回调所有模块的MINIT函数，进行一些初始化工作，如注册常量，定义模块使用的类等等</li>
+<li>第二个过程：模块激活阶段(RINIT)，该过程发生在请求阶段，在每个请求到来之前都会进行模块激活。其目的是请求到达以后PHP初始化执行脚本的基本环境，例如创建一个执行环境，包含保存PHP允许过程中变量名称和值内容的符号表，以及当前所有的函数和类的符号表。然后PHP调用所有模块的RINIT函数。</li>
+</ul>
+</li>
+<li><p>处理请求之后的结束阶段</p>
+<ul>
+<li>第一个过程：请求结束后停用模块（RSHUTDOWN，对应RINIT）</li>
+<li>第二个过程：关闭模块，在SAPI生命周期结束（WEB服务器退出或者命令行脚本执行完毕退出）MSHUTDOWN，对应MINIT。</li>
+</ul>
+</li>
+<li><p>处理流程图（引用TIPI图）<br>  <img src="http://www.php-internals.com/images/book/chapt02/02-01-01-cgi-lift-cycle.png" alt="图片"> </p>
+</li>
+</ul>
+<h2 id="fastcgi详细执行流程"><a href="#fastcgi详细执行流程" class="headerlink" title="fastcgi详细执行流程"></a>fastcgi详细执行流程</h2><h3 id="初始化：即-etc-init-d-php-fpm-start"><a href="#初始化：即-etc-init-d-php-fpm-start" class="headerlink" title="初始化：即 /etc/init.d/php-fpm start"></a>初始化：即 /etc/init.d/php-fpm start</h3><ol>
+<li>入口函数：在<code>sapi/fpm/fpm/fpm_main.c</code>中的main函数</li>
+<li><p>调用<code>cgi_sapi_module.startup</code>(函数指针startup的取值是<code>php_cgi_startup</code>），<code>php_cgi_startup</code>做了以下几件事情：</p>
+<ul>
+<li>初始化若干全局变量。如<code>zuf.printf_function = php_printf</code>，<code>PHP_VERSION</code>等</li>
+<li>初始化zend引擎和核心组件。php_module_startup会调用<code>zend_startup</code>(zend/zend.c)函数。<code>zend_startup</code>函数的作用就是初始化zend引擎。这里的初始化操作包括内存管理初始化、 全局使用的函数指针初始化（如前面所说的<code>zend_printf</code>等），对PHP源文件进行词法分析、语法分析、 中间代码执行的函数指针的赋值，初始化若干HashTable（比如函数表，常量表等等），为ini文件解析做准备， 为PHP源文件解析做准备，注册内置函数（如strlen、define等），注册标准常量（如<code>E_ALL</code>、TRUE、NULL等）、注册GLOBALS全局变量(<code>zend_register_auto_global(&quot;GLOBALS&quot;,..., php_auto_globals_create_globals)</code>)等。<ul>
+<li><code>zend_startup</code>-&gt;<code>zend_startup_builtin_functions</code>-&gt;<code>zend_register_module_ex</code>注册core模块，core模块的<code>module_number</code>是0。core模块中的函数分别是<code>zend_version</code>, <code>func_num_args</code>…<code>gc_disable</code>。</li>
+<li>注册<code>E_ERROR</code>，<code>E_WARNING</code>这些常量。<code>zend_startup-&gt;zend_register_standard_constants</code></li>
+</ul>
+</li>
+<li>解析php.ini：<code>php_init_config</code>函数的作用就是读取php.ini文件，设置配置参数，加载zend扩展并注册php扩展函数。</li>
+<li>全局操作函数的初始化：<ul>
+<li><code>php_startup_auto_globals</code>(<code>main/php_variables.c</code>)函数会初始化在用户空间使用频率很高的一些全局变量，如<code>$_GET,$_POST,$_FILES等</code>。其调用的<code>zend_register_auto_global</code>函数会将这些变量名添加到<code>CG(auto_globals)</code>这个变量表。</li>
+<li><code>php_startup_sapi_content_types</code>函数用来初始化SAPI对于不同类型内容的处理函数。这里的处理函数包括POST数据默认处理函数</li>
+</ul>
+</li>
+<li>初始化静态构建的模块和共享模块MINIT<ul>
+<li><code>php_register_internal_extensions_func</code>函数用来注册静态构建的模块，也就是默认加载的模块。</li>
+<li>模块初始化会执行两个操作：1. 将这些模块注册到已注册的模块列表(<code>module_registry</code>) 2. 将每个模块中包含的注册到函数表CG(<code>function_table</code>).可以看到各个模块是按照首字母排序的（date模块的<code>module_number</code>是2， ereg模块是3，libxml是4，xsl是46，zip是47。特别是cgi-fcgi是48）</li>
+<li>在所有的模块都注册有，PHP会马上执行模块初始化操作（<code>zend_startup_modules</code>）。它的整个过程就是依次遍历每个模块，调用每个模块的模块初始化函数（<code>PHP_MINIT_FUNCTION</code>)。</li>
+</ul>
+</li>
+<li>禁用函数和类 <code>php_disable_functions</code>和<code>php_disable_classes</code></li>
+</ul>
+</li>
+<li><p>补充一段 进程初始化部分</p>
+<ul>
+<li>fpm_init</li>
+<li>fpm_run中会调用fpm_children_create_initial(wp)进行worker进程（子进程）的初始化，<ul>
+<li>fpm_children_create_initial函数返回：0表示是子进程、1表示父进程、2表示错误。</li>
+<li>fpm_run函数对于父进程不返回，执行fpm_event_loop(0); 永远进行事件循环</li>
+<li>fpm_run函数对于子进程返回listen_fd</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>此时调用<code>fcgi_accept_request</code>(fpm/fpm/fastcgi.c)。因为没有请求，因此listen_socket加锁，卡在accept处，等待请求的到来</p>
+</li>
+<li><p>当有请求到来时，会从accept后续开始执行。</p>
+</li>
+</ol>
+<h3 id="接受请求"><a href="#接受请求" class="headerlink" title="接受请求"></a>接受请求</h3><p>在处理了文件相关的内容，PHP会调用<code>php_request_startup</code>做请求初始化操作。 请求初始化操作，除了图中显示的调用每个模块的请求初始化函数外，还做了较多的其它工作，其主要内容如下</p>
+<ol>
+<li><p>用户空间中需要用到的一些环境变化的初始化，包括服务器环境、请求数据环境等。实际用到的就是<code>$_POST, $_GET, $_COOKIE, $_SERVER, $_ENV, $_FILES</code>。</p>
+<ul>
+<li>在 <code>php_request_startup</code>-&gt;<code>php_hash_environment</code>，调用<code>CG(auto_globals)</code>中的回调来处理。到了这里说个题外话， 就是在php.ini中， 可以使用variables_order来控制PHP是否生成某个大变量，已经大变量的生成顺序。关于顺序，就是说， 如果打开了auto_register_globals的情况下， 如果先处理p，后处理g，那么$_GET[‘a’],就会覆盖$_POST[‘a’];</li>
+<li><p>php.ini设置中variables_order string<br>设置了EGPCS(Environment, Get, Post, Cookie and Server)变量的解析顺序。比如，variables_order顺序设置为SP，那么PHP将会创建超级全局变量$_SERVER和$_POST，而不会创建$_ENV, $_GET, $_COOKIE。</p>
+</li>
+<li><p>和<code>sapi_module.default_post_reader</code>一样，<code>sapi_module.treat_data</code>的值也是在模块初始化时， 通过<code>php_startup_sapi_content_types</code>函数注册了默认数据处理函数为<code>main/php_variables.c</code>文件中<code>php_default_treat_data</code>函数。</p>
+</li>
+<li>以$_COOKIE为例，<code>php_default_treat_data</code>函数会对依据分隔符，将所有的cookie拆分并赋值给对应的变量。</li>
+</ul>
+</li>
+<li><p>模块请求的初始化。PHP通过zend_activate_modules函数实现模块请求的初始化。会调用各个模块的RINIT函数。这儿的调用并没有按照字母排序的顺序调用模块。比如libxml,zlib,intl,mbstring…</p>
+</li>
+<li>运行。<ul>
+<li>php_execute_script函数包含了运行php脚本的全部过程。当一个php文件需要解析执行时，它可能会需要执行三个文件，其中包括一个前置执行文件、当前需要执行文件和一个后置文件。非当前的两个文件可以在php.ini文件通过auto_prepend_file参数和auto_append_file参数设置。如果这两个参数设置为空，则禁用对应执行文件。</li>
+<li>对于需要解析执行的文件，通过zend_compile_file（compile_file函数）做词法分析、语法分析和中间代码生成操作，返回此文件的所有中间代码。 如果解析的文件有生成有效的中间代码，则调用zend_execute（execute函数）执行中间代码。 如果在执行过程中出现异常并且用户有定义对这些异常的处理，则调用这些异常处理函数。 在所有的操作都处理完后，PHP通过EG(return_value_ptr_ptr)返回结果</li>
+</ul>
+</li>
+</ol>
+<h3 id="PHP关闭请求"><a href="#PHP关闭请求" class="headerlink" title="PHP关闭请求"></a>PHP关闭请求</h3><p>PHP关闭请求的过程是一个若干个关闭操作的集合，这个集合存在于php_request_shutdown函数中。 这个集合包括如下内容：</p>
+<ul>
+<li>调用所有通过register_shutdown_function()注册的函数。这些在关闭时调用的函数是在用户空间添加加来的。我们可以在脚本出错时调用一个统一的函数，给用户一个友好一些的页面，这个有点类似于网页中的404页面。</li>
+<li>执行所有可用的__destruct函数。 这里的析构函数包括在对象池（EG(objects_store）中的所有对象的析构函数以及EG(symbol_table)中各个元素的析构方法。</li>
+<li>将所有的输出刷出去</li>
+<li>发送HTTP应答头。也是一个输出字符串的过程，只是这个字符串可能符合某些规范</li>
+<li>遍历每个模块的关闭请求方法，执行模块的请求关闭操作，即RSHUTDOWN</li>
+<li>销毁全局变量表（PG(http_globals)）的变量。</li>
+<li>通过zend_deactivate函数，关闭词法分析器、语法分析器和中间代码执行器</li>
+<li>调用每个扩展的post-RSHUTDOWN函数。只是基本每个扩展的post_deactivate_func函数指针都是NULL</li>
+<li>关闭SAPI，通过sapi_deactivate销毁SG(sapi_headers)、SG(request_info)等的内容。</li>
+<li>关闭流的包装器、关闭流的过滤器</li>
+<li>关闭内存管理</li>
+<li>重新设置最大执行时间</li>
+</ul>
+<h3 id="结束"><a href="#结束" class="headerlink" title="结束"></a>结束</h3><ol>
+<li><p>flush</p>
+<p> sapi_flush将最后的内容刷回去。调用的是sapi_module.flush。</p>
+</li>
+<li><p>关闭zend引擎</p>
+<p> 此时对应图中的流程，我们应该是执行每个模块的关闭模块操作。 在这里只有一个zend_hash_graceful_reverse_destroy函数将module_registry销毁了。 当然，它最终也是调用了关闭模块的方法的，其根源在于在初始化module_registry时就设置了这个hash表析构时调用ZEND_MODULE_DTOR宏。 而ZEND_MODULE_DTOR宏对应的是module_destructor函数。 在此函数中会调用模块的module_shutdown_func方法，即PHP_RSHUTDOWN_FUNCTION宏产生的那个函数。</p>
+<p> 在关闭所有的模块后，PHP继续销毁全局函数表，销毁全局类表、销售全局变量表等。 通过zend_shutdown_extensions遍历zend_extensions所有元素，调用每个扩展的shutdown函数。</p>
+</li>
+</ol>
+<p>【todo】目前需要看的地方有： </p>
+<ol>
+<li>redismemcache的持久化连接是如何处理的 </li>
+<li>全局变量表这些如何做的呢 </li>
+<li>最后关闭这儿是如何处理的呢，还没有详细看代码</li>
+<li>opcode：一个代码构造出来的完整opcode是什么样子呢<br>【todo】opcode这部分还是没有理解请求</li>
+</ol>
+<h1 id="2-深入理解PHP内核之SAPI概述（讲述FASTCGI）"><a href="#2-深入理解PHP内核之SAPI概述（讲述FASTCGI）" class="headerlink" title="2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）"></a>2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）</h1><p>在各个服务器抽象层之间遵守着相同的约定，这里我们称之为SAPI接口。 每个SAPI实现都是一个_sapi_module_struct结构体变量。（SAPI接口）。 在PHP的源码中，当需要调用服务器相关信息时，全部通过SAPI接口中对应方法调用实现， 而这对应的方法在各个服务器抽象层实现时都会有各自的实现。如下图所示，为SAPI的简单示意图（引用TIPI图）</p>
+<p><img src="http://www.php-internals.com/images/book/chapt02/02-02-01-sapi.png" alt="SAPI简单示意图"></p>
+<p>因为平时使用fastcgi，因此这儿参考TIPI中讲述apache2的方式来讲讲<code>fastcgi</code>。<br>它的启动方法如下：</p>
+<pre><code>cgi_sapi_module.startup(&amp;cgi_sapi_module) // fastcgi模式 sapi/fpm/fpm/fpm_main.c
+</code></pre><p>这儿的cgi_sapi_module.startup是sapi_module_struct结构体的静态变量。静态变量的详细解释如下（引用TIPI内容）：</p>
+<pre><code>struct _sapi_module_struct {
+char *name;         //  名字（标识用）
+char *pretty_name;  //  更好理解的名字（自己翻译的）
+
+int (*startup)(struct _sapi_module_struct *sapi_module);    //  启动函数
+int (*shutdown)(struct _sapi_module_struct *sapi_module);   //  关闭方法
+
+int (*activate)(TSRMLS_D);  // 激活
+int (*deactivate)(TSRMLS_D);    //  停用
+
+int (*ub_write)(const char *str, unsigned int str_length TSRMLS_DC);
+ //  不缓存的写操作(unbuffered write)
+void (*flush)(void *server_context);    //  flush
+struct stat *(*get_stat)(TSRMLS_D);     //  get uid
+char *(*getenv)(char *name, size_t name_len TSRMLS_DC); //  getenv
+
+void (*sapi_error)(int type, const char *error_msg, ...);   /* error handler */
+
+int (*header_handler)(sapi_header_struct *sapi_header, sapi_header_op_enum op,
+    sapi_headers_struct *sapi_headers TSRMLS_DC);   /* header handler */
+
+ /* send headers handler */
+int (*send_headers)(sapi_headers_struct *sapi_headers TSRMLS_DC);
+
+void (*send_header)(sapi_header_struct *sapi_header,
+        void *server_context TSRMLS_DC);   /* send header handler */
+
+int (*read_post)(char *buffer, uint count_bytes TSRMLS_DC); /* read POST data */
+char *(*read_cookies)(TSRMLS_D);    /* read Cookies */
+
+/* register server variables */
+void (*register_server_variables)(zval *track_vars_array TSRMLS_DC);
+
+void (*log_message)(char *message);     /* Log message */
+time_t (*get_request_time)(TSRMLS_D);   /* Request Time */
+void (*terminate_process)(TSRMLS_D);    /* Child Terminate */
+
+char *php_ini_path_override;    //  覆盖的ini路径
+
+...
+...
+};
+</code></pre><p>其中一些函数指针的说明如下：</p>
+<ul>
+<li>startup：当sapi初始化时，首先会调用该函数。 startup函数只在父进程中创建一次，在其fork的子进程中不会调用。在fastcgi的</li>
+<li>activate：在每个请求开始时调用，他会再次初始化每个请求前的数据结构。</li>
+</ul>
+<p>其中fastcgi的sapi_module_struct的定义在fpm/fpm/fpm_main.c中，定义如下：</p>
+<pre><code>static sapi_module_struct cgi_sapi_module = {
+&quot;fpm-fcgi&quot;,                        /* name */
+&quot;FPM/FastCGI&quot;,                    /* pretty name */
+
+php_cgi_startup,                /* startup */
+php_module_shutdown_wrapper,    /* shutdown */
+
+sapi_cgi_activate,                /* activate */
+sapi_cgi_deactivate,            /* deactivate */
+
+sapi_cgibin_ub_write,            /* unbuffered write */
+sapi_cgibin_flush,                /* flush */
+NULL,                            /* get uid */
+sapi_cgibin_getenv,                /* getenv */
+
+php_error,                        /* error handler */
+
+NULL,                            /* header handler */
+sapi_cgi_send_headers,            /* send headers handler */
+NULL,                            /* send header handler */
+
+sapi_cgi_read_post,                /* read POST data */
+sapi_cgi_read_cookies,            /* read Cookies */
+
+sapi_cgi_register_variables,    /* register server variables */
+sapi_cgi_log_message,            /* Log message */
+NULL,                            /* Get request time */
+NULL,                            /* Child terminate */
+
+STANDARD_SAPI_MODULE_PROPERTIES
+};
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">SAPI概述</a></p>
+<p><a href="https://mengkang.net/668.html" target="_blank" rel="noopener">fastcgi概述</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="cjxclaw2l000vzvs662s565a2" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-PHP源码之准备工作和背景知识" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/09/18/PHP源码之准备工作和背景知识/" class="article-date">
@@ -133,7 +457,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjwq1x7se000l1os67d2ygclt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="cjxclaw2g000qzvs6mtzs4i52" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -209,7 +533,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjwq1x8f2004d1os6m4irmu14" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="cjxclaw710053zvs6apai76eo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -260,7 +584,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="cjwq1x8eo00451os6tk627rrb" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="cjxclaw6m004lzvs68e9t7g3z" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -351,7 +675,7 @@ Program terminated with signal 7, Bus error
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="cjwq1x8ex004a1os6b5o5bnec" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="cjxclaw6n004ozvs65msved10" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -415,7 +739,7 @@ $ ulimit -c unlimited
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="cjwq1x8fg004i1os6k4wunu6p" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="cjxclaw6r004tzvs6wg9kk0sl" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -482,7 +806,7 @@ execute stmt1 using @a;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="cjwq1x7ue000t1os6d0sx7n4r" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="cjxclaw2n000xzvs6k8o3q8cc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -559,7 +883,7 @@ MAILTO=root HOME=/
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="cjwq1x866002r1os6d8mjmk20" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="cjxclaw530036zvs67p6i7uin" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -754,147 +1078,7 @@ cluster-require-full-coverage &lt;yes/no&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="cjwq1x7w7000v1os6hkoh5nnf" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-mysql锁" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/28/mysql锁/" class="article-date">
-  <time datetime="2016-07-28T00:52:01.000Z" itemprop="datePublished">2016-07-28</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/28/mysql锁/">chapter6:mysql锁</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="6-1-什么是锁"><a href="#6-1-什么是锁" class="headerlink" title="6.1 什么是锁"></a>6.1 什么是锁</h2><p>锁机制用于管理对共享资源的并发访问</p>
-<p>MyISAM引擎的锁是表锁。</p>
-<p>InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性</p>
-<h2 id="6-2-lock与latch"><a href="#6-2-lock与latch" class="headerlink" title="6.2 lock与latch"></a>6.2 lock与latch</h2><p>一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。</p>
-<p>latch的目的是用来保证并发线程操作临界资源的正确性，并且没有死锁检测的机制。</p>
-<h2 id="6-3-InnoDB存储引擎中的锁"><a href="#6-3-InnoDB存储引擎中的锁" class="headerlink" title="6.3 InnoDB存储引擎中的锁"></a>6.3 InnoDB存储引擎中的锁</h2><h3 id="6-3-1-锁的类型"><a href="#6-3-1-锁的类型" class="headerlink" title="6.3.1 锁的类型"></a>6.3.1 锁的类型</h3><p>InnoDB实现了如下两种标准的行级锁：</p>
-<pre><code>1. 共享锁（S Lock）允许事务读一行数据
-2. 排他锁（X Lock）允许事务删除或更新一行数据
-</code></pre><p>InnoDB支持意向锁，其意向锁即为表级别的锁。</p>
-<h3 id="6-3-2-一致性非锁定读-consistent-nonlocking-read"><a href="#6-3-2-一致性非锁定读-consistent-nonlocking-read" class="headerlink" title="6.3.2 一致性非锁定读 consistent nonlocking read"></a>6.3.2 一致性非锁定读 consistent nonlocking read</h3><p>一致性非锁定读指InnoDB存储引擎通过行多版本控制的方式来读取当前执行时间数据库中行的数据。如果读取的行正在执行DELETE或UPDATE操作，这时读取操作不会因此等待行上锁的释放，而是会读取行的一个快照数据。</p>
-<p>快照数据是指该行的之前版本的数据，该实现是通过undo段来完成，undo段是用来在事务中回滚数据因此没有额外的开销。</p>
-<p>在不同事务隔离级别下，读取方式的不同，并不是在每个事务隔离级别下都是采用非锁定的一致性读。此外，即使都是使用非锁定的一致性读，但是对于快照数据的定义也不相同。</p>
-<p>在事务隔离级别READ COMMITTED和REPEATABLE READ下，InnoDB存储引擎使用非锁定的一致性读，但是快照数据定义不相同。在REPEATABLE READ隔离级别下，非一致性锁定读总是读取事务开始时的行数据版本。在READ COMMITTED下，总是读取被锁定行的最新一份快照数据。</p>
-<h3 id="6-3-3-锁定读-locking-reads"><a href="#6-3-3-锁定读-locking-reads" class="headerlink" title="6.3.3 锁定读 locking reads"></a>6.3.3 锁定读 <a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-reads.html" target="_blank" rel="noopener">locking reads</a></h3><p>在某些情况下用户需要显式对数据库读取操作进行加锁以保障数据逻辑的一致性。即使对于SELECT的只读操作，也要支持加锁语句。</p>
-<p>支持两种一致性的锁定读（locking read)操作：</p>
-<pre><code>SELECT .. FOR UPDATE
-SELECT .. LOCK IN SHARE MODE
-</code></pre><h2 id="6-4-锁的算法"><a href="#6-4-锁的算法" class="headerlink" title="6.4 锁的算法"></a>6.4 锁的算法</h2><h3 id="6-4-1-行锁的3种算法"><a href="#6-4-1-行锁的3种算法" class="headerlink" title="6.4.1 行锁的3种算法"></a>6.4.1 行锁的3种算法</h3><p>InnoDB有3种行锁算法，其分别是：</p>
-<pre><code>Record Lock：单个行记录上的锁
-Gap Lock：间隙锁，锁定一个范围，但不包含记录本身
-Next-Key Lock: Gap Lock + Record Lock 锁定一个范围并且锁定记录本身。
-</code></pre><p>在默认隔离级别REPEATABLE READ下，使用的是Next-Key Lock。对于查询的索引含有唯一属性时，InnoDB会将Next-KeyLock进行优化，降级为RecordLock，即仅锁住索引本身，而不是范围。</p>
-<p>而对于辅助索引，其加上Next-KeyLock InnoDB存储引擎还会辅助索引下一个键值加上gapLock，即会锁住这个辅助索引附近的两个范围。</p>
-<h3 id="6-4-2-解决幻象问题"><a href="#6-4-2-解决幻象问题" class="headerlink" title="6.4.2 解决幻象问题"></a>6.4.2 解决幻象问题</h3><p>幻象是指在同一个事务下，连续执行两次同样的SQL语句可能导致不同的结果，第二次SQL可能会返回之前不存在的行。</p>
-<p>在REPEATABLE READ下采用Next-key Lock加锁</p>
-<p>在READ COMMITTED下 只是采用RecordLock。</p>
-<h4 id="通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。"><a href="#通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。" class="headerlink" title="通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。"></a>通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。</h4><p>一个场景：想查询一下某个id是否存在，如果不存在则插入，如果存在则不插入。两种做法：外部加锁或者通过数据库。</p>
-<p>数据库方式：</p>
-<pre><code>select * from table where col = xx LOCK IN SHARE MODE;
-if not found any row:
-    # unique for insert value 需要是唯一索引，不然也存在多条插入的情况
-    INSERT INTO table VALUES (...);
-</code></pre><h2 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 <a href="http://keything.github.io/2016/01/09/mysql-%E9%94%81%E7%9A%84%E9%97%AE%E9%A2%98/">锁问题</a></h2><h3 id="6-5-1-脏读"><a href="#6-5-1-脏读" class="headerlink" title="6.5.1 脏读"></a>6.5.1 脏读</h3><p>脏读：指的是在不同事务下，当前事务可以读到另外事务未提交的数据</p>
-<h3 id="6-5-2-不可重复读"><a href="#6-5-2-不可重复读" class="headerlink" title="6.5.2 不可重复读"></a>6.5.2 不可重复读</h3><p>不可重复读：指的是在一个事务内两次读到的数据不一样，多了或者少了数据。</p>
-<h3 id="6-5-3-丢失更新"><a href="#6-5-3-丢失更新" class="headerlink" title="6.5.3 丢失更新"></a>6.5.3 丢失更新</h3><p>丢失更新：简单来说，就是一个事务的更新操作会被另一个事务的更新操作所覆盖，从而导致数据的不一致。<br>解决方法：让事务在这种情况下的操作变成串行化。比如使用select … FOR UPDATE.</p>
-<h3 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h3><p>多版本技术：一个行记录可能有不止一个快照数据，称之为行多版本技术。</p>
-<p>由此带来的并发控制，称之为多版本并发控制 multi version concurrency controll mvcc。</p>
-<h2 id="6-6-参考文章"><a href="#6-6-参考文章" class="headerlink" title="6.6 参考文章"></a>6.6 参考文章</h2><ol>
-<li><a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-transaction-model.html" target="_blank" rel="noopener">15.5 InnoDBlocking and Transaction Model</a></li>
-<li>姜承尧 InnoDB存储引擎第二版 6.锁</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="cjwq1x8dp003u1os6laa6si5x" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Redis与Memcache作为缓存时的比较" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/16/Redis与Memcache作为缓存时的比较/" class="article-date">
-  <time datetime="2016-07-16T10:16:56.000Z" itemprop="datePublished">2016-07-16</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/16/Redis与Memcache作为缓存时的比较/">Redis与memcache作为缓存时的比较</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>【说明一个大前提】我觉得拿Redis跟Memcache比较时，是把Redis当做缓存来用。不然一个是缓存一个是持久化，那么比较就失去意义了。</p>
-<p>【本文目的】这篇文章是总结了大牛们关于Redis和Memcache的论断，加上部分自己的理解。</p>
-<h3 id="1-Redis的性能比Memcache好。"><a href="#1-Redis的性能比Memcache好。" class="headerlink" title="1. Redis的性能比Memcache好。"></a>1. Redis的性能比Memcache好。</h3><p>Redis的QPS能够达到10w [数据来源]</p>
-<p>Memcache的QPS在6w [数据来源 </p>
-<h4 id="数据来源："><a href="#数据来源：" class="headerlink" title="数据来源："></a>数据来源：</h4><p><a href="http://antirez.com/news/94" target="_blank" rel="noopener">redis作者的声明</a></p>
-<p><a href="http://timyang.net/data/mcdb-tt-redis" target="_blank" rel="noopener">memcache,redis性能测试</a></p>
-<p>自己测试的话Redis选择<a href="http://redis.io/topics/benchmarks" target="_blank" rel="noopener">RedisBenchmark</a>，Memcache可以使用<a href="https://github.com/twitter/twemperf" target="_blank" rel="noopener">mcperf</a></p>
-<h4 id="原因："><a href="#原因：" class="headerlink" title="原因："></a>原因：</h4><ol>
-<li>Redis没有使用libevent作为事件处理函数库，而是自己造轮子。libevent因为通用牺牲了不少性能，没有epoll性能好<a href="http://rdc.gleasy.com/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%80%89%E5%9E%8B%E6%AF%94%E8%BE%83epolllibeventjava-mina2.html" target="_blank" rel="noopener">参考</a></li>
-</ol>
-<ol start="2">
-<li>cas问题：CAS是Memcached中比较方便的一种防止竞争修改资源的方法。CAS实现需要为每个cache key设置一个隐藏的cas token，cas相当value版本号，每次set会token需要递增，因此带来CPU和内存的双重开销，虽然这些开销很小，但是到单机10G+ cache以及QPS上万之后这些开销就会给双方相对带来一些细微性能差别。</li>
-</ol>
-<h3 id="2-更多元化的方式使用Redis"><a href="#2-更多元化的方式使用Redis" class="headerlink" title="2. 更多元化的方式使用Redis"></a>2. 更多元化的方式使用Redis</h3><p>除了key/value的形式来使用Redis，还可以使用hash等数据形式。使用Hash更加节约空间。<a href="http://blog.nosqlfan.com/html/3379.html" target="_blank" rel="noopener">实践</a> <a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">理论</a></p>
-<h3 id="3-Redis的内存效率更高"><a href="#3-Redis的内存效率更高" class="headerlink" title="3. Redis的内存效率更高"></a>3. Redis的内存效率更高</h3><p>   Redis中特殊编码的小型聚合值内存效率非常高<a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">内存优化</a></p>
-<p>   真正的内存效率必须基于手头的应用案例来评估</p>
-<h3 id="4-Redis禁用磁盘IO，纯内存操作"><a href="#4-Redis禁用磁盘IO，纯内存操作" class="headerlink" title="4. Redis禁用磁盘IO，纯内存操作"></a>4. Redis禁用磁盘IO，纯内存操作</h3><p>有一种论断是说 Memcached根本没有磁盘IO操作。实际上Redis禁用磁盘IO操作以后，也是纯内存操作。</p>
-<h3 id="5-作为缓存时，redis-LRU-vs-Slab内存分配器"><a href="#5-作为缓存时，redis-LRU-vs-Slab内存分配器" class="headerlink" title="5. 作为缓存时，redis LRU vs Slab内存分配器"></a>5. 作为缓存时，redis LRU vs Slab内存分配器</h3><p>redis的LRU最近优化了很多，现在非常接近真正的LRU。进一步的信息可阅读： <a href="http://redis.io/topics/lru-cache" target="_blank" rel="noopener">lru-cache</a> 。如果我没理解错的话，Memcached的LRU依旧是根据它的slab分配器来判断数据过期的，因此有时其行为与真正的LRU相差甚远，但我希望这方面的专家能够针对这个问题说点什么。如果你想测试Redis的LRU，在最近几个版本的Redis中可以使用redis-cli的LRU测试模式</p>
-<h3 id="6-Memcache的多线程对比Redis的单线程"><a href="#6-Memcache的多线程对比Redis的单线程" class="headerlink" title="6. Memcache的多线程对比Redis的单线程"></a>6. Memcache的多线程对比Redis的单线程</h3><p>Memcache是多线程的，在多核上能线性扩展到每秒处理100,000个请求。</p>
-<p>如果我们将特殊用例下的Redis看做是Memcached的替代品，执行多个Redis进程也能反驳“Memcached多线程更好”这个观点，或者简单地执行一个Redis进程也行。</p>
-<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><p><a href="http://timyang.net/data/redis-misunderstanding/" target="_blank" rel="noopener">Redis几点认识误区</a></p>
-<p><a href="http://www.tuicool.com/wx/bmQFNjm" target="_blank" rel="noopener">关于Redis和Memcache的几点澄清</a></p>
-<p><a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">redis内存优化</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="cjwq1x8hu005j1os6wuy92lc1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="cjxclaw2r0012zvs636p5pbi6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -934,7 +1118,7 @@ if not found any row:
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -956,6 +1140,14 @@ if not found any row:
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -965,14 +1157,6 @@ if not found any row:
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

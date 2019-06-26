@@ -62,6 +62,148 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-gitflow工作流" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/03/15/gitflow工作流/" class="article-date">
+  <time datetime="2016-03-15T00:23:25.000Z" itemprop="datePublished">2016-03-15</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/03/15/gitflow工作流/">gitflow工作流</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><h3 id="一-现有开发方式"><a href="#一-现有开发方式" class="headerlink" title="一. 现有开发方式"></a>一. 现有开发方式</h3><p>在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。</p>
+<p>存在的问题：</p>
+<ol>
+<li>代码不能进行review</li>
+<li>master分支不能保持可用状态</li>
+</ol>
+<h3 id="二-引入pull-request"><a href="#二-引入pull-request" class="headerlink" title="二. 引入pull request"></a>二. 引入pull request</h3><p>我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。</p>
+<p>接下来，我们将会介绍两种工作方式，我们将采用gitflow这种工作流，为了让大家有个更加清晰的了解，我们先介绍单纯采用分支的工作方式，然后再介绍采用gitflow工作流的方式。</p>
+<h3 id="三-最简单的采用分支的工作方式"><a href="#三-最简单的采用分支的工作方式" class="headerlink" title="三. 最简单的采用分支的工作方式"></a>三. 最简单的采用分支的工作方式</h3><p>最简单的方式，我们所有的开发（包括简单的一次修改和复杂的新功能开发）都是走分支，分支开发完毕以后跟master进行比较，从而进行code review。流程简单如下</p>
+<p><img src="/images/gitflow/simple_br.png" alt="simple"></p>
+<pre><code>1. 从master分支checkout出feature/fa分支
+2. 在feature/fa分支进行开发，每个节点代表一次修改和一次commit
+3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
+4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxx..net上创建一个merge request。
+    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
+5. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
+6. 将feature/fa分支合并到mater分支上。
+7. 将master分支推到远程仓库origin的master从而完成开发。
+</code></pre><h3 id="四-引入gitflow工作流"><a href="#四-引入gitflow工作流" class="headerlink" title="四. 引入gitflow工作流"></a>四. 引入gitflow工作流</h3><p>（一） gitflow的简要介绍</p>
+<p>在gitflow中有两个永久存在的分支develop和master分支，有很多临时的功能分支feature,release,hotfix。详细介绍可以看 <a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a></p>
+<p>（二） 我们如何使用gitflow</p>
+<p>结合我们项目特点，目前我们使用阉割版的gitflow，不使用它的hotfix和release分支，仅仅使用master,develop,feature三个分支。流程如下：</p>
+<p><img src="/images/gitflow/gitflow.png" alt="gitflow"></p>
+<pre><code>1. 开辟一个feature分支，我们使用gitflow命令，好处就是他默认从develop分支checkout出一个分支
+2. 正常的分支开发，每个节点代表依次修改和commit
+3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
+4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxxx..net上创建一个merge request。
+    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
+5. 将feature/fa分支合并到develop分支，并删除feature/fa分支，听着很复杂，实际上只需要执行一条命令 git flow feature finish fa即可
+6. 将develop分支推送到远程仓库，之所以这样是为了让小伙伴同步代码
+7. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
+8. 将develop分支合并到mater分支上。
+9. 将master分支推到远程仓库origin的master从而完成开发。
+</code></pre><h3 id="四-受限分支master"><a href="#四-受限分支master" class="headerlink" title="四. 受限分支master"></a>四. 受限分支master</h3><ol>
+<li><p>目前存在问题</p>
+<p> 到目前为止，我们引入了pull request进行codereview，引入工作流gitflow规范大家的开发流程。但是！但是！master分支依然允许所有的人进行操作，那么可能有人不遵循规则，而对master进行修改和上线。</p>
+</li>
+<li><p>解决方法</p>
+<p> 通过gitlab，我们对master分支进行保护，即受限分支。只有具有权限的小伙伴才能对远程仓库的master分支进行操作。当然了，你操作你本地的master分支木有问题，但你想向远程的master分支推送，不好意思，你被禁止了。</p>
+</li>
+<li><p>引入受限分支以后，开发流程的变化</p>
+<p> 在上面描述的流程中，gitflow的7，8，9三步交给具有操作master分支权限的小伙伴来执行。</p>
+</li>
+</ol>
+<h3 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五 参考文章"></a>五 参考文章</h3><p><a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a> </p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="cjxclaw420027zvs6aqdfoxxi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-svn迁移git-完美保留日志" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/03/11/svn迁移git-完美保留日志/" class="article-date">
+  <time datetime="2016-03-11T00:20:12.000Z" itemprop="datePublished">2016-03-11</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/03/11/svn迁移git-完美保留日志/">svn迁移git-完美保留日志</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>迁移流程–完美保留日志</p>
+<ol>
+<li><p>生成用户列表</p>
+<p> <code>svn log --xml | grep author | sort -u |   perl -pe &#39;s/.*&gt;(.*?)&lt;.*/$1 = $1 &lt;$1\@compony.suffix&gt;/&#39; &gt; users.txt</code></p>
+</li>
+<li><p>从svn克隆到新的目录</p>
+<p> git svn clone <a href="https://your_svn_reposity/project_name/" target="_blank" rel="noopener">https://your_svn_reposity/project_name/</a> –authors-file=users.txt –no-metadata -s git_project_name</p>
+</li>
+<li><p>从svn仓库拉取文件到新的目录</p>
+<p> cd git_project_name<br> git svn fetch</p>
+</li>
+<li><p>校验文件是否一致：</p>
+<p> diff -rbB –brief svn_cloudfs git_cloudfs | grep -v .svn</p>
+</li>
+<li><p>添加远程仓库</p>
+<p> git remote add origin <a href="mailto:git@xxxx.net" target="_blank" rel="noopener">git@xxxx.net</a>:xxx.git</p>
+</li>
+<li><p>将代码上传到git仓库</p>
+<p> git push</p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="cjxclaw740058zvs6ymd7yq0v" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-zsh基础知识" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/02/07/zsh基础知识/" class="article-date">
@@ -102,7 +244,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjwq1x8gx00541os6ndmwpuk5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="cjxclaw7c005izvs6sih9cgch" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -423,7 +565,7 @@ set @@tx_isolation=&apos;read-committed&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjwq1x8dg003p1os6eu3drq6o" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="cjxclaw6c0045zvs6afknnxlc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -485,7 +627,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="cjwq1x7y6001k1os6cpgesw47" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="cjxclaw5z0041zvs6qwnocrhd" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -545,7 +687,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="cjwq1x8as003b1os6411t52o6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="cjxclaw5k003mzvs6fm3gcui4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -645,7 +787,7 @@ hbase(main):013:0&gt; drop &apos;test&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjwq1x8aa00361os647s919q9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="cjxclaw5i003kzvs691wzp1zm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -751,7 +893,7 @@ start-yarn.sh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjwq1x87u00331os6ypy61j6y" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="cjxclaw5d003fzvs6npifa7kf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -888,7 +1030,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjwq1x7ya001m1os6sszg5ph9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="cjxclaw3y0024zvs62pd1khde" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -1026,7 +1168,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjwq1x7s9000j1os6l6cngz8m" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="cjxclaw1u000czvs6jyv8g5ev" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1066,7 +1208,7 @@ git reset --hard HEAD~2
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1088,6 +1230,14 @@ git reset --hard HEAD~2
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -1097,14 +1247,6 @@ git reset --hard HEAD~2
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

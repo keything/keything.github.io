@@ -62,6 +62,146 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-mysql锁" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/28/mysql锁/" class="article-date">
+  <time datetime="2016-07-28T00:52:01.000Z" itemprop="datePublished">2016-07-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/07/28/mysql锁/">chapter6:mysql锁</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="6-1-什么是锁"><a href="#6-1-什么是锁" class="headerlink" title="6.1 什么是锁"></a>6.1 什么是锁</h2><p>锁机制用于管理对共享资源的并发访问</p>
+<p>MyISAM引擎的锁是表锁。</p>
+<p>InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性</p>
+<h2 id="6-2-lock与latch"><a href="#6-2-lock与latch" class="headerlink" title="6.2 lock与latch"></a>6.2 lock与latch</h2><p>一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。</p>
+<p>latch的目的是用来保证并发线程操作临界资源的正确性，并且没有死锁检测的机制。</p>
+<h2 id="6-3-InnoDB存储引擎中的锁"><a href="#6-3-InnoDB存储引擎中的锁" class="headerlink" title="6.3 InnoDB存储引擎中的锁"></a>6.3 InnoDB存储引擎中的锁</h2><h3 id="6-3-1-锁的类型"><a href="#6-3-1-锁的类型" class="headerlink" title="6.3.1 锁的类型"></a>6.3.1 锁的类型</h3><p>InnoDB实现了如下两种标准的行级锁：</p>
+<pre><code>1. 共享锁（S Lock）允许事务读一行数据
+2. 排他锁（X Lock）允许事务删除或更新一行数据
+</code></pre><p>InnoDB支持意向锁，其意向锁即为表级别的锁。</p>
+<h3 id="6-3-2-一致性非锁定读-consistent-nonlocking-read"><a href="#6-3-2-一致性非锁定读-consistent-nonlocking-read" class="headerlink" title="6.3.2 一致性非锁定读 consistent nonlocking read"></a>6.3.2 一致性非锁定读 consistent nonlocking read</h3><p>一致性非锁定读指InnoDB存储引擎通过行多版本控制的方式来读取当前执行时间数据库中行的数据。如果读取的行正在执行DELETE或UPDATE操作，这时读取操作不会因此等待行上锁的释放，而是会读取行的一个快照数据。</p>
+<p>快照数据是指该行的之前版本的数据，该实现是通过undo段来完成，undo段是用来在事务中回滚数据因此没有额外的开销。</p>
+<p>在不同事务隔离级别下，读取方式的不同，并不是在每个事务隔离级别下都是采用非锁定的一致性读。此外，即使都是使用非锁定的一致性读，但是对于快照数据的定义也不相同。</p>
+<p>在事务隔离级别READ COMMITTED和REPEATABLE READ下，InnoDB存储引擎使用非锁定的一致性读，但是快照数据定义不相同。在REPEATABLE READ隔离级别下，非一致性锁定读总是读取事务开始时的行数据版本。在READ COMMITTED下，总是读取被锁定行的最新一份快照数据。</p>
+<h3 id="6-3-3-锁定读-locking-reads"><a href="#6-3-3-锁定读-locking-reads" class="headerlink" title="6.3.3 锁定读 locking reads"></a>6.3.3 锁定读 <a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-reads.html" target="_blank" rel="noopener">locking reads</a></h3><p>在某些情况下用户需要显式对数据库读取操作进行加锁以保障数据逻辑的一致性。即使对于SELECT的只读操作，也要支持加锁语句。</p>
+<p>支持两种一致性的锁定读（locking read)操作：</p>
+<pre><code>SELECT .. FOR UPDATE
+SELECT .. LOCK IN SHARE MODE
+</code></pre><h2 id="6-4-锁的算法"><a href="#6-4-锁的算法" class="headerlink" title="6.4 锁的算法"></a>6.4 锁的算法</h2><h3 id="6-4-1-行锁的3种算法"><a href="#6-4-1-行锁的3种算法" class="headerlink" title="6.4.1 行锁的3种算法"></a>6.4.1 行锁的3种算法</h3><p>InnoDB有3种行锁算法，其分别是：</p>
+<pre><code>Record Lock：单个行记录上的锁
+Gap Lock：间隙锁，锁定一个范围，但不包含记录本身
+Next-Key Lock: Gap Lock + Record Lock 锁定一个范围并且锁定记录本身。
+</code></pre><p>在默认隔离级别REPEATABLE READ下，使用的是Next-Key Lock。对于查询的索引含有唯一属性时，InnoDB会将Next-KeyLock进行优化，降级为RecordLock，即仅锁住索引本身，而不是范围。</p>
+<p>而对于辅助索引，其加上Next-KeyLock InnoDB存储引擎还会辅助索引下一个键值加上gapLock，即会锁住这个辅助索引附近的两个范围。</p>
+<h3 id="6-4-2-解决幻象问题"><a href="#6-4-2-解决幻象问题" class="headerlink" title="6.4.2 解决幻象问题"></a>6.4.2 解决幻象问题</h3><p>幻象是指在同一个事务下，连续执行两次同样的SQL语句可能导致不同的结果，第二次SQL可能会返回之前不存在的行。</p>
+<p>在REPEATABLE READ下采用Next-key Lock加锁</p>
+<p>在READ COMMITTED下 只是采用RecordLock。</p>
+<h4 id="通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。"><a href="#通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。" class="headerlink" title="通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。"></a>通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。</h4><p>一个场景：想查询一下某个id是否存在，如果不存在则插入，如果存在则不插入。两种做法：外部加锁或者通过数据库。</p>
+<p>数据库方式：</p>
+<pre><code>select * from table where col = xx LOCK IN SHARE MODE;
+if not found any row:
+    # unique for insert value 需要是唯一索引，不然也存在多条插入的情况
+    INSERT INTO table VALUES (...);
+</code></pre><h2 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 <a href="http://keything.github.io/2016/01/09/mysql-%E9%94%81%E7%9A%84%E9%97%AE%E9%A2%98/">锁问题</a></h2><h3 id="6-5-1-脏读"><a href="#6-5-1-脏读" class="headerlink" title="6.5.1 脏读"></a>6.5.1 脏读</h3><p>脏读：指的是在不同事务下，当前事务可以读到另外事务未提交的数据</p>
+<h3 id="6-5-2-不可重复读"><a href="#6-5-2-不可重复读" class="headerlink" title="6.5.2 不可重复读"></a>6.5.2 不可重复读</h3><p>不可重复读：指的是在一个事务内两次读到的数据不一样，多了或者少了数据。</p>
+<h3 id="6-5-3-丢失更新"><a href="#6-5-3-丢失更新" class="headerlink" title="6.5.3 丢失更新"></a>6.5.3 丢失更新</h3><p>丢失更新：简单来说，就是一个事务的更新操作会被另一个事务的更新操作所覆盖，从而导致数据的不一致。<br>解决方法：让事务在这种情况下的操作变成串行化。比如使用select … FOR UPDATE.</p>
+<h3 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h3><p>多版本技术：一个行记录可能有不止一个快照数据，称之为行多版本技术。</p>
+<p>由此带来的并发控制，称之为多版本并发控制 multi version concurrency controll mvcc。</p>
+<h2 id="6-6-参考文章"><a href="#6-6-参考文章" class="headerlink" title="6.6 参考文章"></a>6.6 参考文章</h2><ol>
+<li><a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-transaction-model.html" target="_blank" rel="noopener">15.5 InnoDBlocking and Transaction Model</a></li>
+<li>姜承尧 InnoDB存储引擎第二版 6.锁</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="cjxclaw6i004fzvs69tywclx0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Redis与Memcache作为缓存时的比较" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/16/Redis与Memcache作为缓存时的比较/" class="article-date">
+  <time datetime="2016-07-16T10:16:56.000Z" itemprop="datePublished">2016-07-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/07/16/Redis与Memcache作为缓存时的比较/">Redis与memcache作为缓存时的比较</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>【说明一个大前提】我觉得拿Redis跟Memcache比较时，是把Redis当做缓存来用。不然一个是缓存一个是持久化，那么比较就失去意义了。</p>
+<p>【本文目的】这篇文章是总结了大牛们关于Redis和Memcache的论断，加上部分自己的理解。</p>
+<h3 id="1-Redis的性能比Memcache好。"><a href="#1-Redis的性能比Memcache好。" class="headerlink" title="1. Redis的性能比Memcache好。"></a>1. Redis的性能比Memcache好。</h3><p>Redis的QPS能够达到10w [数据来源]</p>
+<p>Memcache的QPS在6w [数据来源 </p>
+<h4 id="数据来源："><a href="#数据来源：" class="headerlink" title="数据来源："></a>数据来源：</h4><p><a href="http://antirez.com/news/94" target="_blank" rel="noopener">redis作者的声明</a></p>
+<p><a href="http://timyang.net/data/mcdb-tt-redis" target="_blank" rel="noopener">memcache,redis性能测试</a></p>
+<p>自己测试的话Redis选择<a href="http://redis.io/topics/benchmarks" target="_blank" rel="noopener">RedisBenchmark</a>，Memcache可以使用<a href="https://github.com/twitter/twemperf" target="_blank" rel="noopener">mcperf</a></p>
+<h4 id="原因："><a href="#原因：" class="headerlink" title="原因："></a>原因：</h4><ol>
+<li>Redis没有使用libevent作为事件处理函数库，而是自己造轮子。libevent因为通用牺牲了不少性能，没有epoll性能好<a href="http://rdc.gleasy.com/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%80%89%E5%9E%8B%E6%AF%94%E8%BE%83epolllibeventjava-mina2.html" target="_blank" rel="noopener">参考</a></li>
+</ol>
+<ol start="2">
+<li>cas问题：CAS是Memcached中比较方便的一种防止竞争修改资源的方法。CAS实现需要为每个cache key设置一个隐藏的cas token，cas相当value版本号，每次set会token需要递增，因此带来CPU和内存的双重开销，虽然这些开销很小，但是到单机10G+ cache以及QPS上万之后这些开销就会给双方相对带来一些细微性能差别。</li>
+</ol>
+<h3 id="2-更多元化的方式使用Redis"><a href="#2-更多元化的方式使用Redis" class="headerlink" title="2. 更多元化的方式使用Redis"></a>2. 更多元化的方式使用Redis</h3><p>除了key/value的形式来使用Redis，还可以使用hash等数据形式。使用Hash更加节约空间。<a href="http://blog.nosqlfan.com/html/3379.html" target="_blank" rel="noopener">实践</a> <a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">理论</a></p>
+<h3 id="3-Redis的内存效率更高"><a href="#3-Redis的内存效率更高" class="headerlink" title="3. Redis的内存效率更高"></a>3. Redis的内存效率更高</h3><p>   Redis中特殊编码的小型聚合值内存效率非常高<a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">内存优化</a></p>
+<p>   真正的内存效率必须基于手头的应用案例来评估</p>
+<h3 id="4-Redis禁用磁盘IO，纯内存操作"><a href="#4-Redis禁用磁盘IO，纯内存操作" class="headerlink" title="4. Redis禁用磁盘IO，纯内存操作"></a>4. Redis禁用磁盘IO，纯内存操作</h3><p>有一种论断是说 Memcached根本没有磁盘IO操作。实际上Redis禁用磁盘IO操作以后，也是纯内存操作。</p>
+<h3 id="5-作为缓存时，redis-LRU-vs-Slab内存分配器"><a href="#5-作为缓存时，redis-LRU-vs-Slab内存分配器" class="headerlink" title="5. 作为缓存时，redis LRU vs Slab内存分配器"></a>5. 作为缓存时，redis LRU vs Slab内存分配器</h3><p>redis的LRU最近优化了很多，现在非常接近真正的LRU。进一步的信息可阅读： <a href="http://redis.io/topics/lru-cache" target="_blank" rel="noopener">lru-cache</a> 。如果我没理解错的话，Memcached的LRU依旧是根据它的slab分配器来判断数据过期的，因此有时其行为与真正的LRU相差甚远，但我希望这方面的专家能够针对这个问题说点什么。如果你想测试Redis的LRU，在最近几个版本的Redis中可以使用redis-cli的LRU测试模式</p>
+<h3 id="6-Memcache的多线程对比Redis的单线程"><a href="#6-Memcache的多线程对比Redis的单线程" class="headerlink" title="6. Memcache的多线程对比Redis的单线程"></a>6. Memcache的多线程对比Redis的单线程</h3><p>Memcache是多线程的，在多核上能线性扩展到每秒处理100,000个请求。</p>
+<p>如果我们将特殊用例下的Redis看做是Memcached的替代品，执行多个Redis进程也能反驳“Memcached多线程更好”这个观点，或者简单地执行一个Redis进程也行。</p>
+<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><p><a href="http://timyang.net/data/redis-misunderstanding/" target="_blank" rel="noopener">Redis几点认识误区</a></p>
+<p><a href="http://www.tuicool.com/wx/bmQFNjm" target="_blank" rel="noopener">关于Redis和Memcache的几点澄清</a></p>
+<p><a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">redis内存优化</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="cjxclaw2p0010zvs6u3sz7ir0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-缓存替换" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/07/12/缓存替换/" class="article-date">
@@ -162,7 +302,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="cjwq1x8m000731os6li0cx8l1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="cjxclaw7p005xzvs6v2n54dhj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -206,7 +346,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="cjwq1x8hb005b1os6qqklvbvx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="cjxclaw7e005kzvs622lqgjd2" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tcp/">tcp</a></li></ul>
@@ -365,7 +505,7 @@ net.ipv4.tcp_max_tw_buckets = 5000
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="cjwq1x8gi004z1os6wxoov8pi" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="cjxclaw6x004yzvs6uulcmrqw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -438,7 +578,7 @@ AND address LIKE &apos;%Main Street%&apos;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="cjwq1x7rr000g1os6rvto6isl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="cjxclaw1o0009zvs63yjd87rw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -519,7 +659,7 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjwq1x7wd000y1os68j1283eq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="cjxclaw2t0015zvs6gdv5jkds" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -690,7 +830,7 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjwq1x8fb004f1os6gpqr8f02" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="cjxclaw6o004qzvs62insc47w" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -912,7 +1052,7 @@ location /baz {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjwq1x8ej00431os6ex5a8o7o" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="cjxclaw6g004czvs6l2b5da2o" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -1159,205 +1299,7 @@ location /third {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjwq1x8h100561os65e8lfo5o" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx配置-最小配置" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/04/nginx配置-最小配置/" class="article-date">
-  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/04/nginx配置-最小配置/">nginx配置-最小配置</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="前述"><a href="#前述" class="headerlink" title="前述"></a>前述</h2><p>很多时候都会提到最小模块。对于Nginx的配置，当然也要有最小配置呢。当然下面的配置也不是最小配置，因为里面有很多配置都是有默认值的。大家可以查看一下nginx.org上的文档说明。</p>
-<h2 id="主配置文件nginx-conf详细说明"><a href="#主配置文件nginx-conf详细说明" class="headerlink" title="主配置文件nginx.conf详细说明"></a>主配置文件nginx.conf详细说明</h2><p>在nginx.conf中包括了事件模块events{}, http模块http{}。并没有看到预想的虚拟主机server{}。因为我们通过include host/*.conf将虚拟主机的配置放在了vhost文件夹中。类似C语言中include。</p>
-<pre><code>##nginx.conf
-error_log  /usr/local/var/log/nginx/error.log  info;
-pid        /usr/local/var/run/nginx.pid;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-
-    include vhost/*.conf;
-}
-</code></pre><h2 id="普通HTTP虚拟主机配置"><a href="#普通HTTP虚拟主机配置" class="headerlink" title="普通HTTP虚拟主机配置"></a>普通HTTP虚拟主机配置</h2><p>vhost/basic.conf<br>     basic.conf配置中必要的配置是listen，root，location /, location ~ .php$ {}.<br>其中location ~.php${}的作用是将以php结尾的文件转向FastCGI服务器。</p>
-<pre><code># vhost/basic.conf
-server {
-    listen       80 default;
-    server_name  localhost;
-    access_log  /usr/local/var/log/nginx/access.log;
-
-    charset utf8;
-
-    root   /Users/xx/Documents/Study/nginx/learn_conf;
-    location / {
-        index  index.php index.html index.htm;
-    }
-
-    error_page 404 404.php;
-    fastcgi_intercept_errors on;
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    location ~ \.php$ {
-        fastcgi_pass   localhost:9000;
-        fastcgi_index  index.php;
-        include        fastcgi.conf;
-    }
-}
-</code></pre><h2 id="加密HTTPS虚拟主机配置"><a href="#加密HTTPS虚拟主机配置" class="headerlink" title="加密HTTPS虚拟主机配置"></a>加密HTTPS虚拟主机配置</h2><p>加密HTTPS与普通HTTP虚拟主机的区别在于：<br>1）端口号后加 ssl<br>2）加入ssl_certificate   ssl_certificate_key两个指令</p>
-<p>其他方面二者相同：比如端口号改变，server_name更改</p>
-<pre><code>server {
-    listen 443 ssl;
-    server_name learn.ssl1;
-
-    ssl_certificate /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq.crt;
-    ssl_certificate_key /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq_nopass.key;
-
-    root /Users/Documents/Study/nginx/learn_ssl2;
-    location / {
-        index index.php index.html index.htm;
-    }
-
-    error_page 404 404.php;
-    fastcgi_intercept_errors on;
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    location ~ \.php$ {
-        fastcgi_pass   localhost:9000;
-        fastcgi_index  index.php;
-        include        fastcgi.conf;
-    }
-}
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="cjwq1x8e4003z1os6qgpmgctl" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
-  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
-<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
-
-location [ = | ~ | ~* | ^~ ] uri { ... }
-location @name { ... }
-
-Default:
-
-—
-
-Context:
-
-server, location
-</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
-<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
-<ol>
-<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
-<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
-<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
-<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
-<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
-<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
-<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
-</ol>
-<p>location检查的策略：</p>
-<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
-2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
-对于匹配正则location并不是所有情况都进行，有两种情况是例外：
-1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
-2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
-
-   简要概述：
-    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
-如下图所示：
-</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
-<p>举例说明：</p>
-<pre><code>location = / {
-    [ configuration A ]
-}
-
-location / {
-    [ configuration B ]
-}
-
-location /documents/ {
-    [ configuration C ]
-}
-
-location ^~ /images/ {
-    [ configuration D ]
-}
-
-location ~* \.(gif|jpg|jpeg)$ {
-    [ configuration E ]
-}
-
-请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
-</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
-<p>参考文章</p>
-<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="cjwq1x8dz003w1os6nmt7cgpb" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="cjxclaw6f004azvs6ehchexc7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -1397,7 +1339,7 @@ location ~* \.(gif|jpg|jpeg)$ {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16px;">golang</a> <a href="/tags/laravel/" style="font-size: 11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13px;">nginx</a> <a href="/tags/nosql/" style="font-size: 19px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 18px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12px;">redis</a> <a href="/tags/spark/" style="font-size: 12px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1419,6 +1361,14 @@ location ~* \.(gif|jpg|jpeg)$ {
       <ul>
         
           <li>
+            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
           </li>
         
@@ -1428,14 +1378,6 @@ location ~* \.(gif|jpg|jpeg)$ {
         
           <li>
             <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
           </li>
         
       </ul>

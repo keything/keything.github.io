@@ -5,20 +5,19 @@
   
 
   
-  <title>faiss-install | Keything的日志</title>
+  <title>golang模块wiki译文 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="一、clone faiss项目 git clone https://github.com/facebookresearch/faiss.git 二、安装必要依赖和工具  conda install openblas  brew install llvm  如果提示:dyld: Library not loaded: @rpath/libomp.dylib  ln -s $HOME/anaconda">
-<meta name="keywords" content="faiss">
+  <meta name="description" content="Go 1.11 Modules 译文 Go1.11 中引入了之前提到的版本模块(versioned modules)。modules在Go 1.11版本中是实验的性质，计划在Go 1.13中引入最终版本。尽管还有很多细节会改变，但未来版本都会支持Go1.11 或Go1.12中定义的模块。  2018年1月提出了原型vgo。2018年7月 模块登录主仓库。Go1.1在2018正式发布。 目录内容快速">
 <meta property="og:type" content="article">
-<meta property="og:title" content="faiss-install">
-<meta property="og:url" content="http://keything.github.io/2018/04/10/faiss-install/index.html">
+<meta property="og:title" content="golang模块wiki译文">
+<meta property="og:url" content="http://keything.github.io/2019/06/26/golang模块wiki译文/index.html">
 <meta property="og:site_name" content="Keything的日志">
-<meta property="og:description" content="一、clone faiss项目 git clone https://github.com/facebookresearch/faiss.git 二、安装必要依赖和工具  conda install openblas  brew install llvm  如果提示:dyld: Library not loaded: @rpath/libomp.dylib  ln -s $HOME/anaconda">
+<meta property="og:description" content="Go 1.11 Modules 译文 Go1.11 中引入了之前提到的版本模块(versioned modules)。modules在Go 1.11版本中是实验的性质，计划在Go 1.13中引入最终版本。尽管还有很多细节会改变，但未来版本都会支持Go1.11 或Go1.12中定义的模块。  2018年1月提出了原型vgo。2018年7月 模块登录主仓库。Go1.1在2018正式发布。 目录内容快速">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2018-10-03T08:24:25.000Z">
+<meta property="og:updated_time" content="2019-06-26T01:58:24.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="faiss-install">
-<meta name="twitter:description" content="一、clone faiss项目 git clone https://github.com/facebookresearch/faiss.git 二、安装必要依赖和工具  conda install openblas  brew install llvm  如果提示:dyld: Library not loaded: @rpath/libomp.dylib  ln -s $HOME/anaconda">
+<meta name="twitter:title" content="golang模块wiki译文">
+<meta name="twitter:description" content="Go 1.11 Modules 译文 Go1.11 中引入了之前提到的版本模块(versioned modules)。modules在Go 1.11版本中是实验的性质，计划在Go 1.13中引入最终版本。尽管还有很多细节会改变，但未来版本都会支持Go1.11 或Go1.12中定义的模块。  2018年1月提出了原型vgo。2018年7月 模块登录主仓库。Go1.1在2018正式发布。 目录内容快速">
   
     <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
   
@@ -65,10 +64,10 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main"><article id="post-faiss-install" class="article article-type-post" itemscope itemprop="blogPost">
+        <section id="main"><article id="post-golang模块wiki译文" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2018/04/10/faiss-install/" class="article-date">
-  <time datetime="2018-04-10T06:48:07.000Z" itemprop="datePublished">2018-04-10</time>
+    <a href="/2019/06/26/golang模块wiki译文/" class="article-date">
+  <time datetime="2019-06-26T01:57:41.000Z" itemprop="datePublished">2019-06-26</time>
 </a>
     
   </div>
@@ -79,7 +78,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      faiss-install
+      golang模块wiki译文
     </h1>
   
 
@@ -87,108 +86,139 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>一、clone faiss项目</p>
-<p>git clone <a href="https://github.com/facebookresearch/faiss.git" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss.git</a></p>
-<p>二、安装必要依赖和工具</p>
+        <p>Go 1.11 Modules</p>
+<p><a href="https://github.com/golang/go/wiki/Modules#quick-start" target="_blank" rel="noopener">译文</a></p>
+<p>Go1.11 中引入了<a href="https://golang.org/design/24301-versioned-go" target="_blank" rel="noopener">之前提到</a>的版本模块(versioned modules)。modules在Go 1.11版本中是实验的性质，计划在Go 1.13中引入最终版本。尽管还有很多细节会改变，但未来版本都会支持Go1.11 或Go1.12中定义的模块。 </p>
+<p>2018年1月提出了原型<a href="https://research.swtch.com/vgo" target="_blank" rel="noopener">vgo</a>。2018年7月 模块登录主仓库。Go1.1在2018正式发布。</p>
+<h2 id="目录内容"><a href="#目录内容" class="headerlink" title="目录内容"></a>目录内容</h2><h3 id="快速开始"><a href="#快速开始" class="headerlink" title="快速开始"></a>快速开始</h3><p>先看一下如何使用，后面再看一下细节。 </p>
+<ol>
+<li><p>在GOPATH目录外创建一个目录</p>
+<p> $ mkdir -p /tmp/scratchpad/hello<br> $ cd /tmp/scratchpad/hello</p>
+</li>
+<li><p>初始化一个新的模块</p>
+<p> go mod init github.com/you/hello</p>
+</li>
+<li><p>编写代码</p>
+<p> $ cat &lt;<eof> hello.go<br> package main</eof></p>
+<p> import (</p>
+<pre><code>&quot;fmt&quot;
+&quot;rsc.io/quote&quot;
+</code></pre><p> )</p>
+<p> func main() {</p>
+<pre><code>fmt.Println(quote.Hello())
+</code></pre><p> }<br> EOF</p>
+</li>
+<li><p>执行</p>
+<p> $ go build<br> $ ./hello</p>
+</li>
+</ol>
+<p><code>go.mod</code>文件会自动更新，明确指定你的依赖的版本，v1.5.2是一个<a href="https://semver.org/" target="_blank" rel="noopener">semver</a> 标记:</p>
+<pre><code>cat go.mod
+module github.com/you/hello
+require rsc.io/quote v1.5.2
+</code></pre><h3 id="日常工作方式"><a href="#日常工作方式" class="headerlink" title="日常工作方式"></a>日常工作方式</h3><p>在上面的例子中不需要使用 <code>go get</code>。<br>你的日常工作方式如下：</p>
 <ul>
-<li><p>conda install openblas</p>
-</li>
-<li><p>brew install llvm</p>
-</li>
-<li><p>如果提示:dyld: Library not loaded: @rpath/libomp.dylib</p>
+<li>在 <code>.go</code>代码中添加你的语句。 </li>
+<li>标准命令如<code>go build</code> 或 <code>go test</code>会自动添加所需要的依赖，并更新go.mod 并下载新的依赖。 </li>
+<li>如果有需要，可以通过<code>go get foo@v1.2.3</code>，<code>go get foo@master</code>, <code>go get foo@e3702bed2</code>，或者直接更改go.mod</li>
+</ul>
+<p>可能用到的一些功能：</p>
 <ul>
-<li>ln -s $HOME/anaconda2/lib/libopenblas.dylib /usr/lib/libopenblas.dylib</li>
-<li>export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/opt/llvm/lib/</li>
+<li><code>go list -m all</code></li>
+<li><code>go list -u -m all</code></li>
+<li><code>go get -u</code> 或 <code>go get -u=patch</code></li>
+<li><code>go build ./...</code> or <code>go test ./...</code></li>
+<li><code>go mod tidy</code></li>
+<li>replace</li>
+<li><code>go mod vendor</code></li>
 </ul>
-</li>
-<li><p>make tests/test_blas</p>
-</li>
-</ul>
-<p>常见错误：</p>
+<p>在”New Concepts”中有四个部分，将会了解到关于module的足够的信息。 </p>
+<h2 id="New-Concepts"><a href="#New-Concepts" class="headerlink" title="New Concepts"></a>New Concepts</h2><h3 id="Modules"><a href="#Modules" class="headerlink" title="Modules"></a>Modules</h3><p>Module是相关go package的集合，将这些package聚合在一起作为一个独立单元。 </p>
+<p>Module记录精确的依赖，并创建可复用的构建。</p>
+<p>通常，一个版本控制的仓库在其根目录准确的包含一个模块。当然在一个仓库中也支持多个模块。</p>
+<p>总结仓库、模块、包的关系：</p>
 <ul>
-<li><p>fatal error: ‘stdio.h’ file not found</p>
-<ul>
-<li>解决：xcode-select –install</li>
+<li>A repository contains one or more Go modules.</li>
+<li>Each module contains one or more Go packages.</li>
+<li>Each package consists of one or more Go source files in a single directory</li>
 </ul>
-</li>
-<li><p>fatal error: ‘malloc.h’ file not found</p>
-<ul>
-<li>IndexScalarQuantizer.cpp 中 malloc.h 改成 sys/malloc.h</li>
-</ul>
-</li>
-</ul>
-<p>三、编译安装c++部分</p>
-<ul>
-<li>make all</li>
-<li>./demos/demo_ivfpq_indexing</li>
-</ul>
-<p>四、安装faiss的python部分</p>
-<ul>
-<li><p>which python</p>
-<ul>
-<li>/usr/local/Cellar/anaconda2/bin/python</li>
-<li>建议使用anaconda的python</li>
-</ul>
-</li>
-<li><p>make py</p>
-</li>
-<li><p>python -c “import faiss”</p>
-</li>
-</ul>
-<p>五、 centos按照</p>
-<ul>
-<li><p>安装依赖</p>
-<p>  sudo yum install -y openblas swig</p>
-</li>
-<li><p>获取 faiss 源代码</p>
-<p>  git clone <a href="https://github.com/facebookresearch/faiss.git" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss.git</a></p>
-</li>
-<li><p>编译 faiss</p>
-<p>  cd faiss<br>  cp example_makefiles/makefile.inc.Linux makefile.inc<br>  make all</p>
-</li>
-<li><p>编译 python 接口</p>
-<p>  make py</p>
-</li>
-<li><p>设置优化选项</p>
-<p>  export OMP_WAIT_POLICY=PASSIVE</p>
-</li>
-<li><p>运行 python 示例代码</p>
-<p> export PYTHONPATH=.<br> python tutorial/python/1-Flat.py<br> python tutorial/python/2-IVFFlat.py<br> python tutorial/python/3-IVFPQ.py</p>
-</li>
-</ul>
-<p>五、参考文章</p>
-<ul>
-<li><a href="https://github.com/facebookresearch/faiss/blob/master/INSTALL.md" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss/blob/master/INSTALL.md</a></li>
-<li><a href="https://www.mobibrw.com/2017/6235" target="_blank" rel="noopener">https://www.mobibrw.com/2017/6235</a></li>
-</ul>
+<p>模块必须是根据semver进行语义版本化的，其格式是v(major).(minor).(patch)。比如v0.1.0,v1.2.3,v1.5.0-rc.1。 开头的<code>v</code>是必须的。 如果使用Git，tag就是版本。</p>
+<h3 id="go-mod"><a href="#go-mod" class="headerlink" title="go.mod"></a>go.mod</h3><p>模块是由<code>go.mod</code>文件和go 源码的文件树定义的。 模块源码需要位于<code>GOPATH</code>目录之外。有四个指令：<code>module</code>,<code>require</code>,<code>replace</code>,<code>exclude</code>.</p>
+<p>下面是一个定义模块<code>github.com/my/thing</code>的<code>go.mod</code>文件的例子，</p>
+<pre><code>module github.com/my/thing
 
+require (
+    github.com/some/dependency v1.2.3
+    github.com/another/dependency/v4 v4.0.0
+)
+</code></pre><p>通过<code>module</code>指令表名模块的身份，并提供了<code>module</code> path。引入模块内所有包的话，都使用包的path 作为前缀。 模块路径和包相对路径决定了包的import path。</p>
+<p>例如，创建了模块<code>github.com/my/repo</code>，模块由两个包组成 <code>github.com/my/repo/foo</code> 和 <code>github.com/my/repo/bar</code>组成。<code>go.mod</code>第一行通常声明模块路径，即 <code>module github.com/my/repo</code>，对应到硬盘的目录结构是：</p>
+<pre><code>repo/
+├── go.mod
+├── bar
+│   └── bar.go
+└── foo
+    └── foo.go
+</code></pre><p>在Go源码中，使用包含模块路径的全路径引入包。举例，<code>go.mod</code>文件中声明模块路径是<code>example.com/my/module</code>，一个消费方应该是这样使用:</p>
+<p><code>import &quot;example.com/my/module/mypkg</code></p>
+<p>这就是从模块<code>example.com/my/module</code>中引入包<code>mypkg</code>的做法。 </p>
+<h3 id="版本选择-version-selection"><a href="#版本选择-version-selection" class="headerlink" title="版本选择(version selection)"></a>版本选择(version selection)</h3><ul>
+<li>引入<code>go.mod</code>中不存在的包时，<code>go build</code>和<code>go test</code>命令都会自动找到合适的模块 和 <code>最大版本</code>的依赖，写入到<code>go.mod</code>文件 作为一个<code>require</code>指令。 </li>
+<li>一个构建中，所有模块的版本选择使用<code>最小版本选择(minimal version selection)</code>算法。对于构造中的每个模块而言，使用的是<code>require</code>指令中明确列出的<code>语义最大化</code>的版本。</li>
+</ul>
+<p>举个例子，如果你的模块依赖模块A <code>需要D v1.0.0</code>，你的模块同时依赖模块B <code>需要D v1.1.1</code>，那么根据最小版本选择，那么<code>D v1.1.1</code>会被选择用于构建。即使<code>D v1.2.0</code>可用了，也依然使用<code>D v1.1.1</code>。</p>
+<p>最小版本选择算法的简短介绍可以看<a href="https://github.com/golang/proposal/blob/master/design/24301-versioned-go.md#update-timing--high-fidelity-builds" target="_blank" rel="noopener">High Fidelity Builds</a> 或者看 <a href="https://research.swtch.com/vgo" target="_blank" rel="noopener">more detailed <code>vgo</code> blog series</a></p>
+<h3 id="语义版本化（Semantic-Import-Versioning"><a href="#语义版本化（Semantic-Import-Versioning" class="headerlink" title="语义版本化（Semantic Import Versioning)"></a>语义版本化（Semantic Import Versioning)</h3><p>这么多年以来，Go官方FAQ中关于包版本有这些建议：</p>
+<pre><code>&quot;Packages intended for public use should try to maintain backwards compatibility as they evolve. The Go 1 compatibility guidelines are a good reference here: don&apos;t remove exported names, encourage tagged composite literals, and so on. If different functionality is required, add a new name instead of changing an old one. If a complete break is required, create a new package with a new import path.&quot;
+</code></pre><p>最后一句很重要：如果破坏了兼容性，你就要更改包的引用路径。 在Go1.11 模块中，这些建议被写入<code>import compatibility rule</code>中：</p>
+<p><code>&quot;If an old package and a new package have the same import path, the new package must be backwards compatible with the old package.&quot;</code></p>
+<p>基于Semantic Importing Versioning，Go模块中遵循下面规则：</p>
+<ul>
+<li>遵从semver</li>
+<li>如果模块是v2或更高版本，那么引用路径要加上版本号。如 <code>github.com/my/mode/v2/</code></li>
+<li>如果版本是v0或v1，则不需要在引用路径上加上版本。</li>
+</ul>
+<h2 id="How-to-Use-Modules"><a href="#How-to-Use-Modules" class="headerlink" title="How to Use Modules"></a>How to Use Modules</h2><h3 id="how-to-install-and-activate-module-support"><a href="#how-to-install-and-activate-module-support" class="headerlink" title="how to install and activate module support"></a>how to install and activate module support</h3><h3 id="how-to-define-a-module"><a href="#how-to-define-a-module" class="headerlink" title="how to define a module"></a>how to define a module</h3><ol>
+<li><p>从已经存在的项目中创建<code>go.mod</code></p>
+<ul>
+<li>cd <code>project_root_directory</code><ul>
+<li>注意：目录需要在$GOPATH之外</li>
+</ul>
+</li>
+<li>go mod init<ul>
+<li>如果报错的话，可以 <code>go mod init github.com/my/repo</code></li>
+</ul>
+</li>
+<li><p>构建module</p>
+<ul>
+<li>go build ./…</li>
+</ul>
+</li>
+<li><p>测试</p>
+<ul>
+<li>go test ./…</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="如何升级和降级依赖"><a href="#如何升级和降级依赖" class="headerlink" title="如何升级和降级依赖"></a>如何升级和降级依赖</h2><h2 id="如何发布"><a href="#如何发布" class="headerlink" title="如何发布"></a>如何发布</h2><h2 id="迁移到Module"><a href="#迁移到Module" class="headerlink" title="迁移到Module"></a>迁移到Module</h2><h2 id="其他资源"><a href="#其他资源" class="headerlink" title="其他资源"></a>其他资源</h2>
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="cjxclaw3k001tzvs6wxgy0plx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/26/golang模块wiki译文/" data-id="cjxclaw400026zvs6weypoqzm" class="article-share-link">Share</a>
       
       
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/faiss/">faiss</a></li></ul>
-
     </footer>
   </div>
   
     
 <nav id="article-nav">
   
-    <a href="/2018/04/10/faiss-tutorial/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          faiss-tutorial
-        
-      </div>
-    </a>
   
-  
-    <a href="/2018/03/06/开发中容易出现的特殊字符编码/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2019/06/26/golang模块介绍/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">开发中容易出现的特殊字符编码</div>
+      <div class="article-nav-title">golang模块介绍</div>
     </a>
   
 </nav>
