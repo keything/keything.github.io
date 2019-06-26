@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="Keything的日志">
 <meta property="og:description" content="在golang1.11中引入golang模块，最近在看kratos，里面用到了go modules。因此进行了学习。学习文档是wiki go modules. 几个特点:wiki里面又教育大家如何管理包依赖，这次使用起来比较简答。  不用关心GOPATH。 只要项目不再GOPATH目录下就可以。当然在GOPATH目录下也可以通过GO111MODULE进行调整 可以直接写代码，go build or">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-06-26T01:57:01.000Z">
+<meta property="og:updated_time" content="2019-06-26T02:03:32.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="golang模块介绍">
 <meta name="twitter:description" content="在golang1.11中引入golang模块，最近在看kratos，里面用到了go modules。因此进行了学习。学习文档是wiki go modules. 几个特点:wiki里面又教育大家如何管理包依赖，这次使用起来比较简答。  不用关心GOPATH。 只要项目不再GOPATH目录下就可以。当然在GOPATH目录下也可以通过GO111MODULE进行调整 可以直接写代码，go build or">
@@ -126,6 +126,7 @@
 <li>使用go mod replace</li>
 <li>使用 PROXY</li>
 </ol>
+<p>使用go mod replace可以解决包的获取问题，但是包与包之间互相依赖，当包非常多的时候，这种方式并不可取。</p>
 <h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
 <li><a href="https://github.com/golang/go/wiki/Modules" target="_blank" rel="noopener">golang wiki modules</a></li>
 <li><a href="https://farer.org/2018/11/11/go-modules-notes/" target="_blank" rel="noopener">真官方依赖管理 Go Modules 怎么玩</a></li>
@@ -137,7 +138,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/26/golang模块介绍/" data-id="cjxclaw45002azvs6tey858ot" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/26/golang模块介绍/" data-id="cjxclhk1d002626s69n7y0xy0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
