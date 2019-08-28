@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>2019-08-27C标准IO库与UnbufferIO库 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="C标准I/O库函数如何用系统调用实现的fopen调用open打开指定的档案，返回一个文档描述符，分配一个FILE结构体，其中包含该档案的描述符、IO缓冲区、当前读写位置等信息，返回这个FILE结构体的地址。  fgetc通过传入的FILE*参数找到该档案的描述符、I/O缓冲区和当前读写位置，判断能否从I/O缓冲区中读到下一个字，如果能够读到就直接返回；否则调用read，把文档描述符传进去，让内核读">
+<meta name="keywords" content="linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="2019-08-27C标准IO库与UnbufferIO库">
+<meta property="og:url" content="http://keything.github.io/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="C标准I/O库函数如何用系统调用实现的fopen调用open打开指定的档案，返回一个文档描述符，分配一个FILE结构体，其中包含该档案的描述符、IO缓冲区、当前读写位置等信息，返回这个FILE结构体的地址。  fgetc通过传入的FILE*参数找到该档案的描述符、I/O缓冲区和当前读写位置，判断能否从I/O缓冲区中读到下一个字，如果能够读到就直接返回；否则调用read，把文档描述符传进去，让内核读">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://keything.github.io/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/stdio_utdio.jpg">
+<meta property="og:updated_time" content="2019-08-28T07:56:29.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="2019-08-27C标准IO库与UnbufferIO库">
+<meta name="twitter:description" content="C标准I/O库函数如何用系统调用实现的fopen调用open打开指定的档案，返回一个文档描述符，分配一个FILE结构体，其中包含该档案的描述符、IO缓冲区、当前读写位置等信息，返回这个FILE结构体的地址。  fgetc通过传入的FILE*参数找到该档案的描述符、I/O缓冲区和当前读写位置，判断能否从I/O缓冲区中读到下一个字，如果能够读到就直接返回；否则调用read，把文档描述符传进去，让内核读">
+<meta name="twitter:image" content="http://keything.github.io/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/stdio_utdio.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2019-08-27C标准IO库与UnbufferIO库" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/" class="article-date">
+  <time datetime="2019-08-28T07:46:58.000Z" itemprop="datePublished">2019-08-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      2019-08-27C标准IO库与UnbufferIO库
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="C标准I-O库函数如何用系统调用实现的"><a href="#C标准I-O库函数如何用系统调用实现的" class="headerlink" title="C标准I/O库函数如何用系统调用实现的"></a>C标准I/O库函数如何用系统调用实现的</h3><h4 id="fopen"><a href="#fopen" class="headerlink" title="fopen"></a>fopen</h4><p>调用open打开指定的档案，返回一个文档描述符，分配一个FILE<br>结构体，其中包含该档案的描述符、IO缓冲区、当前读写位置等信息，返回这个FILE结构体的地址。 </p>
+<h4 id="fgetc"><a href="#fgetc" class="headerlink" title="fgetc"></a>fgetc</h4><p>通过传入的FILE*参数找到该档案的描述符、I/O缓冲区和当前读写位置，判断能否从I/O缓冲区中读到下一个字，如果能够读到就直接返回；否则调用read，把文档描述符传进去，让内核读取该档案的数据到I/O缓冲区，然后返回下一个字。 </p>
+<p>对于C标准I/O库来讲，打开的档案由FILE*指针标识；对于内核来讲，打开的档案由文档描述符标识，文档描述符从open系统调用获得。 </p>
+<h4 id="fputc"><a href="#fputc" class="headerlink" title="fputc"></a>fputc</h4><p>判断该档案的I/O缓冲区是否有空间再存放一个字，如果有空间则直接保存在I/O缓冲区并返回；如果已经满了，则调用write，让内核把I/O缓冲区内容写到文件。 </p>
+<p>库函数与系统调用的层次关系</p>
+<p><img src="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/stdio_utdio.jpg" alt=""></p>
+<p>open,read,write,close等系统函数称之为无缓冲I/O（unbuffered I/O)函数，因为它们位于C标准库的I/O缓冲区的底层。</p>
+<h3 id="缓冲和无缓冲对比"><a href="#缓冲和无缓冲对比" class="headerlink" title="缓冲和无缓冲对比"></a>缓冲和无缓冲对比</h3><ul>
+<li>用 unbuffered I/O函数每次读写都要写进内核。调用一个系统调用比一个用户空间的函数要慢很多；所以在用户空间打开I/O缓冲区还是有必要的。使用标准I/O库函数，省去了自己管理I/O缓冲区的麻烦。 </li>
+<li>用C标准I/O函数要时刻注意I/O缓冲区与实际档案不一致，在必要时需要调用fflush</li>
+<li>网络编程语言通常直接调用Unbuffered I/O函数</li>
+</ul>
+<ul>
+<li>buffered I/O<ul>
+<li><ul>
+<li>读取：硬盘—&gt;内核缓冲区—&gt;用户缓冲区—&gt;用户程序</li>
+</ul>
+</li>
+<li><ul>
+<li>写回：用户程序—&gt;用户缓冲区—&gt;内核缓冲区—&gt;硬盘</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>unbuffered I/O</p>
+<ul>
+<li><ul>
+<li>读取：硬盘—&gt;内核缓冲区—&gt;用户程序</li>
+</ul>
+</li>
+<li><ul>
+<li>写回：用户程序—&gt;内核缓冲区—&gt;硬盘</li>
+</ul>
+</li>
+<li><p>Linux内核中存在页高速缓存（page cache），read时，若数据在页高速缓存中，则直接从页高速缓存中读取，若数据不在页高速缓存中，则内核将数据从磁盘上加载到页高速缓存中，然后再从页高速缓存中读取；write时，Linux采用write-back策略，程序执行写操作直接写到缓存中，并不直接将数据同步到磁盘上，而是将页高速缓存中被写入的页面标记为dirty，并且被加入dirty page链表中，然后由一个进程（回写进程）周期性将dirty page链表中的页写回到磁盘。</p>
+</li>
+</ul>
+</li>
+<li><p>direct I/O</p>
+<ul>
+<li>direct Io 才是真正的什么缓冲区都没有，直接与硬盘交互</li>
+<li>读取：硬盘—&gt;用户程序</li>
+<li>写回：用户程序—&gt;硬盘</li>
+</ul>
+</li>
+</ul>
+<p>参考文章：</p>
+<ul>
+<li><a href="http://shihyu.github.io/books/ch28s02.html" target="_blank" rel="noopener">http://shihyu.github.io/books/ch28s02.html</a></li>
+<li><a href="https://blog.csdn.net/codinghonor/article/details/45272127" target="_blank" rel="noopener">https://blog.csdn.net/codinghonor/article/details/45272127</a></li>
+<li><a href="https://blog.csdn.net/big_bit/article/details/51306126" target="_blank" rel="noopener">https://blog.csdn.net/big_bit/article/details/51306126</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/" data-id="cjzuyutmt00062cs6sinlq0j0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/08/27/2019-08 glog日志使用/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title"></div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-profile/">linux-profile</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17.78px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/linux-profile/" style="font-size: 10px;">linux-profile</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/">2019-08-27C标准IO库与UnbufferIO库</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/27/2019-08 glog日志使用/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24系统分析/">2019-08-24系统分析</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang的性能问题/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

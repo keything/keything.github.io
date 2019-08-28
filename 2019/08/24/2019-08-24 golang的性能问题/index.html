@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="golang性能追查的几个case0，概述 cpu变化不大，但时延变化过大时，可能是由于锁、阻塞等off-cpu的问题造成 短连接会影响性能，即多花费三次握手的时间，不会造成非常大的性能问题；如果造成非常大的性能问题，可以考虑是不是有其他原因 系统一个资源被耗尽时，那么cpu idle、时延等都会出现垂直变化 golang中json序列化使用陶文json-iterator库 比原生的库，cpu使用">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Keything的日志">
+<meta property="og:url" content="http://keything.github.io/2019/08/24/2019-08-24 golang的性能问题/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="golang性能追查的几个case0，概述 cpu变化不大，但时延变化过大时，可能是由于锁、阻塞等off-cpu的问题造成 短连接会影响性能，即多花费三次握手的时间，不会造成非常大的性能问题；如果造成非常大的性能问题，可以考虑是不是有其他原因 系统一个资源被耗尽时，那么cpu idle、时延等都会出现垂直变化 golang中json序列化使用陶文json-iterator库 比原生的库，cpu使用">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-08-25T01:10:05.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Keything的日志">
+<meta name="twitter:description" content="golang性能追查的几个case0，概述 cpu变化不大，但时延变化过大时，可能是由于锁、阻塞等off-cpu的问题造成 短连接会影响性能，即多花费三次握手的时间，不会造成非常大的性能问题；如果造成非常大的性能问题，可以考虑是不是有其他原因 系统一个资源被耗尽时，那么cpu idle、时延等都会出现垂直变化 golang中json序列化使用陶文json-iterator库 比原生的库，cpu使用">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2019-08-24 golang的性能问题" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/24/2019-08-24 golang的性能问题/" class="article-date">
+  <time datetime="2019-08-24T02:27:40.000Z" itemprop="datePublished">2019-08-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="golang性能追查的几个case"><a href="#golang性能追查的几个case" class="headerlink" title="golang性能追查的几个case"></a>golang性能追查的几个case</h2><h3 id="0，概述"><a href="#0，概述" class="headerlink" title="0，概述"></a>0，概述</h3><ul>
+<li>cpu变化不大，但时延变化过大时，可能是由于锁、阻塞等off-cpu的问题造成</li>
+<li>短连接会影响性能，即多花费三次握手的时间，不会造成非常大的性能问题；如果造成非常大的性能问题，可以考虑是不是有其他原因</li>
+<li>系统一个资源被耗尽时，那么cpu idle、时延等都会出现垂直变化</li>
+<li>golang中json序列化使用陶文json-iterator库 比原生的库，cpu使用率可以下降3%（700qps）</li>
+</ul>
+<h3 id="1，httpClient问题"><a href="#1，httpClient问题" class="headerlink" title="1，httpClient问题"></a>1，httpClient问题</h3><p>背景：</p>
+<p>一次检索请求中会有大量到elasticsearch的查询；在重构中，发现查询耗时非常大。<br>查看进程创建的fdnum和连接都飙升，因此怀疑这儿有问题。</p>
+<p>追查：</p>
+<h4 id="1-1-elastic-Client-健康检查"><a href="#1-1-elastic-Client-健康检查" class="headerlink" title="1.1 elastic.Client 健康检查"></a>1.1 elastic.Client 健康检查</h4><p>发现httpclient是每次使用时都进行创建，因此将其更改为全局；顺带着把elasticsearch client也更改为全局。 解决问题。 </p>
+<p>实际：</p>
+<p>该原因并不是由于http client每次使用时创建造成的。我们使用go tool pprof得到svg中，可以看到是elastic.Client.HealthCheck造成的。 （会有一篇文章专门介绍如何得到svg图）<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/http_mutex.svg</p>
+<p>首先我们的httpClient在每次需要时进行创建，并且创建方式如下：</p>
+<pre><code>httpClient := &amp;http.Client{
+        Timeout: 100 * time.Second,
+    }
+</code></pre><ul>
+<li><p>初始化的方式对后面的表现非常重要。 从go tool pprof的mutex图中可以看到healthcheck和正常的查询都会使用该httpClient。其中healthcheck 占httpClient使用比例的87%（httpclient总使用时长是46.9分钟，其中healthcheck占了40.81分钟）。</p>
+</li>
+<li><p>接下来看一下http.Client是如何工作的。如下图所示，可以看到为了获取连接的时候，会对t.idleMu加锁。 t.idleMu是获取transport。我们使用上面的httpClient，那么使用的是默认的transport（即http/transport.go中的DefaultTransport），即所有的请求都使用这一个DefaultTransport。由于healthcheck占比过多，导致正常es的请求抢锁花费过长时间。</p>
+<pre><code>http (*Client) Do 
+| --http (*Client) send 
+    | --http (*Transport) RoundTrip  
+        | -- http (*Transport) getIdleConn
+
+            func (t *Transport) getIdleConnCh(cm connectMethod) chan *persistConn {
+                if t.DisableKeepAlives {
+                    return nil
+                }
+                key := cm.key()
+                t.idleMu.Lock()
+                defer t.idleMu.Unlock()
+                ...
+            }
+</code></pre></li>
+</ul>
+<h4 id="1-2，关于http-Client复用的问题"><a href="#1-2，关于http-Client复用的问题" class="headerlink" title="1.2，关于http.Client复用的问题"></a>1.2，关于http.Client复用的问题</h4><ul>
+<li><p>在client.go注释中有下面一段话: The Client’s Transport typically has internal state (cached TCP connections), so Clients should be reused instead of created as needed. Clients are safe for concurrent use by multiple goroutines.<br>A Client is higher-level than a RoundTripper (such as Transport)<br>and additionally handles HTTP details such as cookies and<br>redirects。 也就是client要复用，主要指的是transport要复用。 </p>
+</li>
+<li><p>如果我们的httpClient的初始化方式变更为下面方式 并且 每次使用时才创建。在这种方式下，transport是每次都会被新建。</p>
+<pre><code>client := &amp;http.Client{
+      Transport: &amp;Transport{
+          Proxy: ProxyFromEnvironment,
+          DialContext: (&amp;net.Dialer{
+              Timeout:   30 * time.Second,
+              KeepAlive: 30 * time.Second,
+              DualStack: true,
+          }).DialContext,
+          MaxIdleConns:          100,
+          IdleConnTimeout:       90 * time.Second,
+          TLSHandshakeTimeout:   10 * time.Second,
+          ExpectContinueTimeout: 1 * time.Second,
+      },
+      Timeout: 100 * time.Second,
+ }
+</code></pre></li>
+</ul>
+<ul>
+<li>在这种情况下，我们会看到以下几个现象：<ul>
+<li>服务时延一开始平稳，之后会垂直增加</li>
+<li>服务进程所占cpu 一开始平稳，之后会垂直增加到接近100%</li>
+<li>服务进程创建的连接会线性增加，并在一个很高的数量级平稳（1w个连接）</li>
+<li>服务进程使用的fd会线性增加，增加到60w。</li>
+</ul>
+</li>
+</ul>
+<p>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.block.exception.svg<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.cpu.exception.svg<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.mutex.exception.svg</p>
+<p>  之所以出现这种现象的原因，是因为我们使用短连接、同时连接没有释放，导致系统文件句柄全部被占满，新的请求没有办法获得句柄，从而导致上述现象发生。</p>
+<ul>
+<li><p>这种情况下，go tool perf 的几个情况</p>
+<ul>
+<li>block： runtime.goexit-&gt;http(*persistConn).writeLoop-&gt;runtime.selectgo</li>
+<li>cpu: http.(Transport) getConn -&gt; dialConn -&gt; net(*netFD) connect syscall.Connect -&gt; syscall connect 占了99%的cpu</li>
+<li>mutex：反倒mutex很均衡，没有特殊的地方。</li>
+</ul>
+</li>
+<li><p>为了验证确实是因为句柄被占满，我进行了以下尝试，将transport的MaxIdleConns=1,IdelConnTimeout=1，KeepAlive=1秒，让空闲连接快速释放，这样系统文件句柄会得到释放。这样性能变好，没有出现上面的现象（当然变好是跟上面空闲连接没有释放进行比较）。</p>
+</li>
+</ul>
+<p>关于http.Client的问题。 </p>
+<ul>
+<li><p>`client := &amp;http.Client{</p>
+<pre><code>Timeout: 100 * time.Second,
+</code></pre><p>  }`这种情况下，client.Transport 是defaultTransport，这时候，连接是复用。 </p>
+</li>
+<li><p>`client := &amp;http.Client{</p>
+<pre><code>Transport: &amp;http.Transport{
+    MaxIdleConnsPerHost: 100,
+},
+Timeout: 100 * time.Second,
+</code></pre><p>  }`</p>
+<ul>
+<li>这种情况下，如果client是每次新建的，这时候，连接是不复用</li>
+<li>这种情况下，如果client是复用的，那么连接是复用，</li>
+</ul>
+</li>
+</ul>
+<h3 id="3，-追查日志的问题"><a href="#3，-追查日志的问题" class="headerlink" title="3， 追查日志的问题"></a>3， 追查日志的问题</h3><p>日志追踪时，有多种方式可以看：</p>
+<ul>
+<li><a href="http://xxxx/debug/pprof/" target="_blank" rel="noopener">http://xxxx/debug/pprof/</a> 可以看到goroutine的数量一直激增，这不符合预期。</li>
+<li><p><a href="http://xxxx/debug/pprof/profile" target="_blank" rel="noopener">http://xxxx/debug/pprof/profile</a> 看正常的服务和异常的服务，可以看到异常服务中是打印日志处加锁</p>
+<pre><code>(*commonLogger).Warn  ---- seelog/logger.go 
+    (*commonLogger.log)   ---- seelog/logger.go
+        sync.(*Mutex).Lock   --- sync.mutex.go
+</code></pre></li>
+<li><p>go tool pprof 看block和mutex 也都可以看到是日志处的问题</p>
+<ul>
+<li>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/block.svg</li>
+<li>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/mutex.svg    </li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>seelog库我们使用的是异步写入的方式，log函数中的cLogger.innerLogger决定了异步还是同步，但在真正执行之前有个锁。cLogger.m.Lock 锁就是发生在这儿。日志量写入过大时，会影响到服务的时延。</li>
+<li><p>日志库加锁带来的几个现象是：</p>
+<ul>
+<li>qps从200qps上升到400qps时，cpu没有变化、但时延会线性增加</li>
+<li>goroutine数量线性增加</li>
+</ul>
+</li>
+<li><p>疑问：</p>
+<ul>
+<li>这儿加锁的目的是什么呢？ </li>
+</ul>
+</li>
+</ul>
+<pre><code>func (cLogger *commonLogger) log(level LogLevel, message fmt.Stringer, stackCallDepth int) {
+    if cLogger.unusedLevels[level] {
+        return
+    }
+    cLogger.m.Lock()
+    defer cLogger.m.Unlock()
+
+    if cLogger.Closed() {
+        return
+    }
+    context, _ := specifyContext(stackCallDepth+cLogger.addStackDepth, cLogger.customContext)
+    // Context errors are not reported because there are situations
+    // in which context errors are normal Seelog usage cases. For
+    // example in executables with stripped symbols.
+    // Error contexts are returned instead. See common_context.go.
+    /*if err != nil {
+        reportInternalError(err)
+        return
+    }*/
+    cLogger.innerLogger.innerLog(level, context, message)
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/24/2019-08-24 golang的性能问题/" data-id="cjzuyutmg00022cs6sedocfif" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          (no title)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/08/17/off-cpu Flame Graphs/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title"></div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-profile/">linux-profile</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17.78px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/linux-profile/" style="font-size: 10px;">linux-profile</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/">2019-08-27C标准IO库与UnbufferIO库</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/27/2019-08 glog日志使用/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24系统分析/">2019-08-24系统分析</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang的性能问题/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

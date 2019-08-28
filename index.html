@@ -62,6 +62,678 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-2019-08-27C标准IO库与UnbufferIO库" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/" class="article-date">
+  <time datetime="2019-08-28T07:46:58.000Z" itemprop="datePublished">2019-08-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/">2019-08-27C标准IO库与UnbufferIO库</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="C标准I-O库函数如何用系统调用实现的"><a href="#C标准I-O库函数如何用系统调用实现的" class="headerlink" title="C标准I/O库函数如何用系统调用实现的"></a>C标准I/O库函数如何用系统调用实现的</h3><h4 id="fopen"><a href="#fopen" class="headerlink" title="fopen"></a>fopen</h4><p>调用open打开指定的档案，返回一个文档描述符，分配一个FILE<br>结构体，其中包含该档案的描述符、IO缓冲区、当前读写位置等信息，返回这个FILE结构体的地址。 </p>
+<h4 id="fgetc"><a href="#fgetc" class="headerlink" title="fgetc"></a>fgetc</h4><p>通过传入的FILE*参数找到该档案的描述符、I/O缓冲区和当前读写位置，判断能否从I/O缓冲区中读到下一个字，如果能够读到就直接返回；否则调用read，把文档描述符传进去，让内核读取该档案的数据到I/O缓冲区，然后返回下一个字。 </p>
+<p>对于C标准I/O库来讲，打开的档案由FILE*指针标识；对于内核来讲，打开的档案由文档描述符标识，文档描述符从open系统调用获得。 </p>
+<h4 id="fputc"><a href="#fputc" class="headerlink" title="fputc"></a>fputc</h4><p>判断该档案的I/O缓冲区是否有空间再存放一个字，如果有空间则直接保存在I/O缓冲区并返回；如果已经满了，则调用write，让内核把I/O缓冲区内容写到文件。 </p>
+<p>库函数与系统调用的层次关系</p>
+<p><img src="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/stdio_utdio.jpg" alt=""></p>
+<p>open,read,write,close等系统函数称之为无缓冲I/O（unbuffered I/O)函数，因为它们位于C标准库的I/O缓冲区的底层。</p>
+<h3 id="缓冲和无缓冲对比"><a href="#缓冲和无缓冲对比" class="headerlink" title="缓冲和无缓冲对比"></a>缓冲和无缓冲对比</h3><ul>
+<li>用 unbuffered I/O函数每次读写都要写进内核。调用一个系统调用比一个用户空间的函数要慢很多；所以在用户空间打开I/O缓冲区还是有必要的。使用标准I/O库函数，省去了自己管理I/O缓冲区的麻烦。 </li>
+<li>用C标准I/O函数要时刻注意I/O缓冲区与实际档案不一致，在必要时需要调用fflush</li>
+<li>网络编程语言通常直接调用Unbuffered I/O函数</li>
+</ul>
+<ul>
+<li>buffered I/O<ul>
+<li><ul>
+<li>读取：硬盘—&gt;内核缓冲区—&gt;用户缓冲区—&gt;用户程序</li>
+</ul>
+</li>
+<li><ul>
+<li>写回：用户程序—&gt;用户缓冲区—&gt;内核缓冲区—&gt;硬盘</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>unbuffered I/O</p>
+<ul>
+<li><ul>
+<li>读取：硬盘—&gt;内核缓冲区—&gt;用户程序</li>
+</ul>
+</li>
+<li><ul>
+<li>写回：用户程序—&gt;内核缓冲区—&gt;硬盘</li>
+</ul>
+</li>
+<li><p>Linux内核中存在页高速缓存（page cache），read时，若数据在页高速缓存中，则直接从页高速缓存中读取，若数据不在页高速缓存中，则内核将数据从磁盘上加载到页高速缓存中，然后再从页高速缓存中读取；write时，Linux采用write-back策略，程序执行写操作直接写到缓存中，并不直接将数据同步到磁盘上，而是将页高速缓存中被写入的页面标记为dirty，并且被加入dirty page链表中，然后由一个进程（回写进程）周期性将dirty page链表中的页写回到磁盘。</p>
+</li>
+</ul>
+</li>
+<li><p>direct I/O</p>
+<ul>
+<li>direct Io 才是真正的什么缓冲区都没有，直接与硬盘交互</li>
+<li>读取：硬盘—&gt;用户程序</li>
+<li>写回：用户程序—&gt;硬盘</li>
+</ul>
+</li>
+</ul>
+<p>参考文章：</p>
+<ul>
+<li><a href="http://shihyu.github.io/books/ch28s02.html" target="_blank" rel="noopener">http://shihyu.github.io/books/ch28s02.html</a></li>
+<li><a href="https://blog.csdn.net/codinghonor/article/details/45272127" target="_blank" rel="noopener">https://blog.csdn.net/codinghonor/article/details/45272127</a></li>
+<li><a href="https://blog.csdn.net/big_bit/article/details/51306126" target="_blank" rel="noopener">https://blog.csdn.net/big_bit/article/details/51306126</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/" data-id="cjzuyutmt00062cs6sinlq0j0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-2019-08 glog日志使用" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/27/2019-08 glog日志使用/" class="article-date">
+  <time datetime="2019-08-27T11:47:33.000Z" itemprop="datePublished">2019-08-27</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="glog中几个重要的参数配置"><a href="#glog中几个重要的参数配置" class="headerlink" title="glog中几个重要的参数配置"></a>glog中几个重要的参数配置</h3><p>src/windows/log/logging.h 进行声明</p>
+<table>
+<thead>
+<tr>
+<th>参数名称</th>
+<th>作用</th>
+<th>默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>logtostderr</td>
+<td>只输出到stderr，不输出到文件</td>
+<td>false</td>
+</tr>
+<tr>
+<td>alsologtostderr</td>
+<td>既输出到stderr，又输出到文件</td>
+<td>false</td>
+</tr>
+<tr>
+<td>stderrthreshold</td>
+<td>日志消息等级大于等于 配置的阈值，则自动既输出到stderr，又输出到文件</td>
+<td>默认值是 ERROR，大于等于ERROR（即ERROR和FATAL都会输出到stderr和file</td>
+</tr>
+<tr>
+<td>logbuflevel</td>
+<td>日志等级小于等于这个阈值的，才被缓存。默认取值为0，只有INFO被缓存；取值为-1时，则任何都不被缓存</td>
+<td>0</td>
+</tr>
+<tr>
+<td>logbufsecs</td>
+<td>最多缓存日志的秒数</td>
+<td>默认是30秒</td>
+</tr>
+<tr>
+<td>minloglevel</td>
+<td>小于这个等级的日志不会被打印</td>
+<td>默认是0，即INFO</td>
+</tr>
+<tr>
+<td>log_dir</td>
+<td>日志目录</td>
+<td>默认是从环境变量<code>GOOGLE_LOG_DIR</code></td>
+</tr>
+<tr>
+<td><code>stop_logging_if_full_disk</code></td>
+<td>当磁盘满的时候停止写日志</td>
+<td>false</td>
+</tr>
+</tbody>
+</table>
+<h3 id="在实际使用中遇到的几个问题："><a href="#在实际使用中遇到的几个问题：" class="headerlink" title="在实际使用中遇到的几个问题："></a>在实际使用中遇到的几个问题：</h3><p>1，锁竞争。 stderrthreshold和logbuflevel都是默认值，因此</p>
+<ul>
+<li>LOG(ERROR)时 不会走入buffer，而是直接flush；同时还会输出到stderr</li>
+<li>LOG(WARNING)时，不会走入buffer，而是直接flush；但不会输出到stderr</li>
+</ul>
+<p>因此LOG(ERROR）带来了更严重的锁竞争，LOG(WARNING)则稍微好一点，但由于直接flush时间很长，一次日志写入占有锁的时间就会变长，导致性能变差。 </p>
+<h3 id="解决办法："><a href="#解决办法：" class="headerlink" title="解决办法："></a>解决办法：</h3><p>1，为了避免大家在后续使用中再出现类似问题，因此可以做出以下改变：</p>
+<ul>
+<li>logbuflevel 更改为 ERROR等级，这样INFO，WARNING，ERROR都会被缓存</li>
+<li>stderrthreshold 更改为FATAL等级，因此ERROR也不会被输出到stderr.</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/27/2019-08 glog日志使用/" data-id="cjzuyutma00012cs63vpx5xlv" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-2019-08-24系统分析" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/24/2019-08-24系统分析/" class="article-date">
+  <time datetime="2019-08-24T14:43:33.000Z" itemprop="datePublished">2019-08-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/24/2019-08-24系统分析/">2019-08-24系统分析</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>系统性能分为on-cpu和off-cpu两种，通过分析这两种情况才能定位到系统性能问题到底是什么。 </p>
+<ul>
+<li><p>on-cpu：<br> 程序运行在CPU的时间，在所有代码路径上的分布</p>
+</li>
+<li><p>off-cpu:<br>  进程不运行在任何CPU上的时间。一般是这个进程因为某个原因处于休眠状态。</p>
+<ul>
+<li>off-cpu原因：<ul>
+<li>1， 与当前thread有关：<ul>
+<li>I/O</li>
+<li>blocks</li>
+<li>mutex 比如等待某一个系统级别的锁</li>
+</ul>
+</li>
+<li>2, 与当前thread无关<ul>
+<li>interrupt 中断 （可以通过 top 按1，查看si(soft interrupt),hi(high interrupt))</li>
+<li>CPU高需求的上下文切换，被一个非常繁忙的进程调度器scheduler强行剥夺CPU时间片</li>
+<li>paging/swapping</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>蓝色部分是off-cpu。<br><img src="http://www.brendangregg.com/Perf/thread_states.png" alt="off-cpu蓝色"></p>
+<p>我们在追查问题的时候，推荐的策略是一种”小步推进，连续发问”的方式。我们会把最终问题的假设分解成一系列的小假设，然后逐步求索，验证。 </p>
+<h2 id="二、介绍"><a href="#二、介绍" class="headerlink" title="二、介绍"></a>二、介绍</h2><p>on-cpu分析和off-cpu分析都有采样和跟踪(sampling and tracing)两种方式。</p>
+<h3 id="2-1-采样-sampling"><a href="#2-1-采样-sampling" class="headerlink" title="2.1 采样 sampling"></a>2.1 采样 sampling</h3><p>on-cpu的采样是运行在cpu上的时候进行采样；off-cpu的采样是off-cpu的时候进行采样；</p>
+<p>但是系统profile很少使用off-cpu 采样。 原因是什么？</p>
+<p>通过每个cpu的计时器中断(per-CPU timer interrupts) 来实现采样，之后再去分析当前被中断的正在运行的进程：产出一个on-cpu profile。</p>
+<p>off-cpu则是一个完全不同的方式，有两种方式：</p>
+<ul>
+<li>每个应用线程中创建一个计时器，将应用线程唤醒并采集栈</li>
+<li>在一个间隙内核遍历所有线程并采集栈</li>
+</ul>
+<p>使用cpu sampling可以很高效的分析on-cpu问题，包括 热点代码路径和自适应自旋锁（hot code-paths and adaptive mutex spins)，当应用被阻塞并处于off-cpu时，不采集数据。</p>
+<pre><code> CPU Sampling -----------------------------------------------
+  |  |  |  |  |  |  |                      |  |  |  |  |         
+  A  A  A  A  B  B  B                      B  A  A  A  A         
+ A(---------.                                .----------)        
+            |                                |                   
+            B(--------.                   .--)                   
+                      |                   |         user-land    
+- - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                      |                   |         kernel       
+                      X     Off-CPU       |                      
+                    block . . . . . interrupt   
+</code></pre><h3 id="2-2-跟踪-tracing"><a href="#2-2-跟踪-tracing" class="headerlink" title="2.2 跟踪 tracing"></a>2.2 跟踪 tracing</h3><h4 id="2-2-1-on-cpu-tracing"><a href="#2-2-1-on-cpu-tracing" class="headerlink" title="2.2.1 on-cpu tracing"></a>2.2.1 on-cpu tracing</h4><pre><code> App Tracing ------------------------------------------------&gt;
+ |          |                                |          |        
+ A(         B(                               B)         A)       
+
+ A(---------.                                .----------)        
+            |                                |                   
+            B(--------.                   .--)                   
+                      |                   |         user-land    
+- - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                      |                   |         kernel       
+                      X     Off-CPU       |                      
+                    block . . . . . interrupt   
+</code></pre><p>记录函数执行的开始和结束的时间戳，从而函数花费的时间可以被计算出来。如果时间戳包含了流逝的时间和CPU时间，那么就有可能计算出在CPU上计算慢的函数，以及 哪些函数是因为被阻塞在off-cpu上导致变慢的。 </p>
+<p>与sampling不同，这些时间戳的精度很高。  </p>
+<p>当然有一个缺点，你可以追踪所有应用函数，这将会带来严重的性能影响，或者 可以选出被阻塞的函数。</p>
+<h4 id="2-2-2-off-cpu-tracing"><a href="#2-2-2-off-cpu-tracing" class="headerlink" title="2.2.2 off-cpu tracing"></a>2.2.2 off-cpu tracing</h4><p>只有将线程切换到off-cpu的内核函数才会被追踪，时间戳和用户态栈也会被追踪。<br>这聚焦于off-cpu事件，不需要跟踪所有的应用函数，也不需要知道应用程序是什么。 这个方法可以用于分析任何blocking事件。</p>
+<p>off-cpu tracing抓取任何应用程序的所有等待事件。 </p>
+<p>分析off-cpu使用的主要方法就是off-cpu tracing。</p>
+<h3 id="3-Linux-perf-eBPF"><a href="#3-Linux-perf-eBPF" class="headerlink" title="3. Linux: perf, eBPF"></a>3. Linux: perf, eBPF</h3><p>在linux上进行off-cpu分析的tracer有很多。这儿我使用eBPF，很容易进行栈追和时间的内容总结。eBPF是内核的一部分，可以使用bcc工具。但这要求内核必须是4.8以上。 </p>
+<ul>
+<li>内核4.8及其以上版本 可以使用eBPF进行分析</li>
+<li>内核4.8以下版本， 有不同的方法去分析每一种阻塞类型：<ul>
+<li>storage tracing for storage I/O</li>
+<li>kernel statistics for scheduler latency</li>
+<li>使用SystemTap 和 perf event logging。</li>
+</ul>
+</li>
+</ul>
+<h3 id="4-警告"><a href="#4-警告" class="headerlink" title="4. 警告"></a>4. 警告</h3><p>最大的警告是off-cpu分析的开支。需要意识到有scheduler latency 和 involuntary context switches。</p>
+<h4 id="4-1-Scheduler-Latency"><a href="#4-1-Scheduler-Latency" class="headerlink" title="4.1 Scheduler Latency"></a>4.1 Scheduler Latency</h4><p>Something that’s missing from these stacks is if the off-CPU time includes time spent waiting on a CPU run queue. This time is known as scheduler latency, run queue latency, or dispatcher queue latency. If the CPUs are running at saturation, then any time a thread blocks, it may endure additional time waiting its turn on a CPU after being woken up. That time will be included in the off-CPU time.</p>
+<p>You can use extra trace events to tease apart off-CPU time into time blocked vs scheduler latency, but in practice, CPU saturation is pretty easy to spot, so you are unlikely to be spending much time studying off-CPU time when you have a known CPU saturation issue to deal with.</p>
+<h4 id="4-2-Involuntary-Context-Switching"><a href="#4-2-Involuntary-Context-Switching" class="headerlink" title="4.2 Involuntary Context Switching"></a>4.2 Involuntary Context Switching</h4><p>If you see user-level stack traces that don’t make sense – that show no reason to be blocking and going off-CPU – it could be due to involuntary context switching. This often happens when the CPUs are saturated, and the kernel CPU scheduler gives threads turns on CPU, then kicks them off when they reach their time slice. The threads can be kicked off anytime, such as in the middle of a CPU heavy code-path, and the resulting off-CPU stack trace makes no sense.</p>
+<p>Here is an example stack from offcputime that is likely an involuntary context switch</p>
+<p>参考文章：</p>
+<ul>
+<li>1， <a href="http://www.brendangregg.com/offcpuanalysis.html" target="_blank" rel="noopener">off-cpu analysis</a></li>
+<li>2， <a href="http://www.brendangregg.com/perf.html#StackTraces" target="_blank" rel="noopener">perf-event</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/24/2019-08-24系统分析/" data-id="cjzuyutn000072cs6uvjaswt4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux-profile/">linux-profile</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-2019-08-24 golang追查问题得到svg图" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/" class="article-date">
+  <time datetime="2019-08-24T14:20:05.000Z" itemprop="datePublished">2019-08-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><a href="https://wudaijun.com/2018/04/go-pprof/" target="_blank" rel="noopener">https://wudaijun.com/2018/04/go-pprof/</a></p>
+<p>main.go中加入<br>    go func() {<br>        log.Println(http.ListenAndServe(“:8049”, nil))<br>    }()<br>    runtime.SetBlockProfileRate(1 <em> 1000 </em> 1000)<br>    runtime.SetMutexProfileFraction(20)</p>
+<p>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/block.svg</p>
+<p> go tool pprof <a href="http://100.90.67.48:8049/debug/pprof/mutex" target="_blank" rel="noopener">http://100.90.67.48:8049/debug/pprof/mutex</a><br> go tool pprof <a href="http://100.90.67.48:8049/debug/pprof/block" target="_blank" rel="noopener">http://100.90.67.48:8049/debug/pprof/block</a> 得到</p>
+<p> 参考文章：</p>
+<p> 1， <a href="https://wudaijun.com/2018/04/go-pprof/" target="_blank" rel="noopener">https://wudaijun.com/2018/04/go-pprof/</a> </p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/24/2019-08-24 golang追查问题得到svg图/" data-id="cjzuyutmk00042cs6k8wlbw9p" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-2019-08-24 golang的性能问题" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/24/2019-08-24 golang的性能问题/" class="article-date">
+  <time datetime="2019-08-24T02:27:40.000Z" itemprop="datePublished">2019-08-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="golang性能追查的几个case"><a href="#golang性能追查的几个case" class="headerlink" title="golang性能追查的几个case"></a>golang性能追查的几个case</h2><h3 id="0，概述"><a href="#0，概述" class="headerlink" title="0，概述"></a>0，概述</h3><ul>
+<li>cpu变化不大，但时延变化过大时，可能是由于锁、阻塞等off-cpu的问题造成</li>
+<li>短连接会影响性能，即多花费三次握手的时间，不会造成非常大的性能问题；如果造成非常大的性能问题，可以考虑是不是有其他原因</li>
+<li>系统一个资源被耗尽时，那么cpu idle、时延等都会出现垂直变化</li>
+<li>golang中json序列化使用陶文json-iterator库 比原生的库，cpu使用率可以下降3%（700qps）</li>
+</ul>
+<h3 id="1，httpClient问题"><a href="#1，httpClient问题" class="headerlink" title="1，httpClient问题"></a>1，httpClient问题</h3><p>背景：</p>
+<p>一次检索请求中会有大量到elasticsearch的查询；在重构中，发现查询耗时非常大。<br>查看进程创建的fdnum和连接都飙升，因此怀疑这儿有问题。</p>
+<p>追查：</p>
+<h4 id="1-1-elastic-Client-健康检查"><a href="#1-1-elastic-Client-健康检查" class="headerlink" title="1.1 elastic.Client 健康检查"></a>1.1 elastic.Client 健康检查</h4><p>发现httpclient是每次使用时都进行创建，因此将其更改为全局；顺带着把elasticsearch client也更改为全局。 解决问题。 </p>
+<p>实际：</p>
+<p>该原因并不是由于http client每次使用时创建造成的。我们使用go tool pprof得到svg中，可以看到是elastic.Client.HealthCheck造成的。 （会有一篇文章专门介绍如何得到svg图）<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/http_mutex.svg</p>
+<p>首先我们的httpClient在每次需要时进行创建，并且创建方式如下：</p>
+<pre><code>httpClient := &amp;http.Client{
+        Timeout: 100 * time.Second,
+    }
+</code></pre><ul>
+<li><p>初始化的方式对后面的表现非常重要。 从go tool pprof的mutex图中可以看到healthcheck和正常的查询都会使用该httpClient。其中healthcheck 占httpClient使用比例的87%（httpclient总使用时长是46.9分钟，其中healthcheck占了40.81分钟）。</p>
+</li>
+<li><p>接下来看一下http.Client是如何工作的。如下图所示，可以看到为了获取连接的时候，会对t.idleMu加锁。 t.idleMu是获取transport。我们使用上面的httpClient，那么使用的是默认的transport（即http/transport.go中的DefaultTransport），即所有的请求都使用这一个DefaultTransport。由于healthcheck占比过多，导致正常es的请求抢锁花费过长时间。</p>
+<pre><code>http (*Client) Do 
+| --http (*Client) send 
+    | --http (*Transport) RoundTrip  
+        | -- http (*Transport) getIdleConn
+
+            func (t *Transport) getIdleConnCh(cm connectMethod) chan *persistConn {
+                if t.DisableKeepAlives {
+                    return nil
+                }
+                key := cm.key()
+                t.idleMu.Lock()
+                defer t.idleMu.Unlock()
+                ...
+            }
+</code></pre></li>
+</ul>
+<h4 id="1-2，关于http-Client复用的问题"><a href="#1-2，关于http-Client复用的问题" class="headerlink" title="1.2，关于http.Client复用的问题"></a>1.2，关于http.Client复用的问题</h4><ul>
+<li><p>在client.go注释中有下面一段话: The Client’s Transport typically has internal state (cached TCP connections), so Clients should be reused instead of created as needed. Clients are safe for concurrent use by multiple goroutines.<br>A Client is higher-level than a RoundTripper (such as Transport)<br>and additionally handles HTTP details such as cookies and<br>redirects。 也就是client要复用，主要指的是transport要复用。 </p>
+</li>
+<li><p>如果我们的httpClient的初始化方式变更为下面方式 并且 每次使用时才创建。在这种方式下，transport是每次都会被新建。</p>
+<pre><code>client := &amp;http.Client{
+      Transport: &amp;Transport{
+          Proxy: ProxyFromEnvironment,
+          DialContext: (&amp;net.Dialer{
+              Timeout:   30 * time.Second,
+              KeepAlive: 30 * time.Second,
+              DualStack: true,
+          }).DialContext,
+          MaxIdleConns:          100,
+          IdleConnTimeout:       90 * time.Second,
+          TLSHandshakeTimeout:   10 * time.Second,
+          ExpectContinueTimeout: 1 * time.Second,
+      },
+      Timeout: 100 * time.Second,
+ }
+</code></pre></li>
+</ul>
+<ul>
+<li>在这种情况下，我们会看到以下几个现象：<ul>
+<li>服务时延一开始平稳，之后会垂直增加</li>
+<li>服务进程所占cpu 一开始平稳，之后会垂直增加到接近100%</li>
+<li>服务进程创建的连接会线性增加，并在一个很高的数量级平稳（1w个连接）</li>
+<li>服务进程使用的fd会线性增加，增加到60w。</li>
+</ul>
+</li>
+</ul>
+<p>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.block.exception.svg<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.cpu.exception.svg<br>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/new_http.mutex.exception.svg</p>
+<p>  之所以出现这种现象的原因，是因为我们使用短连接、同时连接没有释放，导致系统文件句柄全部被占满，新的请求没有办法获得句柄，从而导致上述现象发生。</p>
+<ul>
+<li><p>这种情况下，go tool perf 的几个情况</p>
+<ul>
+<li>block： runtime.goexit-&gt;http(*persistConn).writeLoop-&gt;runtime.selectgo</li>
+<li>cpu: http.(Transport) getConn -&gt; dialConn -&gt; net(*netFD) connect syscall.Connect -&gt; syscall connect 占了99%的cpu</li>
+<li>mutex：反倒mutex很均衡，没有特殊的地方。</li>
+</ul>
+</li>
+<li><p>为了验证确实是因为句柄被占满，我进行了以下尝试，将transport的MaxIdleConns=1,IdelConnTimeout=1，KeepAlive=1秒，让空闲连接快速释放，这样系统文件句柄会得到释放。这样性能变好，没有出现上面的现象（当然变好是跟上面空闲连接没有释放进行比较）。</p>
+</li>
+</ul>
+<p>关于http.Client的问题。 </p>
+<ul>
+<li><p>`client := &amp;http.Client{</p>
+<pre><code>Timeout: 100 * time.Second,
+</code></pre><p>  }`这种情况下，client.Transport 是defaultTransport，这时候，连接是复用。 </p>
+</li>
+<li><p>`client := &amp;http.Client{</p>
+<pre><code>Transport: &amp;http.Transport{
+    MaxIdleConnsPerHost: 100,
+},
+Timeout: 100 * time.Second,
+</code></pre><p>  }`</p>
+<ul>
+<li>这种情况下，如果client是每次新建的，这时候，连接是不复用</li>
+<li>这种情况下，如果client是复用的，那么连接是复用，</li>
+</ul>
+</li>
+</ul>
+<h3 id="3，-追查日志的问题"><a href="#3，-追查日志的问题" class="headerlink" title="3， 追查日志的问题"></a>3， 追查日志的问题</h3><p>日志追踪时，有多种方式可以看：</p>
+<ul>
+<li><a href="http://xxxx/debug/pprof/" target="_blank" rel="noopener">http://xxxx/debug/pprof/</a> 可以看到goroutine的数量一直激增，这不符合预期。</li>
+<li><p><a href="http://xxxx/debug/pprof/profile" target="_blank" rel="noopener">http://xxxx/debug/pprof/profile</a> 看正常的服务和异常的服务，可以看到异常服务中是打印日志处加锁</p>
+<pre><code>(*commonLogger).Warn  ---- seelog/logger.go 
+    (*commonLogger.log)   ---- seelog/logger.go
+        sync.(*Mutex).Lock   --- sync.mutex.go
+</code></pre></li>
+<li><p>go tool pprof 看block和mutex 也都可以看到是日志处的问题</p>
+<ul>
+<li>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/block.svg</li>
+<li>file:///Users/keything/Desktop/%E6%88%AA%E5%9B%BE%E7%9B%AE%E5%BD%95/text_prof/mutex.svg    </li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>seelog库我们使用的是异步写入的方式，log函数中的cLogger.innerLogger决定了异步还是同步，但在真正执行之前有个锁。cLogger.m.Lock 锁就是发生在这儿。日志量写入过大时，会影响到服务的时延。</li>
+<li><p>日志库加锁带来的几个现象是：</p>
+<ul>
+<li>qps从200qps上升到400qps时，cpu没有变化、但时延会线性增加</li>
+<li>goroutine数量线性增加</li>
+</ul>
+</li>
+<li><p>疑问：</p>
+<ul>
+<li>这儿加锁的目的是什么呢？ </li>
+</ul>
+</li>
+</ul>
+<pre><code>func (cLogger *commonLogger) log(level LogLevel, message fmt.Stringer, stackCallDepth int) {
+    if cLogger.unusedLevels[level] {
+        return
+    }
+    cLogger.m.Lock()
+    defer cLogger.m.Unlock()
+
+    if cLogger.Closed() {
+        return
+    }
+    context, _ := specifyContext(stackCallDepth+cLogger.addStackDepth, cLogger.customContext)
+    // Context errors are not reported because there are situations
+    // in which context errors are normal Seelog usage cases. For
+    // example in executables with stripped symbols.
+    // Error contexts are returned instead. See common_context.go.
+    /*if err != nil {
+        reportInternalError(err)
+        return
+    }*/
+    cLogger.innerLogger.innerLog(level, context, message)
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/24/2019-08-24 golang的性能问题/" data-id="cjzuyutmg00022cs6sedocfif" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-off-cpu Flame Graphs" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/17/off-cpu Flame Graphs/" class="article-date">
+  <time datetime="2019-08-17T04:47:59.000Z" itemprop="datePublished">2019-08-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Off-CPU Flame Graphs</p>
+<p>已经在<a href="http://www.brendangregg.com/offcpuanalysis.html" target="_blank" rel="noopener">off-cpu analysis</a>中介绍了off-cpu的方法论。在这个章节，将会使用Flame Graphs进行分析。 </p>
+<p><a href="http://www.brendangregg.com/FlameGraphs/offcputracing-1000.png" target="_blank" rel="noopener">example off-cpu event, with enumerated approaches fro analysis</a></p>
+<p>在图中只展示了一种off-cpu时间的形式。off-cpu还可以是 上下文切换、内存映射磁盘IO、调度延时。 这些都不包含一个系统调用。</p>
+<p>使用flame graphs有四种方法用于分析off-cpu时间。最好是顺序读，每一部分包含下一部分的背景。 </p>
+<h2 id="先决条件"><a href="#先决条件" class="headerlink" title="先决条件"></a>先决条件</h2><h2 id="开支"><a href="#开支" class="headerlink" title="开支"></a>开支</h2><h2 id="Linux-perf-eBPF"><a href="#Linux-perf-eBPF" class="headerlink" title="Linux perf,eBPF"></a>Linux perf,eBPF</h2><h3 id="1-I-O"><a href="#1-I-O" class="headerlink" title="1, I/O"></a>1, I/O</h3><p>使用 eBPF分析。 </p>
+<p>注意I/O上下文，看看是同步还是异步。</p>
+<ul>
+<li>同步：I/O 延迟直接引起应用延时。</li>
+<li>异步：间接的方式影响。 An example of this is a file system which buffers writes and flushes them to disk later. The eventual I/O and their latency may be high, but not endured directly by the application. They may be endured indirectly, as contention with later synchronous reads.</li>
+</ul>
+<h4 id="1-1-File-I-O"><a href="#1-1-File-I-O" class="headerlink" title="1.1 File I/O"></a>1.1 File I/O</h4><h4 id="1-2-Block-Device-I-O"><a href="#1-2-Block-Device-I-O" class="headerlink" title="1.2 Block Device I/O"></a>1.2 Block Device I/O</h4><p>之前例子是从VFS接口读写进行追踪，这类似于应用请求。 I/O还可以从内核栈kernel stack中追踪，比如block device I/O, storage driver I/O, TCP/IP栈的不同层等。 作为一个例子，从block device I/O分析。 </p>
+<p>与scheduler events相比，block device I/O (disk I/O)相对少见，我不需要使用eBPF的内核总结来追踪它。一个更简单的方式是用perf来分析disk I/O。</p>
+<p><code>perf record -e block:block_rq_insert -a -g -- sleep 30
+perf script --header &gt; out.stacks
+git clone https://github.com/brendangregg/FlameGraph
+cd FlameGraph
+./stackcollapse-perf.html &lt; out.stacks | ./flamegraph.pl --color=io \
+    --title=&quot;Block I/O Flame Graph&quot; --countname=&quot;I/O&quot; &gt; out.svg
+./stackcollapse-perf.html &lt; out.stacks | grep do_command | c++filt | \
+    ./flamegraph.pl --color=io --title=&quot;Block I/O Flame Graph&quot; --countname=&quot;I/O&quot; &gt; out.svg</code></p>
+<p>These block I/O time flame graphs show who is causing the I/O and their duration, but not necessarily their effect on application latency. If the I/O was synchronous, it will have also caused latency in mysqld, but that may not be the case – it may be asynchronous I/O that didn’t block mysqld. To focus on blocking events, we can make an off-CPU flame graph instead.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/17/off-cpu Flame Graphs/" data-id="cjzuyutrb00522cs6jlgi9fb2" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-off-cpu分析" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/17/off-cpu分析/" class="article-date">
+  <time datetime="2019-08-17T04:47:30.000Z" itemprop="datePublished">2019-08-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Off-CPU-分析"><a href="#Off-CPU-分析" class="headerlink" title="Off-CPU 分析"></a>Off-CPU 分析</h1><p>性能问题可以归结为两类：</p>
+<ul>
+<li>On-CPU: 在CPU上进行计算，耗时发生在CPU上</li>
+<li>Off-CPU: IO阻塞、锁、计时器、页交换（paging/swapping)等</li>
+</ul>
+<p>Off-CPU分析是一个性能方法论，off-CPU时间可以与上下文如堆栈等 一起 被测量和研究。<br>与CPU性能分析不同，CPU性能分析只看在CPU上执行的线程。 Off-CPU的目标是 线程状态阻塞并且处于Off-CPU。正如右图中蓝色所展示的部分。 <a href="http://www.brendangregg.com/Perf/thread_states.png" target="_blank" rel="noopener">Generice thread states</a></p>
+<p>通过Off-CPU分析和CPU分析，可以理解线程的100%的时间。 与追踪技术不同，这个方法的目标是理解阻塞的核心调度的概念，能够方便的捕获所有。（Off-CPU analysis is complementary to CPU analysis, so that 100% of thread time can be understood. This method also differs from tracing techniques that instrument applications functions that commonly block, since this method targets the kernel scheduler’s notion of blocking, which is a convenient catch-all.）</p>
+<p>线程离开CPU有很多原因，包括I/O，locks，但也有很多不相关的线程操作，包括 由于对CPU资源高要求的上下文切换，和中断。不管什么原因，在一个请求中发生了，就会引入延时。</p>
+<p>在这篇文章中，我会引入Off-CPu时间作为测量，并总结用于Off-CPU分析的技术。</p>
+<h2 id="先决条件"><a href="#先决条件" class="headerlink" title="先决条件"></a>先决条件</h2><p>Off-CPU分析需要stack traces 用于追踪。 </p>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>为了解释Off-CPU分析的角色，我将会总结CPU采样 并 首先进行追踪 用于对比。 我将会总结两种Off-CPU分析方法：</p>
+<ul>
+<li>tracing</li>
+<li>sampling</li>
+</ul>
+<p>我已经提出Off-CPU分析很长时间，但依旧不是一个广泛应用的技术，主要是生产环境中的linux环境中缺少工具。使用eBPF和更新的linux内核（4.8+）可以改变。 </p>
+<h3 id="1-CPU-采样"><a href="#1-CPU-采样" class="headerlink" title="1. CPU 采样"></a>1. CPU 采样</h3><p>许多传统的在全部CPU上 采用工具进行周期采样，得到当前指令地址或全部栈空间的快照。<br>在linux下 使用采样模式的perf工具可以进行周期的CPU采用(eg -F 99)。</p>
+<p>考虑应用函数A()，调用函数B()，这带来了一个阻塞的系统调用。 这可以很高效的分析On-CPU问题，包括热点代码路径（hot code-paths)和自适应互斥自旋（adaptive mutext spins)，当应用程序阻塞 并处于off-CPU时，不收集数据。 </p>
+<p>[cpu sample]</p>
+<pre><code>CPU Sampling -----------------------------------------------&gt;
+    |  |  |  |  |  |  |                      |  |  |  |  |         
+    A  A  A  A  B  B  B                      B  A  A  A  A         
+   A(---------.                                .----------)        
+              |                                |                   
+              B(--------.                   .--)                   
+                        |                   |         user-land    
+  - - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                        |                   |         kernel       
+                        X     Off-CPU       |                      
+                      block . . . . . interrupt                    
+</code></pre><h3 id="2-应用追踪-Application-Tracing"><a href="#2-应用追踪-Application-Tracing" class="headerlink" title="2. 应用追踪 Application Tracing"></a>2. 应用追踪 Application Tracing</h3><pre><code>App Tracing ------------------------------------------------&gt;
+   |          |                                |          |        
+   A(         B(                               B)         A)       
+
+   A(---------.                                .----------)        
+              |                                |                   
+              B(--------.                   .--)                   
+                        |                   |         user-land    
+  - - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                        |                   |         kernel       
+                        X     Off-CPU       |                      
+                      block . . . . . interrupt       
+</code></pre><h3 id="3-Off-CPU-tracing"><a href="#3-Off-CPU-tracing" class="headerlink" title="3. Off-CPU tracing"></a>3. Off-CPU tracing</h3><p>先总结，下一节会详细介绍。 </p>
+<pre><code>Off-CPU Tracing --------------------------------------------&gt;
+                        |                   |                   
+                        B                   B                   
+                        A                   A                   
+   A(---------.                                .----------)        
+              |                                |                   
+              B(--------.                   .--)                   
+                        |                   |         user-land    
+  - - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                        |                   |         kernel       
+                        X     Off-CPU       |                      
+                      block . . . . . interrupt                    
+</code></pre><p>使用这种方法，只会跟踪到切换线程到off-cpu的内核函数、时间戳 和 user-land stack traces。这样聚焦于off-CPU事件，不需要跟踪所有的应用函数，或者知道应用是什么。这个方法适用于任何阻塞事件，可以用于任何应用：MySQL，Apache、Java等。 </p>
+<p><code>Off-CPU tracing captures all wait events for any application.</code></p>
+<p>接下来，我会跟踪内核off-cpu 事件，并包含一些应用水平的指令来过滤出异步等待时间。与应用水平指令不同，我不必寻找每个可能阻塞off-cpu的地方；我只需要辨认出应用是一个敏感代码路径（如查询mysql），从而知道延迟是同步的工作量（the latency is synchronous to the workload）。</p>
+<p>off-cpu tracing 是我用于off-cpu分析的主要方法，但也有sampling方法。 </p>
+<h3 id="4-off-cpu-sampling"><a href="#4-off-cpu-sampling" class="headerlink" title="4. off-cpu sampling"></a>4. off-cpu sampling</h3><pre><code>Off-CPU Sampling -------------------------------------------&gt;
+                         |  |  |  |  |  |  |                       
+                         O  O  O  O  O  O  O                       
+   A(---------.                                .----------)        
+              |                                |                   
+              B(--------.                   .--)                   
+                        |                   |         user-land    
+  - - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                        |                   |         kernel       
+                        X     Off-CPU       |                      
+                      block . . . . . interrupt                    
+</code></pre><h2 id="开支"><a href="#开支" class="headerlink" title="开支"></a>开支</h2><h2 id="Linux：perf，eBPF"><a href="#Linux：perf，eBPF" class="headerlink" title="Linux：perf，eBPF"></a>Linux：perf，eBPF</h2><p>off-cpu是在任何操作系统上都适用的通用方法。 </p>
+<p>在Linux上游很多工具可以用于off-cpu分析。 这儿我使用eBPF，可以很容易得到栈和计时器的内核总结。eBPF是内核的一部分，但linux必须是4.8以上。 </p>
+<p>那么在eBPF之前，我是如何进行off-cpu分析的呢？<br>用于不同阻塞类型的分析方法：用于storage I/O的storage tracing，用于scheduler latency的内核统计等等。</p>
+<p>为了进行off-cpu分析，我使用SystemTap，perf event logging。我写了一个简单的wall-time kernel-stack profiler called <a href="https://github.com/brendangregg/proc-profiler/blob/master/proc-profiler.pl" target="_blank" rel="noopener">proc-profiler.pl</a>，用于采样指定的PID /proc/PID/stack。<a href="http://www.brendangregg.com/blog/2015-02-26/linux-perf-off-cpu-flame-graph.html" target="_blank" rel="noopener">perf events off-cpu Time Flame Graph</a> 。</p>
+<h2 id="Off-CPU-Time"><a href="#Off-CPU-Time" class="headerlink" title="Off-CPU Time"></a>Off-CPU Time</h2><p>This is the time that threads spent waiting off-CPU (blocked time), and not running on-CPU. It can be measured as totals across a duration (already provided by /proc statistics), or measured for each blocking event (usually requires a tracer).</p>
+<p>首先看一下大家都熟悉的命令：</p>
+<p>$ time tar cf archive.tar linux-4.15-rc2</p>
+<pre><code>real    0m50.798s
+user    0m1.048s
+sys    0m11.627s
+</code></pre><p>tar花费接近一分钟去运行。 1.0 second 用于用户态的CPU时间；11.6秒用于内核态的CPU时间，其余38.2秒丢失了，这就是阻塞的off-CPU的命令，不用怀疑主要是IO。</p>
+<p>为了从更多细节检测off-cpu时间，either dynamic tracing of kernel scheduler functions or static tracing using the sched tracepoints can be used</p>
+<h2 id="Off-CPU-分析-1"><a href="#Off-CPU-分析-1" class="headerlink" title="Off-CPU 分析"></a>Off-CPU 分析</h2><h2 id="Request-Synchronous-Context"><a href="#Request-Synchronous-Context" class="headerlink" title="Request-Synchronous Context"></a>Request-Synchronous Context</h2><p>Applications that wait for work, like web servers with pools of threads waiting on a socket, present a challenge for off-CPU analysis: often most of the blocking time will be in stacks waiting for work, rather than doing work. This floods the output with stacks that aren’t very interesting.</p>
+<p>As an example of this phenomenon, here are off-CPU stacks for a MySQL server process that is doing nothing. Zero requests per second:</p>
+<p>Various threads are polling for work and other background tasks. These background stacks can dominate the output, even for a busy MySQL server. What I’m usually looking for is off-CPU time during a database query or command. That’s the time that matters – the time that’s hurting the end customer. To find those in the output, I need to hunt around for stacks in query context.</p>
+<h2 id="警告-Caveats"><a href="#警告-Caveats" class="headerlink" title="警告 Caveats"></a>警告 Caveats</h2><p>最大的警告是off-CPU分析的开支。<br>接下来介绍 <code>scheduler latency</code> 、<code>involuntary context switches to be aware of</code> 、<code>wakeup stacks</code></p>
+<h3 id="scheduler-latency"><a href="#scheduler-latency" class="headerlink" title="scheduler latency"></a>scheduler latency</h3><h3 id="involuntary-context-switching"><a href="#involuntary-context-switching" class="headerlink" title="involuntary context switching"></a>involuntary context switching</h3><h2 id="Flame-Graphs"><a href="#Flame-Graphs" class="headerlink" title="Flame Graphs"></a>Flame Graphs</h2><p>Flame Graphs are a visualization of profiled stack traces, and are very useful for quickly comprehending the hundreds of pages of stack trace output that can be generated by off-CPU analysis. Yichun Zhang first created off-CPU time flame graphs, using SystemTap.</p>
+<p>zhangyichun首先使用SystemTap创建了off-CPU time flame graphs。</p>
+<p>Flame Graphs是一个虚拟的分析工具。</p>
+<h2 id="wakeups"><a href="#wakeups" class="headerlink" title="wakeups"></a>wakeups</h2>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/17/off-cpu分析/" data-id="cjzuyutrc00542cs65g7oa4n5" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-golang模块wiki译文" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/06/26/golang模块wiki译文/" class="article-date">
@@ -204,7 +876,7 @@ require (
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/26/golang模块wiki译文/" data-id="cjxcljtgr002e35s6xbyukkts" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/26/golang模块wiki译文/" data-id="cjzuyutpj00302cs69mrwe0q3" class="article-share-link">Share</a>
       
       
     </footer>
@@ -288,7 +960,7 @@ require (
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/26/golang模块介绍/" data-id="cjxcljtgt002g35s63tji4ijo" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/26/golang模块介绍/" data-id="cjzuyutph002y2cs6reav50q8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -396,763 +1068,10 @@ require (
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/10/linux同步机制/" data-id="cjxcljthn003635s6z14dum3v" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/06/10/linux同步机制/" data-id="cjzuyutqe003n2cs6dabl3pxw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-spinlock" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/06/08/spinlock/" class="article-date">
-  <time datetime="2019-06-08T03:45:58.000Z" itemprop="datePublished">2019-06-08</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/06/08/spinlock/">spinlock</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/08/spinlock/" data-id="cjxcljtjp005135s6bjjyfc6z" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux-sync/">linux,sync</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-go版thrift读写超时时间处理" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/06/04/go版thrift读写超时时间处理/" class="article-date">
-  <time datetime="2019-06-04T12:13:48.000Z" itemprop="datePublished">2019-06-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>在golang的thrift调用中，如果我们设置的是<br>`<br>socket,err := thrift.NewTSocket(host)</p>
-<p>defer socket.Close()</p>
-<p>socket.SetTimeout(time.Duration(3) * time.Millisecond)<br>`</p>
-<p>这种设置的其实是连接超时、读超时、写超时分别是3毫秒。为什么这样讲呢?</p>
-<p>在<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go" target="_blank" rel="noopener">socket.go</a>中看<code>func (p *TSocket) Write(buf []byte) (int,error) {</code> 中 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go#L68" target="_blank" rel="noopener">p.pushDeadline(false, true)</a> 中看到 <code>p.conn.SetWriteDeadline(t)</code><br>可以看到读写的超时时间都是socket.SetTimeout中设置的。</p>
-<p>在<code>func (p *TSocket) Open() error{</code>中可以到DialTimeout的连接超时也是socket.SetTimeout中设置的。</p>
-<p>因此如果要想实现thrift的连接、读、写超时，那么就必须修改socket.go中的pushDeadline，分别为读写设置超时时间。</p>
-<p>但如果去更改<code>vendor/git.apache.org/thrift.git/lib/go/thrift/socket.go</code>文件，那么会造成很难维护，那么我们能否在我们代码里面实现socket.go 而不影响原有的包呢?</p>
-<p>答案是可以的。</p>
-<p>首先看一段thrift调用的代码:<br>`<br>socket,err := thrift.NewTSocket(host)</p>
-<p>defer socket.Close()</p>
-<p>socket.SetTimeout(time.Duration(3) * time.Millisecond)</p>
-<p>tf_transport := transportFactory.GetTransport(socket)</p>
-<p>defer tf_transport.Close()</p>
-<p>err = socket.Open()</p>
-<p>…<br>`<br>那么从这儿来看，只要我们自己实现TSocket即可。</p>
-<p>当然了，我们看一下TSocket到底是什么呢？</p>
-<p>二、thrift的核心概念<br>在文章<a href="https://www.ibm.com/developerworks/cn/java/j-lo-apachethrift/index.html" target="_blank" rel="noopener">thrift介绍</a>中给出了thrift的整体结构。</p>
-<p>我们知道thrift有几大概念：</p>
-<ol>
-<li>数据类型</li>
-<li><p>协议protocol<br>2.1 TBinaryProtocol 二进制编码格式进行数据传输<br>2.2 TCompactProtocol 高效率的、密集的二进制编码格式进行数据传输<br>2.3 TJSONProtocol —— 使用 JSON 的数据编码协议进行数据传输<br>2.4 TSimpleJSONProtocol —— 只提供 JSON 只写的协议，适用于通过脚本语言解析</p>
-</li>
-<li><p>传输层<br>3.1 TSocket —— 使用阻塞式 I/O 进行传输，是最常见的模式<br>3.2 TFramedTransport —— 使用非阻塞方式，按块的大小进行传输。若使用 TFramedTransport 传输层，其服务器必须修改为非阻塞的服务类型。<br>3.3 TNonblockingTransport —— 使用非阻塞方式，用于构建异步客户端</p>
-</li>
-<li><p>服务器端类型<br>4.1 TSimpleServer —— 单线程服务器端使用标准的阻塞式 I/O<br>4.2 TThreadPoolServer —— 多线程服务器端使用标准的阻塞式 I/O<br>4.3 TNonblockingServer —— 多线程服务器端使用非阻塞式 I/O</p>
-</li>
-</ol>
-<p>三、thrift的golang实现</p>
-<ol>
-<li><p>protocol 接口定义 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/protocol.go</a><br> 1.1 TJSONProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/json_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/json_protocol.go</a><br> 1.2 TBinaryProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/binary_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/binary_protocol.go</a><br> 1.3 TCompactProtocol 实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/compact_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/compact_protocol.go</a><br> 1.4 TSimpleJsonProtocol实现该接口 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/simple_json_protocol.go" target="_blank" rel="noopener">https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/simple_json_protocol.go</a></p>
-</li>
-<li><p><a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/transport.go" target="_blank" rel="noopener">transport 接口定义</a><br> 2.1 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/socket.go" target="_blank" rel="noopener">TSocket</a> 这个socket实现了transport接口。虽然叫Socket但确实是transport接口的一个实现。</p>
-<p>  NewTSocket创建了一个连接后端服务的TTransport。</p>
-<p> 2.2 <a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go" target="_blank" rel="noopener">TFramedTransport</a></p>
-<p> 从伪代码里面我们可以看到，我们是把TSocket作为参数传递给了TFramedTransport的。那么二者关系是什么呢？</p>
-</li>
-<li><p>TSocket和TFramedTransport关系</p>
-<p>首先看一下<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/transport_factory.go" target="_blank" rel="noopener">TransportFactory</a> 这是一个工厂类，GetTransport(trans Transport) 返回的就是trans</p>
-<p>再看一下<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go#L31" target="_blank" rel="noopener">TFramedTransportFactory</a>，其实现的<a href="https://github.com/apache/thrift/blob/0.9.2/lib/go/thrift/framed_transport.go#L50" target="_blank" rel="noopener">GetTransport(trans Transport)</a>，<code>return &amp;TFramedTransport{transport: transport, reader: bufio.NewReader(transport), maxLength: maxLength}</code>中 transport即之前我们赋值的TSocket。</p>
-</li>
-</ol>
-<ol start="4">
-<li>最后回到如何实现控制连接、读、写的超时时间呢？</li>
-</ol>
-<p>我们自己实现一个TSocket即可。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/06/04/go版thrift读写超时时间处理/" data-id="cjxcljth6002s35s69huonpuh" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-字符编码和字符集" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/05/12/字符编码和字符集/" class="article-date">
-  <time datetime="2019-05-12T13:39:53.000Z" itemprop="datePublished">2019-05-12</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/12/字符编码和字符集/">字符编码和字符集</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>计算机底层使用二进制数来存储和传输数据；<br>人类使用文字、数字、图形来表达信息；<br>因此二者之间需要进行某种转换。<br>文字、数字等字符转换为二进制数被称为编码<br>二进制数转换为文字、数字称为解码。<br>文字、数字、图形总称为字符(character)。在golang里面使用rune表示字符。</p>
-<p>字符的集合就是字符集(charset)，常见的字符集包含ASCII，GB2312，通用字符集（UCS）和Unicode字符集</p>
-<p>ASCII码 使用一个字节表示，第一个bit是0，用7个bit来表示，只能表示128个字符。<br>GB2312是针对汉字的字符集，使用两个字节来表示；但如果每个国家都有自己的字符集，那字符集太多了，有没有一种字符集可以包括所有字符呢？</p>
-<p>Unicode：囊括所有字符，但只是字符集，没有规定字符是如何存储和传输的。 而UTF(unicode transformation format)规定了字符如何传输和存储的。常用的是UTF-8。</p>
-<p>UTF-8是变长的编码方式：</p>
-<ul>
-<li>对于单字节的符号，字节的第一位置0，后面7位为这个符号的Unicode码。因此，对于英语字母，UTF-8编码和ASCII码是相同的</li>
-<li>对于n个字节的字符（n&gt;1）,第一个字节的前n位都置为1，第n+1位置为0，后面字节的前两位一律置为10。剩下的没有提及的二进制位，全部为这个符号的Unicode码<br><img src="https://upload-images.jianshu.io/upload_images/10175366-da25c0ec4c5c2113.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/974/format/webp" alt="图片"></li>
-</ul>
-<p>UTF8和unicode之间转换</p>
-<p>这里只介绍Unicode转换为UTF-8 ，以汉字 “柯” 为例。已知 “柯” 的Unicode码是 \u 67ef(0110 0111 1110 1111)，根据上表，我们可以知道 “柯”这个Unicode对应的UTF-8编码需要3个字节。然后，从0110 0111 1110 1111从由往左依次取数放入到1110 xxxx 10xx xxxx 10xx xxxx中，得到最终的结果是 1110 0110 1001 1111 1010 1111，转换成十六进制是E6 9F AF。</p>
-<p>golang代码:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	&quot;unicode/utf8&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	s := &quot;hello, 世界&quot;</span><br><span class="line">	fmt.Println(&quot;byte=&quot;, len(s))</span><br><span class="line">	fmt.Println(&quot;utf8 cnt=&quot;, utf8.RuneCountInString(s))</span><br><span class="line"></span><br><span class="line">	for i := 0; i &lt; len(s); &#123;</span><br><span class="line">		r, size := utf8.DecodeRuneInString(s[i:])</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">		i += size</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Println(&quot;range start&quot;)</span><br><span class="line">	for i, r := range s &#123;</span><br><span class="line">		fmt.Printf(&quot;%d\t%c\n&quot;, i, r)</span><br><span class="line">	&#125;</span><br><span class="line">	fmt.Println(&quot;range end&quot;)</span><br><span class="line"></span><br><span class="line">	s2 := &quot;柯&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s2) //utf8编码</span><br><span class="line">	r := []rune(s2)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r) //unicode 码点序列</span><br><span class="line">	s3 := &quot;燕&quot;</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, s3) //utf8编码</span><br><span class="line">	r3 := []rune(s3)</span><br><span class="line">	fmt.Printf(&quot;% x\n&quot;, r3) //unicode 码点序列</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>如何实现汉字转拼音呢？</p>
-<p>首先有一个汉字的unicode码点到拼音的映射表，如<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,//对应汉字   柯</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;, //对应汉字 燕</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
-<p>汉字-&gt; unicode码点 -&gt; 映射表 -&gt; 拼音</p>
-<p>如何实现拼音转汉字</p>
-<p>拼音-&gt; 映射表 -&gt; unicode码点 -&gt; 汉字</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">	han2 := &quot;我是&quot;</span><br><span class="line">	fmt.Println(&quot;len=&quot;, len([]rune(han2)))</span><br><span class="line"></span><br><span class="line">	unicodeMapPinyin := map[string]string&#123;</span><br><span class="line">		&quot;67ef&quot;: &quot;ke2&quot;,</span><br><span class="line">		&quot;71d5&quot;: &quot;yan1&quot;,</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han1 := &quot;柯&quot;</span><br><span class="line">	strHan1 := fmt.Sprintf(&quot;%x&quot;, ([]rune(han1))[0])</span><br><span class="line">	fmt.Println(&quot;str han1=&quot;, strHan1)</span><br><span class="line">	if v, ok := unicodeMapPinyin[strHan1]; ok &#123;</span><br><span class="line">		fmt.Printf(&quot;%s pinyin is %s\n&quot;, han1, v)</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		fmt.Println(&quot;not ok&quot;)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	han3 := string([]rune(han1)[0])</span><br><span class="line">	fmt.Println(&quot;han3=&quot;, han3)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>参考<br><a href="https://www.jianshu.com/p/4a043c3f8108" target="_blank" rel="noopener">https://www.jianshu.com/p/4a043c3f8108</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/12/字符编码和字符集/" data-id="cjxcljtka005l35s6qhasco2d" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-linux进程间通信" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/05/03/linux进程间通信/" class="article-date">
-  <time datetime="2019-05-03T07:59:45.000Z" itemprop="datePublished">2019-05-03</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/03/linux进程间通信/">linux进程间通信</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><p>1.1 基本概念</p>
-<p>IPC是进程间通信(interprocess communication)的简称。IPC指的是不同进程间消息传递的不同方式。</p>
-<p>消息传递历经如下几个发展阶段：</p>
-<ul>
-<li>管道。其缺点是：<ul>
-<li>只能在具有共同祖先（指父子进程关系）的进程间使用</li>
-<li>半双工（单向）</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li><p>有名管道(named pipe)</p>
-<ul>
-<li>半双工</li>
-<li>可以在没有亲缘关系的进程间使用</li>
-</ul>
-</li>
-<li><p>System V消息队列：20世纪80年代早期加到System V内核中。可以在没有亲缘关系的进程中通信。</p>
-</li>
-<li><p>Posix消息队列：同一主机上游亲缘关系和无亲缘关系的进程之间。</p>
-<ul>
-<li>两个消息队列的缺点：存在于内核并且没有引用计数；性能跟全双工管道和套接字相当。</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li>远程过程调用：RPC可用在同一主机上的客户和服务器直接，因此可以认为RPC是另一种形式的消息传递。</li>
-</ul>
-<p>1.2 进程、线程与信息共享</p>
-<p><img src="/2019/05/03/linux进程间通信/ipc三种方式.jpg" alt="ipc三种方式"><br>Unix进程间的信息共享有多种方式：</p>
-<ul>
-<li><p>文件系统：</p>
-<ul>
-<li>两个进程共享存留于文件系统中某个文件上的某些信息。为访问这些信息，每个进程都得穿越内核。</li>
-</ul>
-</li>
-<li><p>内核：</p>
-<ul>
-<li>两个进程共享驻留于内核中的某些信息。管道是共享内核的一个例子，System V消息队列和System V信号灯也是。</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li>共享内存区：<ul>
-<li>两个进程有一个双方都能访问的共享内存区。每个进程一旦设置好该共享内存区，就能根本不涉及内核而访问其中数据。</li>
-</ul>
-</li>
-</ul>
-<p>1.3 IPC对象的持续性</p>
-<p>有三种类型的持续性：</p>
-<ul>
-<li>随进程持续</li>
-<li>随内核持续</li>
-<li>随文件系统持续</li>
-</ul>
-<p>1.4 名字空间</p>
-<p>当两个或多个无沁园关系的进程使用某种类型的IPC对象类彼此交换信息时，该IPC对象必须有一个某种形式的名字name或标识符identifier，这样其中一个进程可以创建该IPC对象，其余进程可以指定同一个IPC对象。 </p>
-<p>管道没有名字，因此只能用于有亲缘关系的进程间。</p>
-<p>1.5 fork,exec对于IPC对象的影响</p>
-<h3 id="二、管道和FIFO"><a href="#二、管道和FIFO" class="headerlink" title="二、管道和FIFO"></a>二、管道和FIFO</h3><p>2.3 管道</p>
-<p>管道由pipe函数创建，提供一个单路（单向）数据流。</p>
-<p><code>int pipe(int fd[2])</code></p>
-<p>该函数返回两个文件描述字：fd[0]和fd[1]。前者打开来读，后者打开来写。 </p>
-<p>创建一个全双工IPC管道的另外一个方法是使用UNPv1的14.3节讲述的<code>socketpair</code>函数。</p>
-<p>当然管道最常见用途是用在各种shell中，这种情况下半双工就够了。 </p>
-<p>2.4 全双工管道</p>
-<p>2.6 FIFO 有名管道</p>
-<p>FIFO指代先进先出(first in, first out)，是一个单向（半双工）数据流。 </p>
-<p>与管道不同的是， 每个FIFO有一个路径与之关联，从而允许无亲缘关系的进程访问同一个FIFO。FIFO也称为有名管道（named pipe)。</p>
-<p>因此FIFO可以用于无亲缘关系的进程间通信。</p>
-<p>通过<code>int mkfifo(const char *pathname, mode_t mode)</code>创建。</p>
-<h3 id="三、Posix-消息队列"><a href="#三、Posix-消息队列" class="headerlink" title="三、Posix 消息队列"></a>三、Posix 消息队列</h3><p>3.1 简介</p>
-<p>消息队列可以认为一个消息链表。每个消息是一个记录，它由发送者赋予一个优先级。在某个进程往一个队列写入消息之前，并不需要另外某个进程在该队列上等待消息的到达。</p>
-<p>队列中的每个消息具有如下属性:</p>
-<ul>
-<li>一个无符号整数优先级或一个长整型类型</li>
-<li>消息的数据部分长度</li>
-<li>数据本身</li>
-</ul>
-<p>消息队列与管道和FIFO区别：</p>
-<ol>
-<li>某个进程往一个队列写入消息之前，并不需要某个进程在该队列上等待消息的到达；而管道和FIFO 必须是读出者已经存在，否则先有写入者没有意义。 </li>
-<li>管道和FIFO是字节流模型，没有消息边界，也没能与每个消息关联的类型。</li>
-</ol>
-<p>3.6 Posix消息队列的 mq_notify函数</p>
-<p>System V消息队列的问题之一是无法通知一个进程何时在某个队列中放置了一个消息。</p>
-<p>Posix消息队列允许异步事件通知（asynchronous event notification),以告知何时有一个消息放置到了某个空消息队列中，这种通知有两种方式可供选择：</p>
-<ul>
-<li>产生一个信号</li>
-<li>创建一个线程执行一个指定函数</li>
-</ul>
-<p>3.8 使用内存映射I/O实现Posix消息队列</p>
-<p>该小节使用内存映射I/O 以及一个Posix互斥锁和一个Posix条件变量以约500行的C代码实现了Posix消息队列的大多数特性。 </p>
-<p>实现方案是什么呢？？？？？</p>
-<p>学习一下Posix消息队列的实现，从而看看golang channel是不是一样呢？</p>
-<h3 id="四、System-V消息队列"><a href="#四、System-V消息队列" class="headerlink" title="四、System V消息队列"></a>四、System V消息队列</h3><p>System V消息队列使用消息队列标识符标识。</p>
-<p><code>新的应用程序应考虑使用Posix消息队列。</code></p>
-<p>Posix消息队列遗漏的主要特性是从队列中读出指定优先级的消息的能力。这两种消息队列都不使用真正的描述字，从而造成在消息队列上使用select或poll的困难。</p>
-<p>####消息队列和全双工管道对比</p>
-<p>unp15.7节中介绍了二者对比。</p>
-<p>如果需要客户进程和服务器进程之间的双向数据流，可以使用消息队列或全双工通道。（通过Unix域套接字机制 或者pipe函数提供全双工管道）。</p>
-<p><img src="/2019/05/03/linux进程间通信/msg_socket_pipe_compare.jpg" alt=""></p>
-<p>图15-27 显示了在Solaris上3中技术在时间方面的比较，这三种技术是：消息队列、全双工管道、UNIX域套接字。</p>
-<p>测试程序先创建IPC通道，调用fork，然后从父进程向子进程发送约200MB数据。数据发送的方式是：对于消息队列，调用100,000次msgsnd，每个消息长度为2000字节。对于全双工管道和UNIX域套接字，调用100,000次write，每次写2000字节。时间都以秒为单位。</p>
-<p>从这些数字中可见，消息队列原来的实施目的是提供高于一般速度的IPC，但现在与其他形式的IPC相比，在速度方面已经没有什么差别了。 </p>
-<p>注意：在原来实施消息队列时，可用的其他形式的IPC就只有半双工管道这一种。</p>
-<p>考虑到消息队列遇到的问题，我们得出的结论是，在新的应用程序中不应当再使用它们。</p>
-<p>消息队列遇到的问题是：</p>
-<ol>
-<li>消息队列是在内核中起作用，没有引用计数。例如，如果进程创建了一个消息队列并写入了几则消息，然后终止，那么该消息队列及其内容不会被删除。</li>
-<li>消息队列在文件系统中没有名字。为了支持这些IPC对象，内核中增加了十几个全新的系统调用(msgget,semop,shmat等）。        </li>
-</ol>
-<h3 id="五、总结"><a href="#五、总结" class="headerlink" title="五、总结"></a>五、总结</h3><p>管道和FIFO：</p>
-<ul>
-<li>半双工管道</li>
-<li>管道是匿名的、FIFO是有名的；因此管道只能用于有亲缘关系的进程、FIFO则可以用于没有亲缘关系的进程。 </li>
-<li>对于shell而言使用管道即可。</li>
-</ul>
-<p>消息队列：</p>
-<ul>
-<li>诞生的背景是IPC只有管道，因此通过消息队列提升IPC性能；但后来有了全双工管道和套接字，</li>
-<li>因此新的应用程序都可以使用全双工管道和套接字。</li>
-<li>消息队列缺点：存在于内核并且没有引用计数，会存在进程已经消失，但是消息队列还在内核中存在。 </li>
-</ul>
-<p>套接字：</p>
-<ul>
-<li>全双工通道</li>
-<li>应用场景：<ul>
-<li>在nginx master进程和worker进程之间是通过套接字进行通信的。</li>
-<li>在nginx和php-fpm之间通过套接字进行通信。 </li>
-</ul>
-</li>
-</ul>
-<h4 id="5-1-nginx和phpfpm交互两种方式性能比较"><a href="#5-1-nginx和phpfpm交互两种方式性能比较" class="headerlink" title="5.1 nginx和phpfpm交互两种方式性能比较"></a>5.1 nginx和phpfpm交互两种方式性能比较</h4><p>nginx和phpfpm的交互有两种方式：</p>
-<ul>
-<li>tcp方式</li>
-<li>unix domain socket方式<br>tcp方式的优点是可以跨机器。</li>
-</ul>
-<p>socket方式的优点是：</p>
-<ul>
-<li>进程间通信，</li>
-<li>不需要经过网络协议栈、不需要打包、拆包、计算校验和、维护序号和应答等，只是将应用层数据从一个进程拷贝到另外一个进程。</li>
-<li>因此IPC机制本质上是可靠的通讯，而网络协议是为不可靠通讯设计的。 </li>
-</ul>
-<h4 id="5-2-IPC分类"><a href="#5-2-IPC分类" class="headerlink" title="5.2 IPC分类"></a>5.2 IPC分类</h4><ol>
-<li>消息传递（管道、FIFO、消息队列、RPC、匿名共享内存区、有名共享内存区）</li>
-<li>同步（互斥锁、条件变量、读写锁、文件与记录锁、信号灯）</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/05/03/linux进程间通信/" data-id="cjxcljthv003d35s63l761dcv" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-golang继承" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/04/29/golang继承/" class="article-date">
-  <time datetime="2019-04-29T02:52:38.000Z" itemprop="datePublished">2019-04-29</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/29/golang继承/">golang继承</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>项目中已经经常使用golang继承，现在总结一下，主要摘在<a href="https://hackthology.com/golangzhong-de-mian-xiang-dui-xiang-ji-cheng.html" target="_blank" rel="noopener">Golang中的面向对象继承</a></p>
-<p>总结如下：</p>
-<ol>
-<li>golang使用组合，可以将两个结构体简单组合形成一个新的数据类型</li>
-<li>可以通过匿名嵌入方式实现继承，从而共享代码和数据</li>
-<li><p>匿名嵌入有三种方式</p>
-<ul>
-<li>接口类型</li>
-<li>结构体实例</li>
-<li>结构体实例指针</li>
-</ul>
-<p>接口类型更加灵活，只要实现这个接口的方法都可以进行赋值。</p>
-<p>继承自其它结构体的struct类型可以直接访问父类结构体字段/方法</p>
-</li>
-<li><p>嵌入继承机制的局限</p>
-<p>Golang从根本上阻止了抽象方法的使用。</p>
-</li>
-<li><p>多态性</p>
-<p>golang不支持多态，即不能用子类替换父类。<br>但是golang支持接口类型的多态机制，只要结构体实现了接口的方法就可以进行赋值。</p>
-</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="cjxcljtgx002k35s6cac59qk9" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-spark-Quick-Start" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/04/28/spark-Quick-Start/" class="article-date">
-  <time datetime="2019-04-28T11:52:36.000Z" itemprop="datePublished">2019-04-28</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>注意， Spark2.0 之前的版本，Spark的主要编程接口是RDD(Resilient Distributed Dataset)。2.0以后的版本，主要编程接口替换为Dataset。当然了RDD接口依然支持，可以从<a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html" target="_blank" rel="noopener">RDD programming guide</a>。但是，我们强烈建议你切换到Dataset，比RDD有更好的性能。 关于Dataset可以从<a href="https://spark.apache.org/docs/latest/sql-programming-guide.html" target="_blank" rel="noopener">SQL programming guide</a>获得更多细节。</p>
-<h3 id="使用SparkShell进行交互分析"><a href="#使用SparkShell进行交互分析" class="headerlink" title="使用SparkShell进行交互分析"></a>使用SparkShell进行交互分析</h3><h4 id="基础内容"><a href="#基础内容" class="headerlink" title="基础内容"></a>基础内容</h4><p>启动 ./bin/spark-shell</p>
-<p>基本执行：</p>
-<pre><code>val textFile = spark.read.textFile(&quot;README.md&quot;)
-textFile.count() // Number of items in this Dataset
-textFile.first() // first item in this Dataset
-</code></pre><p>将一个Dataset转换为新的一个。 调用<code>filter</code>返回新的Dataset，是原始文件的一个子集</p>
-<pre><code>val linesWithSpark = textFile.filter(t =&gt; t.contains(&quot;Spark&quot;))
-</code></pre><h4 id="这儿有个疑问，如何打印出dataset中内容？？"><a href="#这儿有个疑问，如何打印出dataset中内容？？" class="headerlink" title="这儿有个疑问，如何打印出dataset中内容？？"></a>这儿有个疑问，如何打印出dataset中内容？？</h4><h4 id="更多的Dataset的操作"><a href="#更多的Dataset的操作" class="headerlink" title="更多的Dataset的操作"></a>更多的Dataset的操作</h4><p>Dataset的actions和transformation 可以用于更多的复杂运算。</p>
-<pre><code>textFile.map(line =&gt; line.split(&quot; &quot;).size).reduce((a,b) =&gt; if (a &gt; b) a else b)
-res4: Long = 15
-</code></pre><p>map和reduce的参数都是scala的匿名函数，还可以使用scala/java 库。例如 可以使用<code>Math.max()</code>函数。</p>
-<pre><code>import java.lang.Math
-textFile.map(line =&gt; line.split(&quot; &quot;).size).reduce((a, b) =&gt; Math.max(a,b))
-</code></pre><p>一个通用的数据处理流程是MapReduce。Spark可以很容易的实现MapReduce流。 </p>
-<pre><code>val wordCounts = textFile.map(line =&gt; line.split(&quot; &quot;)).groupByKey(identity).count()
-</code></pre><h4 id="Caching"><a href="#Caching" class="headerlink" title="Caching"></a>Caching</h4><p>spark支持将dataset写入cluster-wide in-memory cache。<br>当数据重复获取时，这还是很有用的。 </p>
-<h4 id="Self-Contained-Application"><a href="#Self-Contained-Application" class="headerlink" title="Self-Contained Application"></a>Self-Contained Application</h4><p>使用SparkAPI创建一个self-contained应用。</p>
-<pre><code>import org.apache.spark.sql.SparkSession
-
-object SimpleApp {
-  def main(args: Array[String]) {
-    val logFile = &quot;README.md&quot; // Should be some file on your system
-    val spark = SparkSession.builder.appName(&quot;Simple Application&quot;).getOrCreate()
-    val logData = spark.read.textFile(logFile).cache()
-    val numAs = logData.filter(line =&gt; line.contains(&quot;a&quot;)).count()
-    val numBs = logData.filter(line =&gt; line.contains(&quot;b&quot;)).count()
-    println(s&quot;Lines with a: $numAs, Lines with b: $numBs&quot;)
-    spark.stop()
-  }
-}
-</code></pre><p>其中<code>SparkSession.builder</code>构造一个[[SparkSession]]，使用设置application name，最后调用<code>getOrCreate</code>获取[[SparkSession]]实例。</p>
-<p>也可以使用maven来进行包管理。 </p>
-<p>目录结构：</p>
-<pre><code>./pom.xml
-./src
-./src/main
-./src/main/scala
-./src/main/scala/didi
-./src/main/scala/didi/map
-./src/main/scala/didi/map/pointsys
-./src/main/scala/didi/map/pointsys/App.scala
-./src/test
-./src/test/scala
-./src/test/scala/didi
-./src/test/scala/didi/map
-./src/test/scala/didi/map/pointsys
-</code></pre><p>App.scala内容：</p>
-<pre><code>package didi.map.pointsys
-
-import org.apache.spark.sql.SparkSession
-object MyFunctions {
-  def func1(s: String): String = {
-    s.concat(&quot;yankai&quot;)
-  }
-}
-// spark-submit --class=&quot;didi.map.pointsys.SimpleApp&quot; parking-user-profile-1.0-SNAPSHOT.jar
-object SimpleApp {
-  def main(args: Array[String]) {
-    val logFile = &quot;README.md&quot; // Should be some file on your system
-    val ss = SparkSession.builder().appName(&quot;Simple Application&quot;).enableHiveSupport().getOrCreate()
-    val logData = ss.read.textFile(logFile)
-    //val pairs = logData.map(s =&gt; (s, 1))
-
-    val numAs = logData.filter(line =&gt; line.contains(&quot;a&quot;)).count()
-    val numBs = logData.filter(line =&gt; line.contains(&quot;b&quot;)).count()
-    println(s&quot;Lines with a: $numAs, Lines with b: $numBs&quot;)
-    ss.stop()
-  }
-}
-</code></pre><p>pom.xml</p>
-<pre><code>&lt;project xmlns=&quot;http://maven.apache.org/POM/4.0.0&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:schemaLocation=&quot;http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd&quot;&gt;
-  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
-  &lt;groupId&gt;didi.map.pointsys&lt;/groupId&gt;
-  &lt;artifactId&gt;parking-user-profile&lt;/artifactId&gt;
-  &lt;version&gt;1.0-SNAPSHOT&lt;/version&gt;
-  &lt;inceptionYear&gt;2008&lt;/inceptionYear&gt;
-  &lt;properties&gt;
-    &lt;encoding&gt;UTF-8&lt;/encoding&gt;
-    &lt;scala.binary.version&gt;2.11&lt;/scala.binary.version&gt;
-    &lt;scala.major.version&gt;2.11&lt;/scala.major.version&gt;
-    &lt;deploy.scala.version&gt;2.11&lt;/deploy.scala.version&gt;
-    &lt;scala.version&gt;2.11.8&lt;/scala.version&gt;
-    &lt;scala.compat.version&gt;2.11&lt;/scala.compat.version&gt;
-    &lt;spark.version&gt;2.2.0&lt;/spark.version&gt;
-  &lt;/properties&gt;
-
-  &lt;dependencies&gt;
-    &lt;dependency&gt;
-      &lt;groupId&gt;junit&lt;/groupId&gt;
-      &lt;artifactId&gt;junit&lt;/artifactId&gt;
-      &lt;version&gt;4.12&lt;/version&gt;
-      &lt;scope&gt;test&lt;/scope&gt;
-    &lt;/dependency&gt;
-
-    &lt;dependency&gt;
-      &lt;groupId&gt;org.apache.spark&lt;/groupId&gt;
-      &lt;artifactId&gt;spark-core_2.11&lt;/artifactId&gt;
-      &lt;version&gt;2.3.0&lt;/version&gt;
-      &lt;scope&gt;provided&lt;/scope&gt;
-    &lt;/dependency&gt;
-    &lt;dependency&gt;
-      &lt;groupId&gt;org.apache.spark&lt;/groupId&gt;
-      &lt;artifactId&gt;spark-sql_2.11&lt;/artifactId&gt;
-      &lt;version&gt;2.3.0&lt;/version&gt;
-      &lt;scope&gt;provided&lt;/scope&gt;
-    &lt;/dependency&gt;
-    &lt;dependency&gt;
-      &lt;groupId&gt;org.apache.hadoop&lt;/groupId&gt;
-      &lt;artifactId&gt;hadoop-client&lt;/artifactId&gt;
-      &lt;version&gt;2.7.2&lt;/version&gt;
-      &lt;scope&gt;provided&lt;/scope&gt;
-    &lt;/dependency&gt;
-
-  &lt;/dependencies&gt;
-  &lt;build&gt;
-    &lt;sourceDirectory&gt;src/main/scala&lt;/sourceDirectory&gt;
-    &lt;testSourceDirectory&gt;src/test/scala&lt;/testSourceDirectory&gt;
-    &lt;plugins&gt;
-      &lt;!-- bind the maven-assembly-plugin to the package phase this will create
-          a jar file without the storm dependencies suitable for deployment to a cluster. --&gt;
-
-      &lt;plugin&gt;
-        &lt;groupId&gt;net.alchim31.maven&lt;/groupId&gt;
-        &lt;artifactId&gt;scala-maven-plugin&lt;/artifactId&gt;
-        &lt;version&gt;3.2.0&lt;/version&gt;
-        &lt;executions&gt;
-          &lt;execution&gt;
-            &lt;goals&gt;
-              &lt;goal&gt;compile&lt;/goal&gt;
-              &lt;goal&gt;testCompile&lt;/goal&gt;
-            &lt;/goals&gt;
-          &lt;/execution&gt;
-        &lt;/executions&gt;
-        &lt;configuration&gt;
-          &lt;scalaVersion&gt;${scala.version}&lt;/scalaVersion&gt;
-        &lt;/configuration&gt;
-      &lt;/plugin&gt;
-
-      &lt;plugin&gt;
-        &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
-        &lt;artifactId&gt;maven-assembly-plugin&lt;/artifactId&gt;
-        &lt;version&gt;2.2-beta-5&lt;/version&gt;
-        &lt;configuration&gt;
-          &lt;descriptorRefs&gt;
-            &lt;descriptorRef&gt;jar-with-dependencies&lt;/descriptorRef&gt;
-          &lt;/descriptorRefs&gt;
-        &lt;/configuration&gt;
-        &lt;executions&gt;
-          &lt;execution&gt;
-            &lt;phase&gt;package&lt;/phase&gt;
-            &lt;goals&gt;
-              &lt;goal&gt;single&lt;/goal&gt;
-            &lt;/goals&gt;
-          &lt;/execution&gt;
-        &lt;/executions&gt;
-      &lt;/plugin&gt;
-
-      &lt;plugin&gt;
-        &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
-        &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
-        &lt;version&gt;3.5.1&lt;/version&gt;
-        &lt;configuration&gt;
-          &lt;source&gt;1.8&lt;/source&gt;
-          &lt;target&gt;1.8&lt;/target&gt;
-        &lt;/configuration&gt;
-      &lt;/plugin&gt;
-      &lt;!-- disable surefire --&gt;
-      &lt;plugin&gt;
-        &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
-        &lt;artifactId&gt;maven-surefire-plugin&lt;/artifactId&gt;
-        &lt;version&gt;2.7&lt;/version&gt;
-        &lt;configuration&gt;
-          &lt;skipTests&gt;true&lt;/skipTests&gt;
-        &lt;/configuration&gt;
-      &lt;/plugin&gt;
-      &lt;!-- enable scalatest --&gt;
-      &lt;!-- &lt;plugin&gt;
-        &lt;groupId&gt;org.scalatest&lt;/groupId&gt;
-        &lt;artifactId&gt;scalatest-maven-plugin&lt;/artifactId&gt;
-        &lt;version&gt;1.0&lt;/version&gt;
-        &lt;configuration&gt;
-          &lt;reportsDirectory&gt;${project.build.directory}/surefire-reports&lt;/reportsDirectory&gt;
-          &lt;junitxml&gt;.&lt;/junitxml&gt;
-          &lt;filereports&gt;WDF TestSuite.txt&lt;/filereports&gt;
-        &lt;/configuration&gt;
-        &lt;executions&gt;
-          &lt;execution&gt;
-            &lt;id&gt;test&lt;/id&gt;
-            &lt;goals&gt;
-              &lt;goal&gt;test&lt;/goal&gt;
-            &lt;/goals&gt;
-          &lt;/execution&gt;
-        &lt;/executions&gt;
-      &lt;/plugin&gt;
-      --&gt;
-    &lt;/plugins&gt;
-
-    &lt;resources&gt;
-      &lt;resource&gt;
-        &lt;directory&gt;src/main/resources&lt;/directory&gt;
-      &lt;/resource&gt;
-    &lt;/resources&gt;
-
-  &lt;/build&gt;
-&lt;/project&gt;
-</code></pre><p>在target目录下会生成jar文件，使用spark-submit进行提交。</p>
-<pre><code>spark-submit --class=&quot;didi.map.pointsys.SimpleApp&quot; parking-user-profile-1.0-SNAPSHOT.jar
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="cjxcljtjh004r35s6gwftk5bp" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-golang-包导入" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/03/20/golang-包导入/" class="article-date">
-  <time datetime="2019-03-20T11:52:36.000Z" itemprop="datePublished">2019-03-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/03/20/golang-包导入/">golang包导入</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="golang包导入"><a href="#golang包导入" class="headerlink" title="golang包导入"></a>golang包导入</h2><p>go源代码是按package方式组织，再通过import引入使用。</p>
-<h3 id="工作目录"><a href="#工作目录" class="headerlink" title="工作目录"></a>工作目录</h3><p>在Go中代码保持在称之为workspace的系统文件夹中。这个工作目录有三个根目录：</p>
-<ul>
-<li>bin：包含可执行文件</li>
-<li>pkg：包含不同操作系统架构的包二进制文件。</li>
-<li>src：包含按包方式组织的源代码</li>
-</ul>
-<p>其中bin和pkg文件夹是在调用go命令安装和编译源代码时自动生成。</p>
-<p>必须让Go知道工作目录的位置，这样才能知道包的具体位置。 通过设置环境变量GOPATH来指定。 </p>
-<h3 id="导入包"><a href="#导入包" class="headerlink" title="导入包"></a>导入包</h3><ol>
-<li><p>$GOPATH/src/importpackage/lib/lib.go</p>
-<pre><code>package lib
-
-import &quot;fmt&quot;
-
-func SayHello() {
-    fmt.Println(&quot;Hello,I&apos;m in myLib :) &quot;)
-}
-</code></pre></li>
-<li><p>$GOPATH/src/importpackage/app/main.go</p>
-<pre><code>package main
-
-import &quot;importpackage/lib&quot;
-
-func main() {
-    lib.SayHello()
-}
-</code></pre></li>
-<li><p>目录结构：</p>
-<pre><code>.
-└── src
-    └── importpackage
-        ├── app
-        │   └── main.go
-        └── lib
-            └── lib.go
-</code></pre><p> go build -o main src/importpackage/app/main.go             </p>
-</li>
-</ol>
-<h3 id="导入包的多种方式"><a href="#导入包的多种方式" class="headerlink" title="导入包的多种方式"></a>导入包的多种方式</h3><ul>
-<li>代码统一存储在工作目录下</li>
-<li>工作目录里面有多个包，不同包按目录组织，包下面由多个代码文件组成。</li>
-<li>导入包时按包的唯一路径进行导入，导入的包默认是必须要使用，如果不使用则编译失败，需要移除，减少不必要代码的引入，当然还有其他使用场景。默认情况下，我们使用文件名做为包名，方便理解。不同包组织不同的功能实现，方便理解。</li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="cjxcljtgn002935s6aww5c7p4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
 
     </footer>
   </div>
@@ -1165,7 +1084,7 @@ func main() {
 
   <nav id="page-nav">
     
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/11/">11</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
   </nav>
 
 </section>
@@ -1179,7 +1098,7 @@ func main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-profile/">linux-profile</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1189,7 +1108,7 @@ func main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 16.67px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17.78px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/linux-profile/" style="font-size: 10px;">linux-profile</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1198,7 +1117,7 @@ func main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
     </div>
   </div>
 
@@ -1211,23 +1130,23 @@ func main() {
       <ul>
         
           <li>
-            <a href="/2019/06/26/golang模块wiki译文/">golang模块wiki译文</a>
+            <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/">2019-08-27C标准IO库与UnbufferIO库</a>
           </li>
         
           <li>
-            <a href="/2019/06/26/golang模块介绍/">golang模块介绍</a>
+            <a href="/2019/08/27/2019-08 glog日志使用/">(no title)</a>
           </li>
         
           <li>
-            <a href="/2019/06/10/linux同步机制/">linux同步机制</a>
+            <a href="/2019/08/24/2019-08-24系统分析/">2019-08-24系统分析</a>
           </li>
         
           <li>
-            <a href="/2019/06/08/spinlock/">spinlock</a>
+            <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/">(no title)</a>
           </li>
         
           <li>
-            <a href="/2019/06/04/go版thrift读写超时时间处理/">go版thrift读写超时时间处理</a>
+            <a href="/2019/08/24/2019-08-24 golang的性能问题/">(no title)</a>
           </li>
         
       </ul>

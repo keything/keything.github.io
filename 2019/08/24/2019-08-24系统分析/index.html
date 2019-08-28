@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>2019-08-24系统分析 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一、概述系统性能分为on-cpu和off-cpu两种，通过分析这两种情况才能定位到系统性能问题到底是什么。   on-cpu： 程序运行在CPU的时间，在所有代码路径上的分布  off-cpu:  进程不运行在任何CPU上的时间。一般是这个进程因为某个原因处于休眠状态。  off-cpu原因： 1， 与当前thread有关： I/O blocks mutex 比如等待某一个系统级别的锁   2,">
+<meta name="keywords" content="linux-profile">
+<meta property="og:type" content="article">
+<meta property="og:title" content="2019-08-24系统分析">
+<meta property="og:url" content="http://keything.github.io/2019/08/24/2019-08-24系统分析/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="一、概述系统性能分为on-cpu和off-cpu两种，通过分析这两种情况才能定位到系统性能问题到底是什么。   on-cpu： 程序运行在CPU的时间，在所有代码路径上的分布  off-cpu:  进程不运行在任何CPU上的时间。一般是这个进程因为某个原因处于休眠状态。  off-cpu原因： 1， 与当前thread有关： I/O blocks mutex 比如等待某一个系统级别的锁   2,">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://www.brendangregg.com/Perf/thread_states.png">
+<meta property="og:updated_time" content="2019-08-24T14:44:12.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="2019-08-24系统分析">
+<meta name="twitter:description" content="一、概述系统性能分为on-cpu和off-cpu两种，通过分析这两种情况才能定位到系统性能问题到底是什么。   on-cpu： 程序运行在CPU的时间，在所有代码路径上的分布  off-cpu:  进程不运行在任何CPU上的时间。一般是这个进程因为某个原因处于休眠状态。  off-cpu原因： 1， 与当前thread有关： I/O blocks mutex 比如等待某一个系统级别的锁   2,">
+<meta name="twitter:image" content="http://www.brendangregg.com/Perf/thread_states.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2019-08-24系统分析" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/24/2019-08-24系统分析/" class="article-date">
+  <time datetime="2019-08-24T14:43:33.000Z" itemprop="datePublished">2019-08-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      2019-08-24系统分析
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>系统性能分为on-cpu和off-cpu两种，通过分析这两种情况才能定位到系统性能问题到底是什么。 </p>
+<ul>
+<li><p>on-cpu：<br> 程序运行在CPU的时间，在所有代码路径上的分布</p>
+</li>
+<li><p>off-cpu:<br>  进程不运行在任何CPU上的时间。一般是这个进程因为某个原因处于休眠状态。</p>
+<ul>
+<li>off-cpu原因：<ul>
+<li>1， 与当前thread有关：<ul>
+<li>I/O</li>
+<li>blocks</li>
+<li>mutex 比如等待某一个系统级别的锁</li>
+</ul>
+</li>
+<li>2, 与当前thread无关<ul>
+<li>interrupt 中断 （可以通过 top 按1，查看si(soft interrupt),hi(high interrupt))</li>
+<li>CPU高需求的上下文切换，被一个非常繁忙的进程调度器scheduler强行剥夺CPU时间片</li>
+<li>paging/swapping</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>蓝色部分是off-cpu。<br><img src="http://www.brendangregg.com/Perf/thread_states.png" alt="off-cpu蓝色"></p>
+<p>我们在追查问题的时候，推荐的策略是一种”小步推进，连续发问”的方式。我们会把最终问题的假设分解成一系列的小假设，然后逐步求索，验证。 </p>
+<h2 id="二、介绍"><a href="#二、介绍" class="headerlink" title="二、介绍"></a>二、介绍</h2><p>on-cpu分析和off-cpu分析都有采样和跟踪(sampling and tracing)两种方式。</p>
+<h3 id="2-1-采样-sampling"><a href="#2-1-采样-sampling" class="headerlink" title="2.1 采样 sampling"></a>2.1 采样 sampling</h3><p>on-cpu的采样是运行在cpu上的时候进行采样；off-cpu的采样是off-cpu的时候进行采样；</p>
+<p>但是系统profile很少使用off-cpu 采样。 原因是什么？</p>
+<p>通过每个cpu的计时器中断(per-CPU timer interrupts) 来实现采样，之后再去分析当前被中断的正在运行的进程：产出一个on-cpu profile。</p>
+<p>off-cpu则是一个完全不同的方式，有两种方式：</p>
+<ul>
+<li>每个应用线程中创建一个计时器，将应用线程唤醒并采集栈</li>
+<li>在一个间隙内核遍历所有线程并采集栈</li>
+</ul>
+<p>使用cpu sampling可以很高效的分析on-cpu问题，包括 热点代码路径和自适应自旋锁（hot code-paths and adaptive mutex spins)，当应用被阻塞并处于off-cpu时，不采集数据。</p>
+<pre><code> CPU Sampling -----------------------------------------------
+  |  |  |  |  |  |  |                      |  |  |  |  |         
+  A  A  A  A  B  B  B                      B  A  A  A  A         
+ A(---------.                                .----------)        
+            |                                |                   
+            B(--------.                   .--)                   
+                      |                   |         user-land    
+- - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                      |                   |         kernel       
+                      X     Off-CPU       |                      
+                    block . . . . . interrupt   
+</code></pre><h3 id="2-2-跟踪-tracing"><a href="#2-2-跟踪-tracing" class="headerlink" title="2.2 跟踪 tracing"></a>2.2 跟踪 tracing</h3><h4 id="2-2-1-on-cpu-tracing"><a href="#2-2-1-on-cpu-tracing" class="headerlink" title="2.2.1 on-cpu tracing"></a>2.2.1 on-cpu tracing</h4><pre><code> App Tracing ------------------------------------------------&gt;
+ |          |                                |          |        
+ A(         B(                               B)         A)       
+
+ A(---------.                                .----------)        
+            |                                |                   
+            B(--------.                   .--)                   
+                      |                   |         user-land    
+- - - - - - - - - - syscall - - - - - - - - - - - - - - - - -    
+                      |                   |         kernel       
+                      X     Off-CPU       |                      
+                    block . . . . . interrupt   
+</code></pre><p>记录函数执行的开始和结束的时间戳，从而函数花费的时间可以被计算出来。如果时间戳包含了流逝的时间和CPU时间，那么就有可能计算出在CPU上计算慢的函数，以及 哪些函数是因为被阻塞在off-cpu上导致变慢的。 </p>
+<p>与sampling不同，这些时间戳的精度很高。  </p>
+<p>当然有一个缺点，你可以追踪所有应用函数，这将会带来严重的性能影响，或者 可以选出被阻塞的函数。</p>
+<h4 id="2-2-2-off-cpu-tracing"><a href="#2-2-2-off-cpu-tracing" class="headerlink" title="2.2.2 off-cpu tracing"></a>2.2.2 off-cpu tracing</h4><p>只有将线程切换到off-cpu的内核函数才会被追踪，时间戳和用户态栈也会被追踪。<br>这聚焦于off-cpu事件，不需要跟踪所有的应用函数，也不需要知道应用程序是什么。 这个方法可以用于分析任何blocking事件。</p>
+<p>off-cpu tracing抓取任何应用程序的所有等待事件。 </p>
+<p>分析off-cpu使用的主要方法就是off-cpu tracing。</p>
+<h3 id="3-Linux-perf-eBPF"><a href="#3-Linux-perf-eBPF" class="headerlink" title="3. Linux: perf, eBPF"></a>3. Linux: perf, eBPF</h3><p>在linux上进行off-cpu分析的tracer有很多。这儿我使用eBPF，很容易进行栈追和时间的内容总结。eBPF是内核的一部分，可以使用bcc工具。但这要求内核必须是4.8以上。 </p>
+<ul>
+<li>内核4.8及其以上版本 可以使用eBPF进行分析</li>
+<li>内核4.8以下版本， 有不同的方法去分析每一种阻塞类型：<ul>
+<li>storage tracing for storage I/O</li>
+<li>kernel statistics for scheduler latency</li>
+<li>使用SystemTap 和 perf event logging。</li>
+</ul>
+</li>
+</ul>
+<h3 id="4-警告"><a href="#4-警告" class="headerlink" title="4. 警告"></a>4. 警告</h3><p>最大的警告是off-cpu分析的开支。需要意识到有scheduler latency 和 involuntary context switches。</p>
+<h4 id="4-1-Scheduler-Latency"><a href="#4-1-Scheduler-Latency" class="headerlink" title="4.1 Scheduler Latency"></a>4.1 Scheduler Latency</h4><p>Something that’s missing from these stacks is if the off-CPU time includes time spent waiting on a CPU run queue. This time is known as scheduler latency, run queue latency, or dispatcher queue latency. If the CPUs are running at saturation, then any time a thread blocks, it may endure additional time waiting its turn on a CPU after being woken up. That time will be included in the off-CPU time.</p>
+<p>You can use extra trace events to tease apart off-CPU time into time blocked vs scheduler latency, but in practice, CPU saturation is pretty easy to spot, so you are unlikely to be spending much time studying off-CPU time when you have a known CPU saturation issue to deal with.</p>
+<h4 id="4-2-Involuntary-Context-Switching"><a href="#4-2-Involuntary-Context-Switching" class="headerlink" title="4.2 Involuntary Context Switching"></a>4.2 Involuntary Context Switching</h4><p>If you see user-level stack traces that don’t make sense – that show no reason to be blocking and going off-CPU – it could be due to involuntary context switching. This often happens when the CPUs are saturated, and the kernel CPU scheduler gives threads turns on CPU, then kicks them off when they reach their time slice. The threads can be kicked off anytime, such as in the middle of a CPU heavy code-path, and the resulting off-CPU stack trace makes no sense.</p>
+<p>Here is an example stack from offcputime that is likely an involuntary context switch</p>
+<p>参考文章：</p>
+<ul>
+<li>1， <a href="http://www.brendangregg.com/offcpuanalysis.html" target="_blank" rel="noopener">off-cpu analysis</a></li>
+<li>2， <a href="http://www.brendangregg.com/perf.html#StackTraces" target="_blank" rel="noopener">perf-event</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2019/08/24/2019-08-24系统分析/" data-id="cjzuyutn000072cs6uvjaswt4" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux-profile/">linux-profile</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/08/27/2019-08 glog日志使用/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          (no title)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title"></div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-sync/">linux,sync</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux-profile/">linux-profile</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 17.78px;">linux</a> <a href="/tags/linux-sync/" style="font-size: 10px;">linux,sync</a> <a href="/tags/linux-profile/" style="font-size: 10px;">linux-profile</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 14.44px;">thrift</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/08/28/2019-08-27C标准IO库与UnbufferIO库/">2019-08-27C标准IO库与UnbufferIO库</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/27/2019-08 glog日志使用/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24系统分析/">2019-08-24系统分析</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang追查问题得到svg图/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/24/2019-08-24 golang的性能问题/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
