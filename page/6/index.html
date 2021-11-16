@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="Keything的日志">
+<meta property="og:url" content="http://keything.github.io/page/6/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:locale" content="default">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Keything的日志">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-4PHP变量之常量" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/20/4PHP变量之常量/" class="article-date">
+  <time datetime="2016-09-20T14:56:56.000Z" itemprop="datePublished">2016-09-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/20/4PHP变量之常量/">4. PHP变量之常量</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>首先看下常量与变量的区别，常量是在变量的zval结构的基础上添加了一额外的元素。如下所示为PHP中常量的内部结构。<br>常量的内部结构：</p>
+<pre><code>typedef struct _zend_constant {
+zval value; /* zval结构，PHP内部变量的存储结构，在第一小节有说明 */
+int flags;  /* 常量的标记如 CONST_PERSISTENT | CONST_CS */
+char *name; /* 常量名称 */
+uint name_len;  
+int module_number;  /* 模块号 */
+} zend_constant;
+</code></pre><p>在了解了常量的存储结构后，来看PHP常量的定义过程，一个例子：</p>
+<pre><code>define(&apos;TIPI&apos;, &apos;Thinking In PHP Internal&apos;);
+</code></pre><h2 id="define定义常量的过程"><a href="#define定义常量的过程" class="headerlink" title="define定义常量的过程"></a>define定义常量的过程</h2><p>define是PHP的内置函数，在zend/zend_builtin_functions.c文件中定义了此函数的实现。最后会调用zend_register_constant。在zend_register_constant中将常量注册到EG(zend_constants)中。</p>
+<p>常量zend_constant的标记flag可以有CONST_CS、CONST_PERSISTENT、CONST_CT_SUBST的取值。</p>
+<p>CONST_PERSISTENT表示这个常量需要持久化。这里的持久化是指内存申请时的持久化。非持久常量会在请求结束RSHUTDOWN阶段时释放该常量。持久化常量只会在MSHUTDOWN阶段将内存释放。用户空间定义的常量都是非持久化的，通常扩展和内核定义的常量会设置为持久化。</p>
+<p>CONST_ST_SUBST可以知道其表示Allocw compile-time substitution(在编译时可被替换)。在php内核中这些常量表示：TRUE、FALSE、NULL、ZEND_THREAD_SAFE和ZEND_DEBUG_BUILD五个。</p>
+<h2 id="标准常量的初始化"><a href="#标准常量的初始化" class="headerlink" title="标准常量的初始化"></a>标准常量的初始化</h2><p>通过define()函数定义的常量的模块编号是PHP_USER_CONSTANT，是用户定义的常量。<br>对于错误报告级别E_ALL, E_WARNING等常量就不同了，是PHP内置定义的常量属于标准常量。调用是php_module_startup()-&gt;zend_startup()-&gt;zend_register_standard_constants()-&gt;zend_register_constant。</p>
+<h2 id="zend-register-constant"><a href="#zend-register-constant" class="headerlink" title="zend_register_constant"></a>zend_register_constant</h2><p>对于define定义常量和标准常量都会调用zend_register_constant。该函数的核心是调用了<br>    <code>zend_hash_quick_add(EG(zend_constants), name, c-&gt;name_len, chash, (void *) c, ...)</code><br>其中EG(zend_constants)即全局变量execute_gloabls.zend_constants</p>
+<p>即常量都是在execute_gloabls.zend_constants这个哈希表中</p>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt03/03-02-const-var" target="_blank" rel="noopener">PHP变量之常量</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="ckw1wtyiy0004utnucdroovc5" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-2PHP变量之基本数据类型" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/20/2PHP变量之基本数据类型/" class="article-date">
+  <time datetime="2016-09-20T14:42:43.000Z" itemprop="datePublished">2016-09-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/20/2PHP变量之基本数据类型/">2. PHP变量之基本数据类型</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><a href="">PHP的哈希表实现</a></li>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-03-zend-llist" target="_blank" rel="noopener">PHP的链表实现</a><br> 使用哈希表能够提高查询性能，但是在某些情景下不会对数据进行随机查找，这时候使用哈希表就有点浪费了。<br>zend引擎中的链表是双链表，通过双链表的任意节点都能方便的对链表进行遍历。</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="ckw1wtyj00005utnun5s7rvvi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-3PHP变量之基本数据类型之哈希表" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/20/3PHP变量之基本数据类型之哈希表/" class="article-date">
+  <time datetime="2016-09-20T11:57:23.000Z" itemprop="datePublished">2016-09-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/20/3PHP变量之基本数据类型之哈希表/">3. PHP中哈希表实现与数组的顺序遍历</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="PHP中哈希表实现"><a href="#PHP中哈希表实现" class="headerlink" title="PHP中哈希表实现"></a>PHP中哈希表实现</h2><p>哈希表的相关概念可以看<a href="http://www.php-internals.com/book/?p=chapt03/03-01-01-hashtable" target="_blank" rel="noopener">TIPI中哈希表介绍</a>，也可以直接看算法导论中哈希表的介绍。</p>
+<h3 id="哈希表"><a href="#哈希表" class="headerlink" title="哈希表"></a>哈希表</h3><p>PHP中的哈希表实现在Zend/zend_hash.c中。HashTable结构体用于保存整个哈希表需要的基本信息，Bucket结构体用于保存具体的数据内容，如下：</p>
+<pre><code>typedef struct _hashtable { 
+    uint nTableSize;        // hash Bucket的大小，最小为8，以2x增长。
+    uint nTableMask;        // nTableSize-1 ， 索引取值的优化
+    uint nNumOfElements;    // hash Bucket中当前存在的元素个数，count()函数会直接返回此值 
+    ulong nNextFreeElement; // 下一个数字索引的位置
+    Bucket *pInternalPointer;   // 当前遍历的指针（foreach比for快的原因之一）pInternalPointer指向当前的内部指针的位置, 在对数组进行顺序遍历的时候, 这个指针指明了当前的元素.当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历.
+
+
+    Bucket *pListHead;          // 存储数组头元素指针
+    Bucket *pListTail;          // 存储数组尾元素指针
+    Bucket **arBuckets;         // 存储hash数组
+    dtor_func_t pDestructor;    // 在删除元素时执行的回调函数，用于资源的释放
+    zend_bool persistent;       //指出了Bucket内存分配的方式。如果persisient为TRUE，则使用操作系统本身的内存分配函数为Bucket分配内存，否则使用PHP的内存分配函数。
+    unsigned char nApplyCount; // 标记当前hash Bucket被递归访问的次数（防止多次递归）
+    zend_bool bApplyProtection;// 标记当前hash桶允许不允许多次访问，不允许时，最多只能递归3次
+#if ZEND_DEBUG
+    int inconsistent;
+#endif
+} HashTable;
+</code></pre><h3 id="数据容器：槽位"><a href="#数据容器：槽位" class="headerlink" title="数据容器：槽位"></a>数据容器：槽位</h3><pre><code>typedef struct bucket {
+    ulong h;            // 对char *key进行hash后的值，或者是用户指定的数字索引值
+    uint nKeyLength;    // hash关键字的长度，如果数组索引为数字，此值为0
+    void *pData;        // 指向value，一般是用户数据的副本，如果是指针数据，则指向pDataPtr
+    void *pDataPtr;     //如果是指针数据，此值会指向真正的value，同时上面pData会指向此值
+    struct bucket *pListNext;   // 整个hash表的下一元素
+    struct bucket *pListLast;   // 整个哈希表该元素的上一个元素
+    struct bucket *pNext;       // 存放在同一个hash Bucket内的下一个元素
+    struct bucket *pLast;       // 同一个哈希bucket的上一个元素
+
+    char arKey[1];   // 保存当前值所对于的key字符串，这个字段只能定义在最后，实现变长结构体            
+} Bucket;
+</code></pre><p>在PHP中可以使用字符串或者数字作为数组的索引，数字索引直接就可以作为哈希表的索引，数字无需进行哈希处理。h字段后面的nKeyLength字段是作为key长度的标示，如果索引是数字的话，则nKeyLength为0.在PHP数组中如果索引字符串可以被转换成数字也会被转换成数字索引。所以在php中’19’ ‘20’这样的字符索引和数字索引19，20没有区别。</p>
+<p>上面结构体的最后一个字段用来保存key的字符串，而这个字段却申明为只有一个字符的数组， 其实这里是一种长见的<a href="http://stackoverflow.com/a/4690976/319672" target="_blank" rel="noopener">变长结构体</a>，主要的目的是增加灵活性。</p>
+<p>一张图来解释<img src="http://www.php-internals.com/images/book/chapt03/03-01-02-zend_hashtable.png" alt="Zend引擎哈希表结构和关系 来自tipi"></p>
+<p>详细解释：</p>
+<ul>
+<li>PHP的Zend引擎中哈希表处理冲突使用的是拉链</li>
+<li>HashTable结构体中存储的是哈希表的整体信息，Bucket中存储的是真正的数据</li>
+<li>Bucket结构体维护了两个双向链表，pNext和pLast指针分别指向本槽位所在的链表关系。比如相同hash值的两个key分别是k1,k2,先插入k1再插入k2，那么k2-&gt;pNext = k1; k1-&gt;pLast = k2;</li>
+<li>pListHead和pListTail维护了整个哈希表的头元素指针和最后一个元素的指针。</li>
+<li>关于pListNext和pListLast<ul>
+<li>当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历。</li>
+<li>数组添加元素的时候，依次添加元素。比如两个key，先添加k1再添加k2，则k1-&gt;pListNext=k2, k2-&gt;pListLast=k1。</li>
+<li>也就是说PHP中遍历数组的顺序是和元素的添加先后顺序相关的。</li>
+<li>哈希表的Bucket结构通过pListNext和pListLast维护了哈希表插入元素的先后顺序。</li>
+</ul>
+</li>
+<li>pListNext和pListLast指针指向的是整个哈希表所有的数据之间的链接关系。</li>
+</ul>
+<p>参考文章：</p>
+<ol>
+<li><a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组(遍历顺序)</a></li>
+<li><a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a></li>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-00-variables-structure" target="_blank" rel="noopener">变量的结构和类型</a></li>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-02-hashtable-in-php" target="_blank" rel="noopener">PHP的哈希表实现</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="ckw1wtyiu0002utnuvqi4bdu9" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-5PHP预定义变量REQUEST-GET-POST等处理过程" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" class="article-date">
+  <time datetime="2016-09-20T11:22:50.000Z" itemprop="datePublished">2016-09-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/">5. PHP预定义变量REQUEST/GET/POST等处理过程</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-基础环境"><a href="#1-基础环境" class="headerlink" title="1. 基础环境"></a>1. 基础环境</h2><ul>
+<li>php版本：php.5.6.25</li>
+<li>php.ini中一个配置 <code>variables_order = &quot;GPCS&quot;</code></li>
+</ul>
+<h2 id="2-处理流程"><a href="#2-处理流程" class="headerlink" title="2. 处理流程"></a>2. 处理流程</h2><h3 id="a-初始化"><a href="#a-初始化" class="headerlink" title="a. 初始化"></a>a. 初始化</h3><ol>
+<li><p>对于<code>_GET,_POST,_COOKIE,_SERVER, _ENV, _REQUEST, _FILES</code>处理<br> fpm启动时会对这些预定义常量进行处理初始化，设置其回调函数。</p>
+<p> <code>php_cgi_startup</code>(sapi/fpm/fpm/fpm_main.c)-&gt;<code>php_startup_auto_globals</code>中进行初始化</p>
+<pre><code>void php_startup_auto_globals(TSRMLS_D)
+{
+    zend_register_auto_global(ZEND_STRL(&quot;_GET&quot;), 0, php_auto_globals_create_get TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_POST&quot;), 0, php_auto_globals_create_post TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_COOKIE&quot;), 0, php_auto_globals_create_cookie TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_SERVER&quot;), PG(auto_globals_jit), php_auto_globals_create_server TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_ENV&quot;), PG(auto_globals_jit), php_auto_globals_create_env TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_REQUEST&quot;), PG(auto_globals_jit), php_auto_globals_create_request TSRMLS_CC);
+    zend_register_auto_global(ZEND_STRL(&quot;_FILES&quot;), 0, php_auto_globals_create_files TSRMLS_CC);
+}
+</code></pre></li>
+<li><p>对于<code>GLOBALS</code>处理<br> 在<code>php_cgi_startup-&gt;php_module_startup-&gt;zend_startup</code>中会对<code>$GLOBALS</code>的处理进行初始化</p>
+<p> <code>zend_register_auto_global(&quot;GLOBALS&quot;, sizeof(&quot;GLOBALS&quot;) - 1, 1, php_auto_globals_create_globals TSRMLS_CC);</code></p>
+</li>
+<li><p><code>zend_register_auto_global</code>解释<br> 该函数在<code>Zend/zend_compile.c</code>中定义，主要是将这些添加到CG(auto_globals)这个全局的hash表中。</p>
+</li>
+</ol>
+<h3 id="b-请求到来时"><a href="#b-请求到来时" class="headerlink" title="b. 请求到来时"></a>b. 请求到来时</h3><p><code>php_request_startup-&gt;php_hash_environment-&gt; zend_activate_auto_globals -&gt;zend_hash_apply</code>其中<code>zend_activate_auto_globals</code>的核心是调用</p>
+<pre><code>zend_hash_apply(CG(auto_globals),(apply_func_t) zend_auto_global_init TSRMLS_CC)
+</code></pre><p>在<code>zend_auto_global_init</code>中会对CG(auto_globals)进行处理，执行初始化时设置的回调函数。</p>
+<h4 id="对于回调函数的解释"><a href="#对于回调函数的解释" class="headerlink" title="对于回调函数的解释"></a>对于回调函数的解释</h4><p>首先介绍php.ini中的配置<a href="http://php.net/manual/en/ini.core.php#ini.variables-order" target="_blank" rel="noopener">variables_order</a>。<code>variables_order</code>目的是设置the EGPCS (Environment, Get, Post, Cookie, and Server)变量的解析顺序。比如，variables_order设置为PG，那么只会设置全局变量<code>$POST</code>和<code>$_GET</code>，并且对于<code>$_REQUEST</code>，如果<code>$POST[&#39;a&#39;]</code> 和<code>$_GET[&#39;a&#39;]</code>，那么在<code>$_REQUEST</code>中<code>$_GET[&#39;a&#39;]</code>会覆盖<code>$_POST[&#39;a&#39;]</code>的值。</p>
+<p>明白了<code>variables_order</code>的含义，接下来就看一下回调函数。</p>
+<ul>
+<li>数据处理：对于GET，POST，COOKIE三者的回调函数都是<code>sapi_module.treate_data</code>。对于SERVER,ENV,FILES,REQUEST则走的其他逻辑。</li>
+<li>数据保存：得到数据以后，会经过<code>zend_hash_update(&amp;EG(symbol_table), 变量名..)</code>存入符号表中。</li>
+</ul>
+<p>一些细节的地方：</p>
+<ul>
+<li><p>其中<code>sapi_module.treate_data</code>的初始化是在<code>php_startup_sapi_content_types</code>中设置的， <code>sapi_module.treate_data = php_default_treate_data</code>。大多数sapi都是使用的默认的处理函数<code>php_default_treate_data</code>。</p>
+</li>
+<li><p>在<code>php_default_treat_data</code>中，对于变量，都调用<code>php_register_variable_safe</code>来注册变量， 而<code>php_register_variable_safe</code>最终会调用<code>php_register_variable_ex</code>:</p>
+</li>
+</ul>
+<pre><code>PHPAPI void php_register_variable_ex(char *var, zval *val, zval *track_vars_array TSRMLS_DC)
+{
+        ... 省略
+  for (p = var; *p; p++) {
+  if (*p == &apos; &apos; || *p == &apos;.&apos;) {
+      *p=&apos;_&apos;;
+  } else if (*p == &apos;[&apos;) {
+      is_array = 1;
+      ip = p;
+      *p = 0;
+      break;
+  }
+        ....以下省略
+}
+</code></pre><p>就是在<code>php_register_variable</code>的时候，会将(.)转换成（_)</p>
+<h2 id="3-预定义变量的获取"><a href="#3-预定义变量的获取" class="headerlink" title="3. 预定义变量的获取"></a>3. 预定义变量的获取</h2><p>在某个局部函数中使用类似于<code>$GLOBALS</code>变量这样的预定义变量， 如果在此函数中有改变的它们的值的话，这些变量在其它局部函数调用时会发现也会同步变化。 为什么呢？是否是这些变量存放在一个集中存储的地方？ 从PHP中间代码的执行来看，这些变量是存储在一个集中的地方：EG(symbol_table)。</p>
+<p>在通过$获取变量时，PHP内核都会通过这些变量名区分是否为全局变量（<code>ZEND_FETCH_GLOBAL</code>）， 其调用的判断函数为<code>zend_is_auto_global</code>，这个过程是在生成中间代码过程中实现的。 如果是<code>ZEND_FETCH_GLOBAL</code>或<code>ZEND_FETCH_GLOBAL_LOCK</code>(global语句后的效果)， 则在获取获取变量表时(<code>zend_get_target_symbol_table</code>)， 直接返回EG(<code>symbol_table</code>)。则这些变量的所有操作都会在全局变量表进行。</p>
+<h2 id="4-参考文章"><a href="#4-参考文章" class="headerlink" title="4. 参考文章"></a>4. 参考文章</h2><p>说明：<br>    在参考文章中使用的php版本应该是5.3.x版本。我特意下载了php-5.3.0看了一下<code>php_hash_environment</code>的实现，确实是下面两篇文章所介绍的。而在php-5.6中，采用的则是先初始化<code>CG(auto_globals)</code>的方式。</p>
+<ol>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-03-pre-defined-variable" target="_blank" rel="noopener">预定义常量</a></li>
+<li><a href="http://www.laruence.com/2008/11/07/581.html" target="_blank" rel="noopener">PHP的GET/POST等大变量生成过程</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="ckw1wtyj10006utnu62be9fpk" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-1PHP变量之存储结构" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/19/1PHP变量之存储结构/" class="article-date">
+  <time datetime="2016-09-19T11:52:36.000Z" itemprop="datePublished">2016-09-19</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/19/1PHP变量之存储结构/">1. PHP变量的存储结构</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="基础介绍"><a href="#基础介绍" class="headerlink" title="基础介绍"></a>基础介绍</h2><p>变量具有三个基本组成部分：</p>
+<ul>
+<li>名称</li>
+<li>类型</li>
+<li>值内容</li>
+</ul>
+<p>数据类型：<br>从类型的维度来看，编程语言可以分为三大类：</p>
+<ul>
+<li>静态类型语言：比如C/Java等，类型的检查是在编译期（compile-time）确定的。</li>
+<li>动态语言类型：比如PHP，pythone等各种脚本语言，这类语言的类型在运行时确定的。</li>
+<li>无类型语言：比如汇编语言，汇编语言操作的是底层存储。</li>
+</ul>
+<h2 id="变量的结构"><a href="#变量的结构" class="headerlink" title="变量的结构"></a>变量的结构</h2><p>在官方的PHP实现内部，所有变量使用同一种数据结构zval来保存，而这个结构同时表示PHP中各种数据类型。它不仅仅包含变量的值，也包含变量的类型。这就是PHP弱类型的核心。</p>
+<h3 id="php变量类型及存储结构"><a href="#php变量类型及存储结构" class="headerlink" title="php变量类型及存储结构"></a>php变量类型及存储结构</h3><p>PHP是弱类型语言，但这并不表示PHP没有类型，在PHP中，存在8种变量类型，可以分为三类：<br>标量类型: boolean, integer, float(double), string<br>复合类型: array, object,<br>特殊类型: resource, NULL</p>
+<h3 id="变量存储结构"><a href="#变量存储结构" class="headerlink" title="变量存储结构"></a>变量存储结构</h3><pre><code>// Zend/zend.h
+typedef struct _zval_struct zval;
+...
+struct _zval_struct {
+    /* Variable information */
+    zvalue_value value;     /* value */
+    zend_uint refcount__gc;
+    zend_uchar type;    /* active type */
+    zend_uchar is_ref__gc;
+};
+</code></pre><h3 id="变量类型"><a href="#变量类型" class="headerlink" title="变量类型"></a>变量类型</h3><p>type的值可以是IS_NULL, IS_BOOL, iS_LONG, IS_DOUBLE, IS_STRING, IS_ARRAY, IS_OBJECT, IS_RESOURCE之一。</p>
+<h3 id="变量的值存储"><a href="#变量的值存储" class="headerlink" title="变量的值存储"></a>变量的值存储</h3><p>前面提到变量的值存储在zvalue_value结构体中，结构体定义如下：之所以是联合体是因为一个变量同时只能属于一种类型。</p>
+<pre><code>typedef union _zvalue_value {
+    long lval;                  /* long value */
+    double dval;                /* double value */
+    struct {
+        char *val;
+        int len;
+    } str;
+    HashTable *ht;              /* hash table value */
+    zend_object_value obj;
+} zvalue_value;
+</code></pre><h4 id="字符串string"><a href="#字符串string" class="headerlink" title="字符串string"></a>字符串string</h4><p>字符串的类型标示和其他数据类型一样，不过在存储字符串时多了一个字符串长度的字段。</p>
+<pre><code>struct {
+    char *val;
+    int len;
+}str;
+</code></pre><h4 id="数组Array"><a href="#数组Array" class="headerlink" title="数组Array"></a>数组Array</h4><p>数组是PHP中最常用的，也是最强大的变量类型，可以存储其他类型的数据，而且提供各种内置操作函数。数组的值存储在zvalue_value.ht字段中，是一个HashTable类型的数据。</p>
+<h4 id="对象object"><a href="#对象object" class="headerlink" title="对象object"></a>对象object</h4><p>在面向对象语言中，我们能自己定义自己需要的数据类型，包括类的属性，方法等数据。而对象则是类的一个具体实现。对象有自身的状态和所能完成的操作。<br>PHP的对象是一种复合型的数据，使用一种zend_object_value的结构体来存放。其定义如下：</p>
+<pre><code>typedef struct _zend_object_value {
+    zend_object_handle handle;  //  unsigned int类型，EG(objects_store).object_buckets的索引
+    zend_object_handlers *handlers;
+} zend_object_value;
+</code></pre><p>PHP的对象只有在运行时才会被创建，前面的章节介绍了EG宏，这是一个全局结构体用于保存在运行时的数据。 其中就包括了用来保存所有被创建的对象的对象池，EG(objects_store)即全局变量executor_globals.objects_store，而object对象值内容的zend_object_handle域就是当前 对象在对象池中所在的索引，handlers字段则是将对象进行操作时的处理函数保存起来。 这个结构体及对象相关的类的结构_zend_class_entry，将在第五章作详细介绍。</p>
+<pre><code>#define EG(v) (executor_globals.v)
+extern ZEND_API zend_executor_globals executor_globals;
+</code></pre><p>参考文章：</p>
+<ol>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-00-variables-structure" target="_blank" rel="noopener">变量的结构和类型</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="ckw1wtyio0001utnuzk1gexv1" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-PHP源码之用户代码的执行" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/18/PHP源码之用户代码的执行/" class="article-date">
+  <time datetime="2016-09-18T05:45:57.000Z" itemprop="datePublished">2016-09-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/18/PHP源码之用户代码的执行/">PHP源码之用户代码的执行</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="二-用户代码的执行"><a href="#二-用户代码的执行" class="headerlink" title="二.用户代码的执行"></a>二.用户代码的执行</h1><h2 id="一切的开始：SAPI接口"><a href="#一切的开始：SAPI接口" class="headerlink" title="一切的开始：SAPI接口"></a>一切的开始：SAPI接口</h2><p>SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。<br>脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。</p>
+<h2 id="开始和结束"><a href="#开始和结束" class="headerlink" title="开始和结束"></a>开始和结束</h2><h3 id="PHP开始执行以后会经过两个主要阶段："><a href="#PHP开始执行以后会经过两个主要阶段：" class="headerlink" title="PHP开始执行以后会经过两个主要阶段："></a>PHP开始执行以后会经过两个主要阶段：</h3><ul>
+<li>处理请求之前的开始阶段：又分为两个过程<ul>
+<li>第一个过程：模块初始化阶段（MINIT），在整个SAPI生命周期内只进行一次。比如<code>sudo /etc/init.d/php-fpm start</code>时。例如PHP在MINIT阶段会回调所有模块的MINIT函数，进行一些初始化工作，如注册常量，定义模块使用的类等等</li>
+<li>第二个过程：模块激活阶段(RINIT)，该过程发生在请求阶段，在每个请求到来之前都会进行模块激活。其目的是请求到达以后PHP初始化执行脚本的基本环境，例如创建一个执行环境，包含保存PHP允许过程中变量名称和值内容的符号表，以及当前所有的函数和类的符号表。然后PHP调用所有模块的RINIT函数。</li>
+</ul>
+</li>
+<li><p>处理请求之后的结束阶段</p>
+<ul>
+<li>第一个过程：请求结束后停用模块（RSHUTDOWN，对应RINIT）</li>
+<li>第二个过程：关闭模块，在SAPI生命周期结束（WEB服务器退出或者命令行脚本执行完毕退出）MSHUTDOWN，对应MINIT。</li>
+</ul>
+</li>
+<li><p>处理流程图（引用TIPI图）<br>  <img src="http://www.php-internals.com/images/book/chapt02/02-01-01-cgi-lift-cycle.png" alt="图片"> </p>
+</li>
+</ul>
+<h2 id="fastcgi详细执行流程"><a href="#fastcgi详细执行流程" class="headerlink" title="fastcgi详细执行流程"></a>fastcgi详细执行流程</h2><h3 id="初始化：即-etc-init-d-php-fpm-start"><a href="#初始化：即-etc-init-d-php-fpm-start" class="headerlink" title="初始化：即 /etc/init.d/php-fpm start"></a>初始化：即 /etc/init.d/php-fpm start</h3><ol>
+<li>入口函数：在<code>sapi/fpm/fpm/fpm_main.c</code>中的main函数</li>
+<li><p>调用<code>cgi_sapi_module.startup</code>(函数指针startup的取值是<code>php_cgi_startup</code>），<code>php_cgi_startup</code>做了以下几件事情：</p>
+<ul>
+<li>初始化若干全局变量。如<code>zuf.printf_function = php_printf</code>，<code>PHP_VERSION</code>等</li>
+<li>初始化zend引擎和核心组件。php_module_startup会调用<code>zend_startup</code>(zend/zend.c)函数。<code>zend_startup</code>函数的作用就是初始化zend引擎。这里的初始化操作包括内存管理初始化、 全局使用的函数指针初始化（如前面所说的<code>zend_printf</code>等），对PHP源文件进行词法分析、语法分析、 中间代码执行的函数指针的赋值，初始化若干HashTable（比如函数表，常量表等等），为ini文件解析做准备， 为PHP源文件解析做准备，注册内置函数（如strlen、define等），注册标准常量（如<code>E_ALL</code>、TRUE、NULL等）、注册GLOBALS全局变量(<code>zend_register_auto_global(&quot;GLOBALS&quot;,..., php_auto_globals_create_globals)</code>)等。<ul>
+<li><code>zend_startup</code>-&gt;<code>zend_startup_builtin_functions</code>-&gt;<code>zend_register_module_ex</code>注册core模块，core模块的<code>module_number</code>是0。core模块中的函数分别是<code>zend_version</code>, <code>func_num_args</code>…<code>gc_disable</code>。</li>
+<li>注册<code>E_ERROR</code>，<code>E_WARNING</code>这些常量。<code>zend_startup-&gt;zend_register_standard_constants</code></li>
+</ul>
+</li>
+<li>解析php.ini：<code>php_init_config</code>函数的作用就是读取php.ini文件，设置配置参数，加载zend扩展并注册php扩展函数。</li>
+<li>全局操作函数的初始化：<ul>
+<li><code>php_startup_auto_globals</code>(<code>main/php_variables.c</code>)函数会初始化在用户空间使用频率很高的一些全局变量，如<code>$_GET,$_POST,$_FILES等</code>。其调用的<code>zend_register_auto_global</code>函数会将这些变量名添加到<code>CG(auto_globals)</code>这个变量表。</li>
+<li><code>php_startup_sapi_content_types</code>函数用来初始化SAPI对于不同类型内容的处理函数。这里的处理函数包括POST数据默认处理函数</li>
+</ul>
+</li>
+<li>初始化静态构建的模块和共享模块MINIT<ul>
+<li><code>php_register_internal_extensions_func</code>函数用来注册静态构建的模块，也就是默认加载的模块。</li>
+<li>模块初始化会执行两个操作：1. 将这些模块注册到已注册的模块列表(<code>module_registry</code>) 2. 将每个模块中包含的注册到函数表CG(<code>function_table</code>).可以看到各个模块是按照首字母排序的（date模块的<code>module_number</code>是2， ereg模块是3，libxml是4，xsl是46，zip是47。特别是cgi-fcgi是48）</li>
+<li>在所有的模块都注册有，PHP会马上执行模块初始化操作（<code>zend_startup_modules</code>）。它的整个过程就是依次遍历每个模块，调用每个模块的模块初始化函数（<code>PHP_MINIT_FUNCTION</code>)。</li>
+</ul>
+</li>
+<li>禁用函数和类 <code>php_disable_functions</code>和<code>php_disable_classes</code></li>
+</ul>
+</li>
+<li><p>补充一段 进程初始化部分</p>
+<ul>
+<li>fpm_init</li>
+<li>fpm_run中会调用fpm_children_create_initial(wp)进行worker进程（子进程）的初始化，<ul>
+<li>fpm_children_create_initial函数返回：0表示是子进程、1表示父进程、2表示错误。</li>
+<li>fpm_run函数对于父进程不返回，执行fpm_event_loop(0); 永远进行事件循环</li>
+<li>fpm_run函数对于子进程返回listen_fd</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>此时调用<code>fcgi_accept_request</code>(fpm/fpm/fastcgi.c)。因为没有请求，因此listen_socket加锁，卡在accept处，等待请求的到来</p>
+</li>
+<li><p>当有请求到来时，会从accept后续开始执行。</p>
+</li>
+</ol>
+<h3 id="接受请求"><a href="#接受请求" class="headerlink" title="接受请求"></a>接受请求</h3><p>在处理了文件相关的内容，PHP会调用<code>php_request_startup</code>做请求初始化操作。 请求初始化操作，除了图中显示的调用每个模块的请求初始化函数外，还做了较多的其它工作，其主要内容如下</p>
+<ol>
+<li><p>用户空间中需要用到的一些环境变化的初始化，包括服务器环境、请求数据环境等。实际用到的就是<code>$_POST, $_GET, $_COOKIE, $_SERVER, $_ENV, $_FILES</code>。</p>
+<ul>
+<li>在 <code>php_request_startup</code>-&gt;<code>php_hash_environment</code>，调用<code>CG(auto_globals)</code>中的回调来处理。到了这里说个题外话， 就是在php.ini中， 可以使用variables_order来控制PHP是否生成某个大变量，已经大变量的生成顺序。关于顺序，就是说， 如果打开了auto_register_globals的情况下， 如果先处理p，后处理g，那么$_GET[‘a’],就会覆盖$_POST[‘a’];</li>
+<li><p>php.ini设置中variables_order string<br>设置了EGPCS(Environment, Get, Post, Cookie and Server)变量的解析顺序。比如，variables_order顺序设置为SP，那么PHP将会创建超级全局变量$_SERVER和$_POST，而不会创建$_ENV, $_GET, $_COOKIE。</p>
+</li>
+<li><p>和<code>sapi_module.default_post_reader</code>一样，<code>sapi_module.treat_data</code>的值也是在模块初始化时， 通过<code>php_startup_sapi_content_types</code>函数注册了默认数据处理函数为<code>main/php_variables.c</code>文件中<code>php_default_treat_data</code>函数。</p>
+</li>
+<li>以$_COOKIE为例，<code>php_default_treat_data</code>函数会对依据分隔符，将所有的cookie拆分并赋值给对应的变量。</li>
+</ul>
+</li>
+<li><p>模块请求的初始化。PHP通过zend_activate_modules函数实现模块请求的初始化。会调用各个模块的RINIT函数。这儿的调用并没有按照字母排序的顺序调用模块。比如libxml,zlib,intl,mbstring…</p>
+</li>
+<li>运行。<ul>
+<li>php_execute_script函数包含了运行php脚本的全部过程。当一个php文件需要解析执行时，它可能会需要执行三个文件，其中包括一个前置执行文件、当前需要执行文件和一个后置文件。非当前的两个文件可以在php.ini文件通过auto_prepend_file参数和auto_append_file参数设置。如果这两个参数设置为空，则禁用对应执行文件。</li>
+<li>对于需要解析执行的文件，通过zend_compile_file（compile_file函数）做词法分析、语法分析和中间代码生成操作，返回此文件的所有中间代码。 如果解析的文件有生成有效的中间代码，则调用zend_execute（execute函数）执行中间代码。 如果在执行过程中出现异常并且用户有定义对这些异常的处理，则调用这些异常处理函数。 在所有的操作都处理完后，PHP通过EG(return_value_ptr_ptr)返回结果</li>
+</ul>
+</li>
+</ol>
+<h3 id="PHP关闭请求"><a href="#PHP关闭请求" class="headerlink" title="PHP关闭请求"></a>PHP关闭请求</h3><p>PHP关闭请求的过程是一个若干个关闭操作的集合，这个集合存在于php_request_shutdown函数中。 这个集合包括如下内容：</p>
+<ul>
+<li>调用所有通过register_shutdown_function()注册的函数。这些在关闭时调用的函数是在用户空间添加加来的。我们可以在脚本出错时调用一个统一的函数，给用户一个友好一些的页面，这个有点类似于网页中的404页面。</li>
+<li>执行所有可用的__destruct函数。 这里的析构函数包括在对象池（EG(objects_store）中的所有对象的析构函数以及EG(symbol_table)中各个元素的析构方法。</li>
+<li>将所有的输出刷出去</li>
+<li>发送HTTP应答头。也是一个输出字符串的过程，只是这个字符串可能符合某些规范</li>
+<li>遍历每个模块的关闭请求方法，执行模块的请求关闭操作，即RSHUTDOWN</li>
+<li>销毁全局变量表（PG(http_globals)）的变量。</li>
+<li>通过zend_deactivate函数，关闭词法分析器、语法分析器和中间代码执行器</li>
+<li>调用每个扩展的post-RSHUTDOWN函数。只是基本每个扩展的post_deactivate_func函数指针都是NULL</li>
+<li>关闭SAPI，通过sapi_deactivate销毁SG(sapi_headers)、SG(request_info)等的内容。</li>
+<li>关闭流的包装器、关闭流的过滤器</li>
+<li>关闭内存管理</li>
+<li>重新设置最大执行时间</li>
+</ul>
+<h3 id="结束"><a href="#结束" class="headerlink" title="结束"></a>结束</h3><ol>
+<li><p>flush</p>
+<p> sapi_flush将最后的内容刷回去。调用的是sapi_module.flush。</p>
+</li>
+<li><p>关闭zend引擎</p>
+<p> 此时对应图中的流程，我们应该是执行每个模块的关闭模块操作。 在这里只有一个zend_hash_graceful_reverse_destroy函数将module_registry销毁了。 当然，它最终也是调用了关闭模块的方法的，其根源在于在初始化module_registry时就设置了这个hash表析构时调用ZEND_MODULE_DTOR宏。 而ZEND_MODULE_DTOR宏对应的是module_destructor函数。 在此函数中会调用模块的module_shutdown_func方法，即PHP_RSHUTDOWN_FUNCTION宏产生的那个函数。</p>
+<p> 在关闭所有的模块后，PHP继续销毁全局函数表，销毁全局类表、销售全局变量表等。 通过zend_shutdown_extensions遍历zend_extensions所有元素，调用每个扩展的shutdown函数。</p>
+</li>
+</ol>
+<p>【todo】目前需要看的地方有： </p>
+<ol>
+<li>redismemcache的持久化连接是如何处理的 </li>
+<li>全局变量表这些如何做的呢 </li>
+<li>最后关闭这儿是如何处理的呢，还没有详细看代码</li>
+<li>opcode：一个代码构造出来的完整opcode是什么样子呢<br>【todo】opcode这部分还是没有理解请求</li>
+</ol>
+<h1 id="2-深入理解PHP内核之SAPI概述（讲述FASTCGI）"><a href="#2-深入理解PHP内核之SAPI概述（讲述FASTCGI）" class="headerlink" title="2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）"></a>2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）</h1><p>在各个服务器抽象层之间遵守着相同的约定，这里我们称之为SAPI接口。 每个SAPI实现都是一个_sapi_module_struct结构体变量。（SAPI接口）。 在PHP的源码中，当需要调用服务器相关信息时，全部通过SAPI接口中对应方法调用实现， 而这对应的方法在各个服务器抽象层实现时都会有各自的实现。如下图所示，为SAPI的简单示意图（引用TIPI图）</p>
+<p><img src="http://www.php-internals.com/images/book/chapt02/02-02-01-sapi.png" alt="SAPI简单示意图"></p>
+<p>因为平时使用fastcgi，因此这儿参考TIPI中讲述apache2的方式来讲讲<code>fastcgi</code>。<br>它的启动方法如下：</p>
+<pre><code>cgi_sapi_module.startup(&amp;cgi_sapi_module) // fastcgi模式 sapi/fpm/fpm/fpm_main.c
+</code></pre><p>这儿的cgi_sapi_module.startup是sapi_module_struct结构体的静态变量。静态变量的详细解释如下（引用TIPI内容）：</p>
+<pre><code>struct _sapi_module_struct {
+char *name;         //  名字（标识用）
+char *pretty_name;  //  更好理解的名字（自己翻译的）
+
+int (*startup)(struct _sapi_module_struct *sapi_module);    //  启动函数
+int (*shutdown)(struct _sapi_module_struct *sapi_module);   //  关闭方法
+
+int (*activate)(TSRMLS_D);  // 激活
+int (*deactivate)(TSRMLS_D);    //  停用
+
+int (*ub_write)(const char *str, unsigned int str_length TSRMLS_DC);
+ //  不缓存的写操作(unbuffered write)
+void (*flush)(void *server_context);    //  flush
+struct stat *(*get_stat)(TSRMLS_D);     //  get uid
+char *(*getenv)(char *name, size_t name_len TSRMLS_DC); //  getenv
+
+void (*sapi_error)(int type, const char *error_msg, ...);   /* error handler */
+
+int (*header_handler)(sapi_header_struct *sapi_header, sapi_header_op_enum op,
+    sapi_headers_struct *sapi_headers TSRMLS_DC);   /* header handler */
+
+ /* send headers handler */
+int (*send_headers)(sapi_headers_struct *sapi_headers TSRMLS_DC);
+
+void (*send_header)(sapi_header_struct *sapi_header,
+        void *server_context TSRMLS_DC);   /* send header handler */
+
+int (*read_post)(char *buffer, uint count_bytes TSRMLS_DC); /* read POST data */
+char *(*read_cookies)(TSRMLS_D);    /* read Cookies */
+
+/* register server variables */
+void (*register_server_variables)(zval *track_vars_array TSRMLS_DC);
+
+void (*log_message)(char *message);     /* Log message */
+time_t (*get_request_time)(TSRMLS_D);   /* Request Time */
+void (*terminate_process)(TSRMLS_D);    /* Child Terminate */
+
+char *php_ini_path_override;    //  覆盖的ini路径
+
+...
+...
+};
+</code></pre><p>其中一些函数指针的说明如下：</p>
+<ul>
+<li>startup：当sapi初始化时，首先会调用该函数。 startup函数只在父进程中创建一次，在其fork的子进程中不会调用。在fastcgi的</li>
+<li>activate：在每个请求开始时调用，他会再次初始化每个请求前的数据结构。</li>
+</ul>
+<p>其中fastcgi的sapi_module_struct的定义在fpm/fpm/fpm_main.c中，定义如下：</p>
+<pre><code>static sapi_module_struct cgi_sapi_module = {
+&quot;fpm-fcgi&quot;,                        /* name */
+&quot;FPM/FastCGI&quot;,                    /* pretty name */
+
+php_cgi_startup,                /* startup */
+php_module_shutdown_wrapper,    /* shutdown */
+
+sapi_cgi_activate,                /* activate */
+sapi_cgi_deactivate,            /* deactivate */
+
+sapi_cgibin_ub_write,            /* unbuffered write */
+sapi_cgibin_flush,                /* flush */
+NULL,                            /* get uid */
+sapi_cgibin_getenv,                /* getenv */
+
+php_error,                        /* error handler */
+
+NULL,                            /* header handler */
+sapi_cgi_send_headers,            /* send headers handler */
+NULL,                            /* send header handler */
+
+sapi_cgi_read_post,                /* read POST data */
+sapi_cgi_read_cookies,            /* read Cookies */
+
+sapi_cgi_register_variables,    /* register server variables */
+sapi_cgi_log_message,            /* Log message */
+NULL,                            /* Get request time */
+NULL,                            /* Child terminate */
+
+STANDARD_SAPI_MODULE_PROPERTIES
+};
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">SAPI概述</a></p>
+<p><a href="https://mengkang.net/668.html" target="_blank" rel="noopener">fastcgi概述</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="ckw1wtyji000qutnus8kiryab" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-PHP源码之准备工作和背景知识" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/18/PHP源码之准备工作和背景知识/" class="article-date">
+  <time datetime="2016-09-18T05:37:16.000Z" itemprop="datePublished">2016-09-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/18/PHP源码之准备工作和背景知识/">PHP源码之准备工作和背景知识</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>深入理解PHP内核–学习版<br>说明：<a href="http://www.php-internals.com/" target="_blank" rel="noopener">深入理解PHP内核</a>是非常非常好的书，当然书中内容只有你详细尝试过，走一遍代码才能理解的更深刻，这几篇文章，当做自己的一个学习笔记。</p>
+<h2 id="一、学习环境搭建"><a href="#一、学习环境搭建" class="headerlink" title="一、学习环境搭建"></a>一、学习环境搭建</h2><ol>
+<li>php源代码： 我下载的是php5.6.25。</li>
+<li>编译环境：由于会涉及到nginx，php，mysql等等，为了快速搭建lnmp的环境，建议使用<a href="http://lnmp.org/" target="_blank" rel="noopener">lnmp</a>先安装所需要的各种软件包。</li>
+<li><p>编译语句：<br> 因为我是在一个全新的centos虚拟机上进行学习，因此安装目录是/usr/local/php。</p>
+<p> <code>&#39;./configure&#39;  &#39;--prefix=/usr/local/php&#39; &#39;--with-config-file-path=/usr/local/php/etc&#39; &#39;--enable-fpm&#39; &#39;--with-fpm-user=www&#39; &#39;--with-fpm-group=www&#39; &#39;--with-mysql=mysqlnd&#39; &#39;--with-mysqli=mysqlnd&#39; &#39;--with-pdo-mysql=mysqlnd&#39; &#39;--with-iconv-dir=libiconv&#39; &#39;--with-freetype-dir=/usr/local/freetype&#39; &#39;--with-jpeg-dir&#39; &#39;--with-png-dir&#39; &#39;--with-zlib&#39; &#39;--with-libxml-dir=/usr&#39; &#39;--enable-xml&#39; &#39;--disable-rpath&#39; &#39;--enable-bcmath&#39; &#39;--enable-shmop&#39; &#39;--enable-sysvsem&#39; &#39;--enable-inline-optimization&#39; &#39;--with-curl&#39; &#39;--enable-mbregex&#39; &#39;--enable-mbstring&#39; &#39;--with-mcrypt&#39; &#39;--enable-ftp&#39; &#39;--with-openssl&#39; &#39;--with-mhash&#39; &#39;--enable-pcntl&#39; &#39;--enable-sockets&#39; &#39;--enable-zip&#39; &#39;--enable-soap&#39; &#39;--with-gettext&#39; &#39;--disable-fileinfo&#39; &#39;--enable-opcache&#39; &#39;--enable-intl&#39; &#39;--with-xsl&#39;</code></p>
+<p> 此时试一下php是否可以运行</p>
+</li>
+<li><p>php的源码目录结构</p>
+<ul>
+<li>build：放置一些和源码编译相关的一些文件。比如开始构建之前的buildconf脚本等文件</li>
+<li>ext 官方扩展目录，包括了绝大多数PHP的函数定义和实现，如array系列，pdo系列，spl系列等函数实现</li>
+<li>main：这里存放的是PHP最为核心的文件了，主要实现php的基本设施。</li>
+<li>zend：zend引擎的实现目录，比如脚本的词法语法解析，opcode的执行和扩展机制的实现等等</li>
+<li>pear：php扩展与应用仓库</li>
+<li>sapi：包含了各种服务器抽象层的代码，如apache的mod_php，cgi，fastcgi以及fpm等接口</li>
+<li>TSRM：</li>
+<li>tests</li>
+<li>win32</li>
+</ul>
+</li>
+</ol>
+<ol start="5">
+<li><p>php源码阅读工具</p>
+<p> 使用vim+ctags阅读</p>
+<ul>
+<li>安装ctags: <code>yum install ctags</code></li>
+<li>生成tags: <code>cd /your/php/source/directory  &amp;&amp; ctags -R</code></li>
+<li>在.vimrc中添加ctags路径：<code>set tags+=/your/php/source/directory/tags</code></li>
+<li>使用：“使用 Ctrl+] 就可以自动跳转至定义，Ctrl+t 可以返回上一次查看位置。这样就可以快速的在代码之间“游动”了。</li>
+</ul>
+</li>
+</ol>
+<ol start="6">
+<li><p>PHP源码中的常用代码</p>
+<ul>
+<li>双井号(##)：”##”被称为 连接符（concatenator），它是一种预处理运算符， 用来把两个语言符号(Token)组合成单个语言符号。 这里的语言符号不一定是宏的变量。并且双井号不能作为第一个或最后一个元素存在</li>
+<li>单井号(#):”#”是一种预处理运算符，它的功能是将其后面的宏参数进行 字符串化操作 ， 简单说就是在对它所引用的宏变量通过替换后在其左右各加上一个双引号， 用比较官方的话说就是将语言符号(Token)转化为字符串</li>
+<li>宏定义中的do-while循环</li>
+<li><code>#line</code>预处理:用于改变当前的行号（<strong>LINE</strong>）和文件名（<strong>FILE</strong>）</li>
+<li>PHP中的全局变量宏，如PG()， EG()之类的函数，他们都是PHP中定义的宏，这系列宏主要的作用是解决线程安全所写的全局变量包裹宏。在PHP代码的其他地方也存在很多类似的宏，这些宏和PG宏一样，都是为了将线程安全进行封装，同时通过约定的 G 命名来表明这是全局的， 一般都是个缩写，因为这些全局变量在代码的各处都会使用到，这也算是减少了键盘输入。</li>
+</ul>
+</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt01/01-00-prepare-and-background" target="_blank" rel="noopener">第一章 准备工作和背景知识</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="ckw1wtyjg000outnu64stu11r" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php原理好文章列表" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/10/php原理好文章列表/" class="article-date">
+  <time datetime="2016-09-10T00:24:56.000Z" itemprop="datePublished">2016-09-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/10/php原理好文章列表/">php原理-鸟哥的文章列表</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol start="0">
+<li><p>概述</p>
+<p> <a href="http://www.laruence.com/2008/08/11/147.html" target="_blank" rel="noopener">深入浅出PHP</a></p>
+</li>
+<li><p>变量</p>
+<p> <a href="http://www.laruence.com/2008/08/22/412.html" target="_blank" rel="noopener">深入理解PHP原理之变量</a><br> <a href="http://www.laruence.com/2008/08/26/463.html" target="_blank" rel="noopener">深入理解PHP原理之变量作用域(Scope in PHP) </a><br> <a href="http://www.laruence.com/2008/09/19/520.html" target="_blank" rel="noopener">深入理解PHP原理之变量分离/引用</a><br> <a href="http://www.php-internals.com/book/?p=chapt06/06-06-copy-on-write" target="_blank" rel="noopener">深入理解php内核之写时复制</a><br> 到了引用这儿还是有点懵逼<br> <a href="http://www.laruence.com/2008/11/07/581.html" target="_blank" rel="noopener">PHP的GET/POST等大变量生成过程</a><br> <a href="http://www.laruence.com/2009/12/26/1198.html" target="_blank" rel="noopener">深入理解PHP原理之变量生命期(一)</a><br> <a href="http://www.laruence.com/2011/10/10/2212.html" target="_blank" rel="noopener">Array dereferencing</a><br> <a href="http://www.laruence.com/2010/12/08/1716.html" target="_blank" rel="noopener">如何获取一个变量的名字</a><br> 如何获取一个变量的名字中提到了<code>活动符号表</code><br> 而在PHP中, 所有的变量都存储在称为”符号表”的HastTable结构中. 在解析执行的过程中, 依旧保留着着”符号”信息, 所以, 肯定是可以获取到的.</p>
+<p> <a href="http://php.net/manual/zh/internals2.variables.php" target="_blank" rel="noopener">变量的使用</a></p>
+<p> 而在PHP中, 符号的作用域是和活动符号表相关联的. 同一时间, 只有一个活动符号表.</p>
+<p> 那么怎么理解活动符号表和符号表呢?</p>
+<p> 对于PHP来说, 当前活动的符号表是保存在全局变量EG(active_symbol_table)中的, 而于此同时, 还有个全局符号表保存在EG(symbol_table)中, 在进入一个函数调用的执行体之前, 会生成一个新的active_symbol_table, 并且会保持一个调用栈式样的符号表栈:EG(symtable_cache), 以便在退出函数调用的时候, 恢复之前的活动符号表(作用域).</p>
+<p> 同时在PHP中, 不能实现作用域继承, 也就是不能直接访问作用域外层的符号(需要加上golbal声明), 而如果加上global的声明的话, 也会在当前的活动作用域生成一个copy, 也就是说, 不存在在当前作用域可见的符号是保存在全局符号表的</p>
+</li>
+<li><p>函数</p>
+<p> <a href="http://www.laruence.com/2008/08/12/164.html" target="_blank" rel="noopener">深入理解PHP原理之函数(Introspecting PHP Function)</a><br> 函数分为两种zend_internal_function(对应结构体_zend_internal_function)和用户自定义函数(对应结构体_zend_op_array)。还有一个结构体zend_function.<br> 首先你要理解他的设计目标： zend_internal_function, zend_function,zend_op_array可以安全的互相转换(The are not identical structs, but all the elements that are in “common” they hold in common, thus the can safely be casted to each other);<br> 具体来说，当在op code中通过ZEND_DO_FCALL调用一个函数的时候，ZE会在函数表中，根据名字（其实是lowercase的函数名字，这也就是为什么PHP的函数名是大小写不敏感的)查找函数， 如果找到，返回一个zend_function结构的指针(仔细看这个上面的zend_function结构), 然后判断type,如果是ZEND_INTERNAL_FUNCTION， 那么ZE就调用zend_execute_internal,通过zend_internal_function.handler来执行这个函数， 如果不是，就调用zend_execute来执行这个函数包含的zend_op_array.</p>
+<p> 【todo】现在不明白的是zend_op_array里面到底存的是什么?<br> <a href="http://www.laruence.com/2011/10/10/2229.html" target="_blank" rel="noopener">函数类型提示(Callable typehint) </a><br> <a href="http://www.laruence.com/2010/06/20/1602.html" target="_blank" rel="noopener">深入理解PHP之匿名函数</a></p>
+</li>
+<li><p>opcode</p>
+<p> <a href="http://www.laruence.com/2008/06/18/221.html" target="_blank" rel="noopener">深入理解PHP原理之opcodes</a><br> <a href="http://www.laruence.com/2008/09/23/539.html" target="_blank" rel="noopener">使用PHP embed sapi实现opcodes查看器</a><br> <a href="http://www.laruence.com/2012/08/16/2701.html" target="_blank" rel="noopener">关于PHP的编译和执行分离</a><br> <a href="http://www.laruence.com/2010/08/03/1697.html" target="_blank" rel="noopener">深入理解PHP原理之异常机制</a><br> <a href="http://www.laruence.com/2008/08/24/377.html" target="_blank" rel="noopener">PHP源码分析之Global关键字</a><br> 也就是说， 如果你global了一个变量，那么Zend就会去全局symbol_table去寻找，如果找不到，就会在全局symbol_table中分配相应的变量。通过这样的机制，实现了全局变量</p>
+</li>
+<li><p>对象</p>
+<p> <a href="http://www.laruence.com/2010/05/18/1482.html" target="_blank" rel="noopener">深入理解PHP原理之对象(一)</a><br> <a href="http://www.laruence.com/2008/08/24/427.html" target="_blank" rel="noopener">PHP5多重继承顺序的bug</a></p>
+</li>
+<li><p>数组</p>
+<p> <a href="http://www.laruence.com/2008/10/31/574.html" target="_blank" rel="noopener">关于一笔试题(Iterator模式)</a><br> <a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a><br> <a href="http://www.laruence.com/2009/07/23/994.html" target="_blank" rel="noopener">PHP中的Hash算法</a><br> <a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组（遍历顺序)</a></p>
+</li>
+<li><p>扩展</p>
+<p> <a href="http://www.laruence.com/2008/08/16/301.html" target="_blank" rel="noopener">扩展PHP(一)</a><br> <a href="http://www.laruence.com/2011/09/13/2139.html" target="_blank" rel="noopener">关于PHP扩展开发的一些资源</a><br> <a href="http://www.laruence.com/2009/04/28/719.html" target="_blank" rel="noopener">用C/C++扩展你的PHP</a><br> <a href="http://www.laruence.com/2009/08/18/1042.html" target="_blank" rel="noopener">保证PHP扩展的依赖关系</a><br> <a href="http://www.laruence.com/2009/06/14/945.html" target="_blank" rel="noopener">深入理解PHP原理之扩展载入过程</a></p>
+</li>
+<li><p>内存管理</p>
+<p> <a href="http://www.laruence.com/2011/11/09/2277.html" target="_blank" rel="noopener">PHP原理之内存管理中难懂的几个点</a><br> <a href="http://www.laruence.com/2011/03/04/1894.html" target="_blank" rel="noopener">深入理解PHP内存管理之谁动了我的内存</a></p>
+</li>
+<li><p>SAPI<br> <a href="http://www.laruence.com/2008/08/12/180.html" target="_blank" rel="noopener">深入理解ZendSAPIs</a><br> <a href="http://docs.php.net/manual/zh/features.gc.php" target="_blank" rel="noopener">垃圾回收机制</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">第二节 SAPI概述</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-03-fastcgi" target="_blank" rel="noopener">fastcgi</a><br> <a href="http://www.php-internals.com/book/?p=chapt02/02-02-02-embedding-php" target="_blank" rel="noopener">嵌入式sapi</a></p>
+</li>
+<li><p>其他<br> <a href="http://www.laruence.com/2009/07/27/1020.html" target="_blank" rel="noopener">深入理解PHP原理之错误抑制与内嵌HTML</a><br> <a href="http://www.laruence.com/2011/05/31/2018.html" target="_blank" rel="noopener">PHP Performance Optimization</a><br> <a href="http://www.laruence.com/2011/12/19/2399.html" target="_blank" rel="noopener">关于PHP浮点数你应该知道的</a><br> <a href="http://www.laruence.com/2013/03/26/2884.html" target="_blank" rel="noopener">PHP浮点数的一个场景问题的解答</a><br> <a href="http://www.laruence.com/2008/11/07/586.html" target="_blank" rel="noopener">深入理解PHP原理之文件上传</a><br> <a href="http://www.laruence.com/2009/05/31/889.html" target="_blank" rel="noopener">PHP受locale影响的函数</a><br> <a href="http://www.laruence.com/2009/08/22/1059.html" target="_blank" rel="noopener">字符编码详解</a><br> <a href="http://www.laruence.com/2009/12/09/1180.html" target="_blank" rel="noopener">isset与is_null的不同</a><br> isset是语句 is_null是函数，判断是否为null时可以使用===<br> <a href="http://www.laruence.com/2010/04/15/1414.html" target="_blank" rel="noopener">深入理解ob_flush和flush的区别</a><br> <a href="http://www.laruence.com/2015/05/28/3038.html" target="_blank" rel="noopener">在php中使用协程实现多任务调度</a><br> <a href="http://www.laruence.com/2008/04/16/98.html" target="_blank" rel="noopener">使用fsock实现异步调用php</a><br> <a href="http://www.laruence.com/2011/12/06/2381.html" target="_blank" rel="noopener">更简单的重现PHP core调用栈</a><br> <a href="http://www.laruence.com/2011/10/19/2247.html" target="_blank" rel="noopener">Zend Signal in PHP5.4</a><br> <a href="http://www.laruence.com/2011/03/24/858.html" target="_blank" rel="noopener">一些PHP Coding Tips</a></p>
+</li>
+<li><p>Dtrace<br><a href="http://php.net/manual/zh/features.dtrace.php" target="_blank" rel="noopener">Dtrace</a><br><a href="http://php.net/manual/zh/internals2.preface.php" target="_blank" rel="noopener">php骇客指南</a></p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="ckw1wtyla004butnuxfkeyx2i" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php一些bug列表" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/07/php一些bug列表/" class="article-date">
+  <time datetime="2016-09-07T11:46:33.000Z" itemprop="datePublished">2016-09-07</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/07/php一些bug列表/">php一些bug列表</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在读<a href="http://www.laruence.com/" target="_blank" rel="noopener">Laruence</a>的文章时，有很多好的文章。<br>有一些不会出现或者出现概率很低的文章，现在将读过的文章，自己记录一下，方便查阅</p>
+<ol>
+<li><p><a href="http://www.laruence.com/2009/12/05/1172.html" target="_blank" rel="noopener">PHP5.2x + APC的一个bug定位</a> </p>
+<p> 出现原因是：session模块和apc模块加载顺序和模块关闭顺序导致。<br> 模块载入顺序和模块关闭函数很有关系了. 总体来说, 就是PHP会根据模块载入的顺序的反序来在每次请求处理结束后依次调用各个扩展的请求关闭函数.</p>
+<p> 因为我们环境的Session是静态编译进PHP的, 所以Session模块一定先于动态编译进PHP的APC被载入, 也就是说, 在请求关闭时期, APC的请求关闭函数, 一定会先于Session的请求关闭函数被调用.</p>
+<p> APC在模块请求关闭函数时期, 清空了执行全局标量中的类定义表EG(classs_table)，当Session的请求关闭函数调用的时候, 执行环境的Class Table已经为空, 当然也就会抛出类找不到的fatalerror了。</p>
+</li>
+<li><p><a href="http://www.laruence.com/2008/12/31/647.html" target="_blank" rel="noopener">一个低概率的PHP CoreDump</a></p>
+<p> 出现原因：php正在出错处理函数中，这个时候php execute limit time信号到来被响应，再次载入php_error_cb函数，就会出现。</p>
+<p> 自己尝试：在php5.5环境下复现</p>
+</li>
+<li><a href="http://www.laruence.com/2010/09/27/1754.html" target="_blank" rel="noopener">PHP stream未能及时清理现场导致Core的bug</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="ckw1wtyl9004autnuf7mjujna" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php中程序加载一个不停变化的文件出现bus-error" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" class="article-date">
+  <time datetime="2016-09-07T11:28:35.000Z" itemprop="datePublished">2016-09-07</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/">php中程序加载一个不停变化的文件出现bus error</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="出现原因"><a href="#出现原因" class="headerlink" title="出现原因"></a>出现原因</h3><p>程序加载一个不停在变化的文件，会出现bus error</p>
+<h3 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h3><p>通过gdb发现在进行语法解析时，内存越界</p>
+<h3 id="php环境"><a href="#php环境" class="headerlink" title="php环境"></a>php环境</h3><p>Configure Command =&gt;  ‘./configure’  ‘–prefix=/tmp/php56’ ‘–enable-fpm’ ‘-enable-debug’<br>没有opcache，apc等缓存。即bus error的出现于opcode缓存没有关系</p>
+<h3 id="出现bus-error的代码"><a href="#出现bus-error的代码" class="headerlink" title="出现bus error的代码"></a>出现bus error的代码</h3><pre><code>//文件名 parse.php
+&lt;?php
+
+if ($argv[1] &gt; 0) {
+    while ($argv[1]--) {
+        file_put_contents(&apos;test.tpl&apos;, &quot;&lt;?php #&quot;.str_repeat(&apos;A&apos;, mt_rand(4000, 5000)).&quot; ?&gt;\n&quot;, LOCK_EX);
+    }
+} else {
+    $p2 = popen(&quot;php parse.php 100&quot;, &quot;r&quot;);
+    while (1) {
+        include &apos;test.tpl&apos;;
+    }
+}
+</code></pre><p>执行 <code>$php parse.php</code> 会出现：</p>
+<pre><code>[1]    17776 bus error (core dumped)  php parse.php
+</code></pre><h3 id="coredump调试"><a href="#coredump调试" class="headerlink" title="coredump调试"></a>coredump调试</h3><p>命令：<code>gdb php core-php.15285</code><br>现象：</p>
+<pre><code>balabala...
+
+Core was generated by `php parse.php&apos;.
+Program terminated with signal 7, Bus error
+</code></pre><p>(gdb) bt</p>
+<pre><code>#0  0x00000000007f39a7 in lex_scan (zendlval=0x7fffc794b888) at Zend/zend_language_scanner.l:1863
+#1  0x00000000008309a7 in zendlex (zendlval=0x7fffc794b880) at /home/yankai-c/php-5.6.25/Zend/zend_compile.c:6913
+#2  0x00000000007e45ce in zendparse () at /home/yankai-c/php-5.6.25/Zend/zend_language_parser.c:3732
+#3  0x00000000007ed208 in compile_file (file_handle=0x7fffc794bca0, type=2) at Zend/zend_language_scanner.l:586
+#4  0x000000000067f21c in phar_compile_file (file_handle=0x7fffc794bca0, type=2)
+    at /home/yankai-c/php-5.6.25/ext/phar/phar.c:3371
+#5  0x00000000007ed3bb in compile_filename (type=2, filename=0x7f3ea56146a8) at Zend/zend_language_scanner.l:629
+#6  0x000000000089a120 in ZEND_INCLUDE_OR_EVAL_SPEC_CONST_HANDLER (execute_data=0x7f3ea55db330)
+    at /home/yankai-c/php-5.6.25/Zend/zend_vm_execute.h:2988
+#7  0x0000000000893367 in execute_ex (execute_data=0x7f3ea55db330)
+    at /home/yankai-c/php-5.6.25/Zend/zend_vm_execute.h:363
+#8  0x00000000008933ea in zend_execute (op_array=0x7f3ea5611d88)
+    at /home/yankai-c/php-5.6.25/Zend/zend_vm_execute.h:388
+#9  0x000000000084d76c in zend_execute_scripts (type=8, retval=0x0, file_count=3)
+    at /home/yankai-c/php-5.6.25/Zend/zend.c:1341
+#10 0x00000000007b2a02 in php_execute_script (primary_file=0x7fffc794f3d0)
+    at /home/yankai-c/php-5.6.25/main/main.c:2613
+#11 0x0000000000904f71 in do_cli (argc=2, argv=0x2d9ecf0) at /home/yankai-c/php-5.6.25/sapi/cli/php_cli.c:994
+#12 0x000000000090602e in main (argc=2, argv=0x2d9ecf0) at /home/yankai-c/php-5.6.25/sapi/cli/php_cli.c:1378
+</code></pre><p>(gdb) p <code>(*(struct _zval_struct*)0x7fffc794b888)</code></p>
+<pre><code>$1 = {value = {lval = 139907039412224, dval = 6.9123261784937185e-310, str = {
+      val = 0x7f3ea562c000 &lt;Address 0x7f3ea562c000 out of bounds&gt;, len = 6}, ht = 0x7f3ea562c000, obj = {
+      handle = 2774712320, handlers = 0x6}, ast = 0x7f3ea562c000}, refcount__gc = 2673624600, type = 1 &apos;\001&apos;,
+  is_ref__gc = 127 &apos;\177&apos;}
+</code></pre><p>(gdb) p <code>(*(znode*)0x7fffc794b880).u.constant.value.str.val</code> </p>
+<pre><code>$26 = 0x7f3ea562c000 &lt;Address 0x7f3ea562c000 out of bounds&gt;
+</code></pre><p>说明：最后对zendlex的参数进行打印，可以看到提示内存越界。</p>
+<p>在<a href="https://bugs.php.net/bug.php?id=52752" target="_blank" rel="noopener">bus error</a>文章中提到，出现<code>bus error</code>的原因是加载了损坏的文件（broken file）。对于平时编程而言，加载损坏的文件是不能接受的。</p>
+<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><p><a href="https://bugs.php.net/bug.php?id=52752" target="_blank" rel="noopener">bus error</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="ckw1wtyli004qutnumz5bgv7i" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/page/5/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span><a class="page-number" href="/page/7/">7</a><a class="page-number" href="/page/8/">8</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><a class="extend next" rel="next" href="/page/7/">Next &raquo;</a>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

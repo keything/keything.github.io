@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>hadoop权威指南第四版学习笔记 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Hadoop权威指南第四版-学习笔记第二章 关于MapReduceMapReduce是一种可用于数据处理的编程模型。  Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。  一个合理的分片大小趋向于HDFS的一个块的大小，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hadoop权威指南第四版学习笔记">
+<meta property="og:url" content="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="Hadoop权威指南第四版-学习笔记第二章 关于MapReduceMapReduce是一种可用于数据处理的编程模型。  Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。  一个合理的分片大小趋向于HDFS的一个块的大小，">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.256Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="hadoop权威指南第四版学习笔记">
+<meta name="twitter:description" content="Hadoop权威指南第四版-学习笔记第二章 关于MapReduceMapReduce是一种可用于数据处理的编程模型。  Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。  一个合理的分片大小趋向于HDFS的一个块的大小，">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-hadoop权威指南第四版学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hadoop权威指南第四版学习笔记/" class="article-date">
+  <time datetime="2018-09-23T03:30:21.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      hadoop权威指南第四版学习笔记
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Hadoop权威指南第四版-学习笔记"><a href="#Hadoop权威指南第四版-学习笔记" class="headerlink" title="Hadoop权威指南第四版-学习笔记"></a>Hadoop权威指南第四版-学习笔记</h1><h2 id="第二章-关于MapReduce"><a href="#第二章-关于MapReduce" class="headerlink" title="第二章 关于MapReduce"></a>第二章 关于MapReduce</h2><p>MapReduce是一种可用于数据处理的编程模型。 </p>
+<p>Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。 </p>
+<p>一个合理的分片大小趋向于HDFS的一个块的大小，默认是128MB。</p>
+<h4 id="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？"><a href="#map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？" class="headerlink" title="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？"></a>map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？</h4><p>因为map的输出是中间结果：该中间结果由reduce任务处理后才产生最终输出结果，而且一旦作业完成，map的输出结果就可以删除。 因此，如果把map输出存储在HDFS中并实现备份，难免有些小题大做。 </p>
+<p>如果运行map任务的节点在map中间结果传送给reduce任务之前失败，hadoop将在另一个节点重新运行这个map任务以再次构建map中间结果。</p>
+<p>reduce任务并不具备数据本地化的优势，单个reduce任务的输入通常来自于所有mapper的输出。</p>
+<p>reduce任务的数量并不是由输入数据的大小决定，相反是独立指定的。<br>如果有多个reduce任务，每个map任务就会针对输出进行分区(partition)，即为每个reduce任务建一个分区，每个分区有许多键（及其对应的值），但每个键对应的key-value 都在同一个分区中。 用户可以使用自定义的分区函数控制分区，但通常使用默认的partitioner 通过哈希函数来区分，很高效。</p>
+<p>一般情况下，多个reduce任务的数据流如图2-4所示，该图清楚表明了为什么map任务和reduce任务之间的数据流成为shuffle（混洗），因为每个reduce任务的输入都来自许多map任务。shuffle一般比图中所示的更复杂，而且调整混洗参数对作业总执行时间的影响非常大。 </p>
+<h2 id="第三章-Hadoop分布式文件系统"><a href="#第三章-Hadoop分布式文件系统" class="headerlink" title="第三章 Hadoop分布式文件系统"></a>第三章 Hadoop分布式文件系统</h2><h3 id="3-2-HDFS概念"><a href="#3-2-HDFS概念" class="headerlink" title="3.2 HDFS概念"></a>3.2 HDFS概念</h3><p>3.2.1 数据块</p>
+<p>HDFS同样也有块block的概念，默认是128MB。</p>
+<p>3.2.2 namenode和datanode</p>
+<p>HDFS集群有两类节点，以 管理节点-工作节点 模式运行，即一个namenode（管理节点）和多个datanode（工作节点）。<br>namenode 管理文件系统的命名空间。它维护者文件系统树及整颗树内所有的文件和目录。这些信息以两个文件形式永久保存在本地磁盘上：命名空间镜像文件和编辑日志文件。 </p>
+<p>namenode也记录着每个文件中各个块所在的数据节点信息，但它并不用就保存块的位置信息，因为这些信息会在系统启动时根据数据节点信息重建。 </p>
+<p>datanode是文件系统的工作节点。他们根据需要存储并检索数据块（受客户端或namenode调度），并且定期向namenode发送所存储的块的列表。</p>
+<p>3.2.3 块缓存<br>3.2.4 联邦HDFS<br>3.2.5 HDFS的高可用性</p>
+<h3 id="3-3-命令行接口"><a href="#3-3-命令行接口" class="headerlink" title="3.3 命令行接口"></a>3.3 命令行接口</h3><h3 id="3-4-Hadoop-文件系统"><a href="#3-4-Hadoop-文件系统" class="headerlink" title="3.4 Hadoop 文件系统"></a>3.4 Hadoop 文件系统</h3><h3 id="3-5-Java接口"><a href="#3-5-Java接口" class="headerlink" title="3.5 Java接口"></a>3.5 Java接口</h3><h3 id="3-6-数据流"><a href="#3-6-数据流" class="headerlink" title="3.6 数据流"></a>3.6 数据流</h3><p>3.6.1 剖析文件读取<br>3.6.2 剖析文件写入<br>3.6.3 一致性模型</p>
+<h2 id="第4章-关于YARN"><a href="#第4章-关于YARN" class="headerlink" title="第4章  关于YARN"></a>第4章  关于YARN</h2><p>Apache YARN(Yet Another Resource Negotiator的缩写)是Hadoop的集群资源管理系统。</p>
+<h2 id="第5章-Hadoop的I-O-操作"><a href="#第5章-Hadoop的I-O-操作" class="headerlink" title="第5章 Hadoop的I/O 操作"></a>第5章 Hadoop的I/O 操作</h2><p>5.1 数据完整性<br>5.2 压缩</p>
+<p>5.2.1 codec<br>5.2.2 压缩和输入分片</p>
+<p>5.4 基于文件的数据结构</p>
+<h2 id="第6章-MapReduce应用开发"><a href="#第6章-MapReduce应用开发" class="headerlink" title="第6章 MapReduce应用开发"></a>第6章 MapReduce应用开发</h2><p>MapReduce编程遵循一个特定的流程。首先写map函数和reduce函数，最好使用单元测试来确保函数的运行符合预期。 然后写一个驱动程序来运行作业。</p>
+<h2 id="第7章-MapReduce的工作机制"><a href="#第7章-MapReduce的工作机制" class="headerlink" title="第7章 MapReduce的工作机制"></a>第7章 MapReduce的工作机制</h2><h3 id="7-3-shuffle和排序"><a href="#7-3-shuffle和排序" class="headerlink" title="7.3 shuffle和排序"></a>7.3 shuffle和排序</h3><p>MapReduce确保每个reducer的输入都是按键排序的。</p>
+<p>系统执行排序、将map输出作为输入传给reducer的过程称为shuffle。</p>
+<p>7.3.1 map端</p>
+<p>map函数开始产生输出时，并不是简单地将它写到磁盘。这个过程更复杂，利用缓冲的方式写到内存并出于效率的考虑进行预排序。<br>每个map任务都有一个环形内存缓冲区用于存储任务输出。在默认情况下，缓冲区大小是100mb。一旦缓冲内容达到阈值，一个后台线程便开始把内容溢出到splill到磁盘。</p>
+<p>在溢出写到磁盘过程中，map输出继续写到缓存区，但如果在此期间缓冲区被填满，map会被阻塞直到写磁盘过程完成。 </p>
+<p>在写磁盘之前，线程首先根据数据最终要传的reduer 将数据划分成相应的分区(partition)。在每个分区中，后台线程按键进行内存中排序，如果有一个combiner函数，它就在排序后的输出上运行。运行combiner函数使得map输出结果更紧凑。</p>
+<p>每次内存缓冲区达到溢出阈值，就会新建一个溢出文件spill file，因此在map任务写完最后一个输出记录之后，会有几个溢出文件。</p>
+
+<p>7.3.2 reduce端</p>
+<h3 id="7-4-任务的执行"><a href="#7-4-任务的执行" class="headerlink" title="7.4 任务的执行"></a>7.4 任务的执行</h3><h2 id="第8章"><a href="#第8章" class="headerlink" title="第8章"></a>第8章</h2><p>8.1 MapReduce的类型</p>
+<p>Hadoop的MapReduce中，map函数和reduce函数遵循如下常规格式：</p>
+<p>map:(k1, v1) -&gt; list(k2, v2)<br>combiner: (k2, list(v2)) -&gt; list(k2, v2)<br>reduce:(k2, list(v2)) -&gt; list(k3, v3)</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="ckw1wtykh002lutnueo6btj5c" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/09/23/hive权威指南学习笔记/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          hive权威指南学习笔记
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/09/22/spark的sql学习/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">spark的sql学习</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

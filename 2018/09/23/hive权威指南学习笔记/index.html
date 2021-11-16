@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>hive权威指南学习笔记 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Hive操作 本篇文章是对 https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations  以及 《Hive编程指南》的学习总结  DDL Operations (data defination language)   create table pokes (foo INT,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hive权威指南学习笔记">
+<meta property="og:url" content="http://keything.github.io/2018/09/23/hive权威指南学习笔记/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="Hive操作 本篇文章是对 https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations  以及 《Hive编程指南》的学习总结  DDL Operations (data defination language)   create table pokes (foo INT,">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.256Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="hive权威指南学习笔记">
+<meta name="twitter:description" content="Hive操作 本篇文章是对 https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations  以及 《Hive编程指南》的学习总结  DDL Operations (data defination language)   create table pokes (foo INT,">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-hive权威指南学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hive权威指南学习笔记/" class="article-date">
+  <time datetime="2018-09-23T15:02:05.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      hive权威指南学习笔记
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Hive操作</p>
+<p>本篇文章是对 <code>https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations</code> </p>
+<p>以及</p>
+<p>《Hive编程指南》的学习总结</p>
+<ol>
+<li>DDL Operations (data defination language)</li>
+</ol>
+<ul>
+<li>create table pokes (foo INT, bar STRING);</li>
+<li>create table invites (foo INT, bar STRING) PARTITIONED BY (ds STRING);</li>
+</ul>
+<p>partition column 是一个虚拟列，并不是数据本身的一部分，但是可以获得某一份特定数据集。 </p>
+<ul>
+<li>show tables;</li>
+<li>show tables ‘.*s’</li>
+<li>describe invites;</li>
+</ul>
+<ol start="2">
+<li>DML Operations (data manipulation language)</li>
+</ol>
+<h3 id="2-1-装载数据"><a href="#2-1-装载数据" class="headerlink" title="2.1 装载数据"></a>2.1 装载数据</h3><ul>
+<li>LOAD DATA LOCAL INPUT ‘./examples/files/kv1.txt’ OVERWRITE INTO TABLE pokes;</li>
+<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv2.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-15’);</li>
+<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv3.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-08’);</li>
+</ul>
+<p><code>LOCAL</code> 表明这是在本地文件系统上的文件；如果没有的话，那么就从hdfs上获取文件。</p>
+<p><code>OVERWRITE</code> 表明表中已经存在的数据将会被删除。 如果没有的话，数据文件被添加到已经存在的数据集合中。 </p>
+<h3 id="2-2-通过查询语句插入数据"><a href="#2-2-通过查询语句插入数据" class="headerlink" title="2.2 通过查询语句插入数据"></a>2.2 通过查询语句插入数据</h3><ul>
+<li><code>FROM staged_employees se 
+INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;OR&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;OR&#39;
+INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;CA&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;CA&#39;</code></li>
+</ul>
+<h4 id="动态分区插入"><a href="#动态分区插入" class="headerlink" title="动态分区插入"></a>动态分区插入</h4><p>前面的语法中有一个问题，即：如果需要创建非常多的分区，那么用户就需要写非常多的SQL。<br>幸运的是：Hive提供了一个动态分区功能，可以基于查询参数推断出需要创建的分区名称。相比之下，前面看到的都是静态分区。 </p>
+<p><code>INSERT OVERWRITE TABLE employees PARTITION (country, state) 
+ SELECT ..., se.cnty, se.st FROM staged_employees se;</code></p>
+<p>注意：Hive 根据SELECT语句中最后2列来确定分区字段country和state的值。<br>而不是根据命名来匹配的。</p>
+<p>在SQL语句使用不同的命名就是为了强调源表字段值和输出分区值直接的关系是根据位置而不是根据命名来匹配的。 </p>
+<h3 id="2-3-单个查询语句中创建表并加载数据"><a href="#2-3-单个查询语句中创建表并加载数据" class="headerlink" title="2.3 单个查询语句中创建表并加载数据"></a>2.3 单个查询语句中创建表并加载数据</h3><ul>
+<li>create table u_data_v2 as SELECT userid, rating from u_data limit 10;</li>
+</ul>
+<h3 id="2-4-导出数据"><a href="#2-4-导出数据" class="headerlink" title="2.4 导出数据"></a>2.4 导出数据</h3><ul>
+<li>INSERT OVERWRITE LOCAL DIRECTORY ‘/tmp/hive’ SELECT userid, rating FROM u_data; </li>
+</ul>
+<ol start="3">
+<li>SQL操作</li>
+</ol>
+<h3 id="SELECT-…-FROM-语句"><a href="#SELECT-…-FROM-语句" class="headerlink" title="SELECT … FROM 语句"></a>SELECT … FROM 语句</h3><p>3.1 数据类型</p>
+<p> 当用户选择的列是集合数据类型时，Hive会使用JSON语法进行输出。</p>
+<ul>
+<li>当列是一个数组时，其值使用一个括在<code>[...]</code>的逗号分隔的列进行表示，如[“Mary Smith”, “Todd Jones”]</li>
+<li>当列是一个Map时，使用JSON格式来表达map，即使用一个被括在<code>{...}</code>内的以逗号分隔的键值对列表进行表示；如 <code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
+<li>当列是一个Struct时，使用map格式来表示，如<code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
+</ul>
+<p>引用元素的方式：</p>
+<ul>
+<li>引用Map元素，使用ARRAY[…]语法；</li>
+<li>引用Struct的一个元素，使用<code>点</code>符号。</li>
+</ul>
+<p>3.2 使用函数</p>
+<p>3.3 列别名</p>
+<p>如果新产生的结果在源表中不存在的话，通常有必要给这些新产生的列起一个名称，也就是别名。 </p>
+<ul>
+<li>select userid as uid from u_data;</li>
+</ul>
+<p>3.4 嵌套SELECT 语句</p>
+<p><code>FROM (
+    SELECT upper(name), salary ,deductions[&quot;Federal Taxes&quot;] as fed_taxes FROM employees
+    ) e
+SELECT e.name, e.fed_taxes where e.name = &quot;yan&quot;</code></p>
+<p>从这个嵌套语句中可以看到，我们将前面的结果集起了个别名，称之为e，在这个语句外面嵌套查询了name fed_taxes两个字段。 同时约束name必须是yan。</p>
+<p>3.5 CASE … WHEN … THEN 句式</p>
+<p>CASE .. WHEN .. THEN 语句和if条件语句类似，用于处理单个列的查询结果。 </p>
+<p><code>SELECT userid, movieid, 
+    CASE 
+    WHEN rating &lt;= 1 THEN &quot;low&quot; 
+    WHEN rating &gt; 1 and rating &lt;= 3 THEN &quot;middle&quot; ELSE &quot;high&quot;  
+    END  as level 
+    from u_data limit 10;</code></p>
+<h3 id="4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）"><a href="#4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）" class="headerlink" title="4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）"></a>4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）</h3><h4 id="4-1-WHERE语句不能使用列别名。"><a href="#4-1-WHERE语句不能使用列别名。" class="headerlink" title="4.1  WHERE语句不能使用列别名。"></a>4.1  WHERE语句不能使用<code>列别名</code>。</h4><p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
+FROM employees
+WHERE round(salary * (1-deductions[&quot;Federal Taxes&quot;])) &gt; 70000</code></p>
+<p>这个查询语句里面，有重复的表达式。下面的查询语句使用一个列别名来消除重复问题，但是并不能生效。 </p>
+<p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
+FROM employees
+WHERE round(salary_minus_fed_taxes) &gt; 70000;
+报错：Invalid table alias or column reference &#39;salary_minus_fed_taxes&#39;</code></p>
+<p>正如错误信息所提示的，WHERE语句不能使用<code>列别名</code>。<br>不过我们可以使用一个嵌套的SELECT语句</p>
+<p><code>SELECT e.* FROM 
+(SELECT name,salary, salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes FROM employees) e 
+WHERE round(e.salary_minus_fed_taxes) &gt; 70000;</code></p>
+<h4 id="4-2-谓词操作符"><a href="#4-2-谓词操作符" class="headerlink" title="4.2 谓词操作符"></a>4.2 谓词操作符</h4><h4 id="4-3-GROUP-BY语句"><a href="#4-3-GROUP-BY语句" class="headerlink" title="4.3 GROUP BY语句"></a>4.3 GROUP BY语句</h4><p>GROUP BY 通常会和聚合函数一起使用，按照一个或者多个列队结果进行分组，然后对每个组执行聚合操作。 </p>
+<h3 id="4-4-JOIN-语句"><a href="#4-4-JOIN-语句" class="headerlink" title="4.4 JOIN 语句"></a>4.4 JOIN 语句</h3><p>Hive支持通常的SQL JOIN语句，但是只支持<code>等值连接</code>，并且在ON子句中只支持AND。</p>
+<p>4.4.1 INNER JOIN</p>
+<p><code>SELECT a.ymd, a.price_close, b.price_close, c.price_close 
+FROM stocks a JOIN stocks b ON a.ymd = b.ymd
+              JOIN stocks c ON a.ymd = c.ymd
+WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39;GE&#39;;</code></p>
+<p>在这个例子中，会首先启动一个MapReduce job对表a和表b进行连接操作，然后会再启动一个MapReduce job将第一个MapReduce job的输出和表c进行连接操作。 </p>
+<p>Hive表总是按照从左到右的顺序执行的。 </p>
+<h4 id="JOIN优化"><a href="#JOIN优化" class="headerlink" title="JOIN优化"></a>JOIN优化</h4><p>Hive同时假定查询中最后一个表是最大的那个表。在对每行记录进行连接操作时，它会尝试将其他表缓存起来，然后扫描最后那个表进行计算。</p>
+<p>因此用户需要保证<code>连续查询中的表的大小是从左到右依次增加的</code>。</p>
+<h4 id="LEFT-OUTER-JOIN"><a href="#LEFT-OUTER-JOIN" class="headerlink" title="LEFT OUTER JOIN"></a>LEFT OUTER JOIN</h4><h4 id="OUTER-JOIN"><a href="#OUTER-JOIN" class="headerlink" title="OUTER JOIN"></a>OUTER JOIN</h4><h4 id="RIGHT-OUTER-JOIN"><a href="#RIGHT-OUTER-JOIN" class="headerlink" title="RIGHT OUTER JOIN"></a>RIGHT OUTER JOIN</h4><h4 id="FULL-OUTER-JOIN"><a href="#FULL-OUTER-JOIN" class="headerlink" title="FULL OUTER JOIN"></a>FULL OUTER JOIN</h4><h4 id="LEFT-SEMI-JOIN"><a href="#LEFT-SEMI-JOIN" class="headerlink" title="LEFT SEMI-JOIN"></a>LEFT SEMI-JOIN</h4><h4 id="笛卡尔积JOIN"><a href="#笛卡尔积JOIN" class="headerlink" title="笛卡尔积JOIN"></a>笛卡尔积JOIN</h4><h4 id="map-side-JOIN"><a href="#map-side-JOIN" class="headerlink" title="map-side JOIN"></a>map-side JOIN</h4><h3 id="4-5-ORDER-BY-和-SORT-BY"><a href="#4-5-ORDER-BY-和-SORT-BY" class="headerlink" title="4.5 ORDER BY 和 SORT BY"></a>4.5 ORDER BY 和 SORT BY</h3><h3 id="4-6-含有SORT-BY-的DISTRIBUTE-BY"><a href="#4-6-含有SORT-BY-的DISTRIBUTE-BY" class="headerlink" title="4.6 含有SORT BY 的DISTRIBUTE BY"></a>4.6 含有SORT BY 的DISTRIBUTE BY</h3><h3 id="4-10-UNION-ALL"><a href="#4-10-UNION-ALL" class="headerlink" title="4.10 UNION ALL"></a>4.10 UNION ALL</h3><p>UNION ALL将2个或多个进行合并。每个union子查询都必须有相同的列，并且每个字段的字段类型必须是一致的。</p>
+<p>比如，如果第2个字段是FLOAT类型，那么所有其他子查询的第2个字段必须都是FLOAT类型的。</p>
+<p>举例，将日志数据进行合并的例子:</p>
+<p><code>SELECT log.ymd, log.level, log.message 
+    FROM(
+            SELECT l1.ymd, l1.level, l1.message, &#39;Log1&#39; AS source
+            FROM log1 l1
+        UNION ALL
+            SELECT l2.ymd, l2.level, l2.message, &#39;Log2&#39; AS source
+            FROM log2 l2 
+        ) log
+    SORT BY log.ymd ASC;</code></p>
+<h2 id="5-视图（hive编程指南第7章-视图）"><a href="#5-视图（hive编程指南第7章-视图）" class="headerlink" title="5 视图（hive编程指南第7章 视图）"></a>5 视图（hive编程指南第7章 视图）</h2><p>3.3 一些用法</p>
+<ul>
+<li>SELECT a.* FROM invites a WHERE a.ds=’2008-08-15’;</li>
+<li>FROM pokes t1 JOIN invites t2 ON (t1.bar = t2.bar) INSERT OVERWRITE TABLE events SELECT t1.bar, t1.foo, t2.foo;</li>
+<li><p>CREATE TABLE u_data (<br>userid INT,<br>movieid INT,<br>rating INT,<br>unixtime STRING)<br>ROW FORMAT DELIMITED<br>FIELDS TERMINATED BY ‘\t’<br>STORED AS TEXTFILE;</p>
+</li>
+<li><p>LOAD DATA LOCAL INPATH ‘/Users/keything/Downloads/ml-100k/u.data’ OVERWRITE INTO TABLE u_data;</p>
+</li>
+<li><code>SELECT COUNT(*) FROM u_data;</code></li>
+</ul>
+<p>一个简单的例子：</p>
+<p>创建表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  unixtime STRING)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;</span><br><span class="line">STORED AS TEXTFILE;</span><br></pre></td></tr></table></figure>
+<p>获取数据集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http://files.grouplens.org/datasets/movielens/ml-100k.zip</span><br><span class="line">unzip ml-100k.zip</span><br></pre></td></tr></table></figure>
+<p>加载数据集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LOAD DATA LOCAL INPATH &apos;&lt;path&gt;/u.data&apos; OVERWRITE INTO TABLE u_data;</span><br></pre></td></tr></table></figure>
+<p>创建weekday_mapper.py</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">import sys</span><br><span class="line">import datetime</span><br><span class="line"></span><br><span class="line">for line in sys.stdin:</span><br><span class="line">  line = line.strip()</span><br><span class="line">  userid, movieid, rating, unixtime = line.split(&apos;\t&apos;)</span><br><span class="line">  weekday = datetime.datetime.fromtimestamp(float(unixtime)).isoweekday()</span><br><span class="line">  print &apos;\t&apos;.join([userid, movieid, rating, str(weekday)])</span><br></pre></td></tr></table></figure>
+<p>对于这个脚本是否正确，可以通过自己创建文件来验证。</p>
+<p>创建mapper脚本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data_new (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  weekday INT)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;;</span><br><span class="line"></span><br><span class="line">add FILE weekday_mapper.py;</span><br><span class="line"></span><br><span class="line">INSERT OVERWRITE TABLE u_data_new</span><br><span class="line">SELECT</span><br><span class="line">  TRANSFORM (userid, movieid, rating, unixtime)</span><br><span class="line">  USING &apos;python weekday_mapper.py&apos;</span><br><span class="line">  AS (userid, movieid, rating, weekday)</span><br><span class="line">FROM u_data;</span><br><span class="line"></span><br><span class="line">SELECT weekday, COUNT(*)</span><br><span class="line">FROM u_data_new</span><br><span class="line">GROUP BY weekday;</span><br></pre></td></tr></table></figure>
+<p>最后得到</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1	12254</span><br><span class="line">2	13579</span><br><span class="line">3	14430</span><br><span class="line">4	15114</span><br><span class="line">5	14743</span><br><span class="line">6	18229</span><br><span class="line">7	11651</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="ckw1wtykj002outnuhjn8j7ii" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/09/23/hive的TRANSFORM操作/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          hive的TRANSFORM操作
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/09/23/hadoop权威指南第四版学习笔记/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">hadoop权威指南第四版学习笔记</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

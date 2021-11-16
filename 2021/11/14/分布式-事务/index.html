@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>分布式-事务 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+<meta name="keywords" content="分布式">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式-事务">
+<meta property="og:url" content="http://keything.github.io/2021/11/14/分布式-事务/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/dirty-write.png">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/dirty%20read.jpeg">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/lost%20update.jpeg">
+<meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/cursor-lost-update.png">
+<meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/write-skew1.png">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/isolation%20types.jpeg">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/isolation%20levels%20and%20their%20relationship.jpeg">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.268Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="分布式-事务">
+<meta name="twitter:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+<meta name="twitter:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/dirty-write.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-分布式-事务" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/14/分布式-事务/" class="article-date">
+  <time datetime="2021-11-14T02:34:03.000Z" itemprop="datePublished">2021-11-14</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      分布式-事务
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。</p>
+<p>在总结之前，提问几个问题：</p>
+<ol>
+<li>什么是事务</li>
+<li>为什么引入事务</li>
+<li>事务中最核心的问题是什么？</li>
+<li>事务中隔离级别有哪些级别，级别划分依据是什么？</li>
+<li>隔离级别解决了哪些问题，哪些没有解决</li>
+<li>如何实现这些隔离级别</li>
+</ol>
+<h2 id="一、事务"><a href="#一、事务" class="headerlink" title="一、事务"></a>一、事务</h2><h3 id="什么是事务"><a href="#什么是事务" class="headerlink" title="什么是事务"></a>什么是事务</h3><p>在应用程序中，将一组数据库的读写组成一个逻辑操作单元；即事务中所有读写是一个执行的整体，整个事务要么成功（提交），要么失败（中止或回滚）。如果失败，应用程序可以安全地重试。</p>
+<h3 id="为什么引入事务"><a href="#为什么引入事务" class="headerlink" title="为什么引入事务"></a>为什么引入事务</h3><p>简化应用层的编程模型：当一组读写中部分写入成功，部分写入失败时，我们需要将成功的进行回滚；如果数据库不引入事务，就需要业务层自己处理。 </p>
+<p>如何判断是否需要事务？</p>
+<blockquote>
+<p>我们需要确切地理解事务能够提供哪些安全性保证，背后的代价又是什么。 </p>
+</blockquote>
+<h3 id="事务提供的安全性保证"><a href="#事务提供的安全性保证" class="headerlink" title="事务提供的安全性保证"></a>事务提供的安全性保证</h3><p>事务提供的安全性保证即大家熟悉的ACID。</p>
+<ul>
+<li>Atomic（原子性）：执行要么全部成功，要么全部失败。在出错时中止事务，并将部分完成的写入全部丢弃。 </li>
+<li>Consistency(一致性）：这儿的一致性是符合数据的约束条件（比如数据x=y,x+y=100等)</li>
+<li>Isolation（隔离）：意味着并发执行的多个事务相互隔离，他们不能互相交叉。经典数据库教材中把隔离定义为可串行化。</li>
+<li>Duration（持久化）：数据持久化</li>
+</ul>
+<p>其中AID是数据库自身属性，C是应用层属性，AID来保证C。</p>
+<h2 id="二、隔离级别"><a href="#二、隔离级别" class="headerlink" title="二、隔离级别"></a>二、隔离级别</h2><h3 id="2-1-什么时候需要隔离？"><a href="#2-1-什么时候需要隔离？" class="headerlink" title="2.1 什么时候需要隔离？"></a>2.1 什么时候需要隔离？</h3><p>如果两个事务操作的是不同的数据，即不存在数据依赖关系，那么就可以安全地并行。</p>
+<p>只有出现某个事务修改数据而另外一个事务同时读取该数据，或者两个事务同时修改相同数据时，才会引起并发问题。</p>
+<h3 id="2-2-隔离级别的定义"><a href="#2-2-隔离级别的定义" class="headerlink" title="2.2 隔离级别的定义"></a>2.2 隔离级别的定义</h3><p>ANSI/ISO SQL-92中定义了四种隔离级别Read-Commited, Repeatable Read, Snapshot Isolation, Seriable。这些隔离级别是通过经典的序列化定义和三种被禁止的子序列来定义的。三种被禁止的子序列是Dirty Read, Non-repeatable Read 和 phantom(幻象）。</p>
+<blockquote>
+<p>通俗来讲，就是禁止了哪些问题就达到了某个隔离级别；隔离级别也都是与特定的锁有对应关系的</p>
+</blockquote>
+<p>隔离级别也是与lock有关的。</p>
+<h3 id="2-3-异常现象（异常子序列）"><a href="#2-3-异常现象（异常子序列）" class="headerlink" title="2.3 异常现象（异常子序列）"></a>2.3 异常现象（异常子序列）</h3><p>这些异常现象将会用如下格式进行详细描述：</p>
+<ul>
+<li>问题的文字描述</li>
+<li>问题的序列化表示</li>
+<li>问题的例子</li>
+<li>问题的解决方案</li>
+</ul>
+<p>关于锁的解释</p>
+<ol>
+<li>long-duration vs short duration<ul>
+<li>长期锁是在加锁以后，直到事务结束或回滚才释放锁</li>
+<li>短期锁是在动作结束以后，就立即释放锁</li>
+</ul>
+</li>
+<li><p>predict  vs 行锁</p>
+<ul>
+<li>predict lock是针对一个查询条件加锁</li>
+<li>行锁是针对特定一行记录加锁</li>
+</ul>
+</li>
+</ol>
+<h4 id="脏写-Dirty-Write-P0"><a href="#脏写-Dirty-Write-P0" class="headerlink" title="脏写 Dirty Write P0"></a>脏写 Dirty Write P0</h4><ol>
+<li>问题的文字描述：一个正在进行的事务覆盖了另外一个事务尚未提交的写入。</li>
+<li>问题的序列化表示：W1(x)…W2(x) … (c1 or a1)</li>
+<li>问题的解决办法：对写入加一个long-duration write lock。</li>
+<li>说明：<ul>
+<li>Dirty write是ANSI/ISO SQL-92中没有提到的，但是需要避免，是基础。</li>
+<li>如果有脏写，那么会没有办法回滚，也可能影响数据约束（x=y or x+y=100)</li>
+</ul>
+</li>
+<li>举例：Suppose T1 writes x=y=1 and T2 writes x=y=2, the following history violates the integrity constraint.</li>
+</ol>
+<p><img src="https://blog.acolyer.org/wp-content/uploads/2016/02/dirty-write.png" alt=""></p>
+<h4 id="脏读-Dirty-Read-P1"><a href="#脏读-Dirty-Read-P1" class="headerlink" title="脏读 Dirty Read P1"></a>脏读 Dirty Read P1</h4><ol>
+<li>问题的文字描述：一个正在进行的事务读取了另外一个事务未提交的写入。</li>
+<li>问题的序列化表示：W1(x)..R2(x) ..(c1 or a1)</li>
+<li>问题的解决办法：加入一个short-duration read lock。<ul>
+<li>写是long-duration write lock, 读是short-duration read lock，当正在发生写入的事务占有锁时，读取的事务因为没有办法获得读锁，只能等待。 </li>
+<li>注明：<a href="http://arxiv.org/pdf/cs/0701157.pdf" target="_blank" rel="noopener">1</a>中使用读锁来实现，但是在最新的数据库中数据库维护新旧两个取值，事务提交之前读取旧值；仅当写事务提交以后，才会切换到读取新值。</li>
+</ul>
+</li>
+<li>说明：<ul>
+<li>解决该问题的隔离级别就是 Read-Commited（读-提交） 隔离级别</li>
+</ul>
+</li>
+<li>举例：<ul>
+<li>序列化：H1: r1[x=50]w1[x=10]r2[x=10]r2[y=50]c2 r1[y=50]w1[y=90]c1</li>
+<li>如下图所示 t2中 x+y=60，其中x=10是脏读，<img src="分布式-事务/dirty read.jpeg" alt=""></li>
+</ul>
+</li>
+</ol>
+<h4 id="不可重复读-unrepeatable-read-P2"><a href="#不可重复读-unrepeatable-read-P2" class="headerlink" title="不可重复读 unrepeatable-read P2"></a>不可重复读 unrepeatable-read P2</h4><ol>
+<li>问题的文字描述：事务在不同的时间点看到不同值。事务T2修改了之前事务T1读过的数据，不管T1、T2是提交还是回滚，就认为是nonrepeatable-read</li>
+<li>问题的序列化表示：R1(x)..W2(x)..(c1 or a1)</li>
+<li>问题的解决办法：snapshot isolation，多版本</li>
+<li>说明：不可重复读实际是 读倾斜的x等于y的一个特例</li>
+<li>举例：因为不可重复读可以看做是读倾斜x等于y的一个特例，可以去看 读倾斜的例子。</li>
+</ol>
+<h4 id="幻象-phantom-P3"><a href="#幻象-phantom-P3" class="headerlink" title="幻象 phantom P3"></a>幻象 phantom P3</h4><ol>
+<li><p>问题的文字描述：</p>
+<p> 事务T1读取一组数据集合满足条件<search condition="">。事务T2创建了满足T1中<search condition="">的数据集合并提交，那么T1重复读取<search condition="">时，将会获取到跟之前不同的数据</search></search></search></p>
+</li>
+<li><p>问题的序列化表示：R1(P)… W2(y in P)…(c1 or a1)</p>
+</li>
+<li>问题的解决办法：采用区间范围锁 index-range lock，又叫next-key lock</li>
+<li>说明：<ul>
+<li>Nonrepeatable和幻象的区别 一个单个对象，一个是多个对象</li>
+</ul>
+</li>
+</ol>
+<h5 id="严格意义的幻象-A3"><a href="#严格意义的幻象-A3" class="headerlink" title="严格意义的幻象 A3"></a>严格意义的幻象 A3</h5><ol>
+<li>问题的序列化表示：R1(p)..W2(y in p)..c2..r1(p)…c1</li>
+<li>与P3相比更加严格，有一次T1的读取操作。</li>
+<li>问题解决办法：使用snapshot isolation即可解决</li>
+</ol>
+<h4 id="更新丢失-Losst-update-P4"><a href="#更新丢失-Losst-update-P4" class="headerlink" title="更新丢失 Losst update P4"></a>更新丢失 Losst update P4</h4><ol>
+<li>问题的文字描述：事务T2对X的修改被事务T1的修改覆盖。之后事务T1提交，从外界看来，T1对X的修改丢失</li>
+<li>问题的序列化表示：R1(x)..W2(x)..W1(x)..C1</li>
+<li>问题的解决办法：snapshot isolation，多版本</li>
+<li>举例：<ul>
+<li>序列化是 H4: r1[x=100]r2[x=100]w2[x=120 c2 w1 [x=130] c1</li>
+<li>预期是从100经过+20，+30，最后取值是150；实际是130。如图所示 <img src="分布式-事务/lost update.jpeg" alt=""></li>
+</ul>
+</li>
+</ol>
+<h4 id="更新丢失-Cursor-Lost-update-P4C"><a href="#更新丢失-Cursor-Lost-update-P4C" class="headerlink" title="更新丢失 Cursor Lost update P4C"></a>更新丢失 Cursor Lost update P4C</h4><p>P4C is a variation of the Lost Update phenomenon that involves a SQL cursor. In the history below, let rc(x) represent a read of the data item x under the cursor, and wc(x) a write of the data item x under the cursor. If we allow another transaction T2 to write to x in between the read-cursor and write-cursor actions of T1, then its update will be lost.</p>
+<p>序列化表示：P4C: rc1[x]..w2[x] ..w1[x] ..c1<br><img src="https://blog.acolyer.org/wp-content/uploads/2016/02/cursor-lost-update.png" alt=""></p>
+<h3 id="数据不一致-data-item-constraint-violation-A5"><a href="#数据不一致-data-item-constraint-violation-A5" class="headerlink" title="数据不一致 data item constraint violation A5"></a>数据不一致 data item constraint violation A5</h3><ol>
+<li>问题的文字描述：两个数据X和Y满足某些限制，可能有以下异常情况出现：<ul>
+<li>A5A Read Skew: 假设T1读取X，之后T2更新x和y到了新的取值，并提交；之后T1读取y，则x和y的限制被打破。</li>
+<li>A5B Write Skew: 假设T1读取X和Y，之后T2读取X和Y，并写入X，然后提交；之后T1 写入Y，那么存在X和Y的限制被打破的可能</li>
+</ul>
+</li>
+</ol>
+<h4 id="A5A-Read-Skew"><a href="#A5A-Read-Skew" class="headerlink" title="A5A Read Skew:"></a>A5A Read Skew:</h4><ol>
+<li>序列化表示：A5A: R1(x)..W2(x)..W2(y)..C2 …R1(y) .. (c1 or a1)</li>
+<li>举例：<pre><code>以银行转账为例，初始化x=y=50，从x转走40到y，最终预期是x=10,y=90。
+出现脏读时，其读取数据是 r1[x=5]r2[x=50]w2[x=10]r2[y=50]w2[y=90]c2r1[y=90]c1
+数据如图所示，t1中x+y=140不满足100的限制。 ![](分布式-事务/repeatable read.jpeg)
+</code></pre></li>
+</ol>
+<h4 id="A5B-Write-Skew"><a href="#A5B-Write-Skew" class="headerlink" title="A5B Write Skew:"></a>A5B Write Skew:</h4><ol>
+<li>序列化表示：A5B：R1(x)..R2(y)..W1(y)..W2(x)..(c1 and c2 occur)</li>
+<li>举例：</li>
+</ol>
+<p><img src="https://blog.acolyer.org/wp-content/uploads/2016/02/write-skew1.png" alt=""></p>
+<h3 id="2-4-隔离级别"><a href="#2-4-隔离级别" class="headerlink" title="2.4 隔离级别"></a>2.4 隔离级别</h3><p>可以通过刻画他们禁止的异常情况来刻画隔离级别</p>
+<p><img src="分布式-事务/isolation types.jpeg" alt=""></p>
+<p>他们之间的关系如下图所示 <img src="分布式-事务/isolation levels and their relationship.jpeg" alt=""></p>
+<p>我们可以通过他们允许的非序列化历史来比较隔离级别：</p>
+<ul>
+<li>L1 is weaker than L2 if L1 permits non-serializable histories that L2 does not, and every non-serializable history under L2 is also a non-serializable history under L1. We write L1 &lt;&lt; L2.</li>
+<li>L1 and L2 are equivalent if the sets of non-serializable histories permitted by them both are identical. We write L1 == L2</li>
+<li>L1 and L2 may also be incomparable. If L1 permits a non-serializable history that L2 does not, and vice-versa, then L1 is not weaker than L2, but L2 is also not weaker than L1. We write L1 &lt;&gt; L2.</li>
+</ul>
+<h4 id="结论1"><a href="#结论1" class="headerlink" title="结论1:"></a>结论1:</h4><p>我们可以得到 </p>
+<blockquote>
+<p>Degree 0 (everything goes) &lt;&lt; Read Uncommitted &lt;&lt; Read Committed &lt;&lt; Cursor Stability &lt;&lt; Repeatable Read &lt;&lt; Serializable.</p>
+</blockquote>
+<p>重点解释一下 Cursor Stability，Cursor Stability是扩展Read Commited锁行为。//TODO 待补充</p>
+<h4 id="结论2："><a href="#结论2：" class="headerlink" title="结论2："></a>结论2：</h4><blockquote>
+<p>Read commited &lt;&lt; snapshot isolation</p>
+</blockquote>
+<blockquote>
+<p>ANOMALY Serializable &lt;&lt; Snapshot isolation</p>
+</blockquote>
+<blockquote>
+<p>repeatable read &lt;&gt;  snapshot isolation 这两个是不可比较的。</p>
+</blockquote>
+<p>许多应用通过使用cursor stability 或 oracle’s read consistency isolation 来避免锁竞争。对于这些应用而言，使用Snapshot Isolation会更好：</p>
+<ul>
+<li>避免lost update</li>
+<li>严格意义的幻象(如上面所说明的A3，但不能定义更广的P3）</li>
+<li>从不阻塞只读的事务，读取不会阻塞更新</li>
+</ul>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li>Hal Berenson, Philip A. Bernstein, Jim N. Gray, et al.: “<a href="http://research.microsoft.com/pubs/69541/tr-95-51.pdf" target="_blank" rel="noopener">A Critique of ANSI SQL Isolation Levels,</a>” at ACM International Conference on Management of Data (SIG‐ MOD), May 1995</li>
+<li><a href="https://blog.acolyer.org/2016/02/24/a-critique-of-ansi-sql-isolation-levels/" target="_blank" rel="noopener">A Critique of ANSI SQL Isolation Levels 解释</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/187597966" target="_blank" rel="noopener">A Critique of ANSI SQL Isolation Levels 阅读笔记</a></li>
+<li>数据密集型应用系统设计 chapter 7 事务</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1wtylq0058utnu0lfypdrt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2021/11/16/RedisCluster详细说明[翻译]/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          (no title)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/04/29/golang继承/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">golang继承</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

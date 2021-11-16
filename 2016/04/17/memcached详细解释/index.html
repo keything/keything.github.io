@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>3. Memcached详细解释 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="流程概述 数据存储：保存数据A到mc时，需要先分配空间Item给数据A。 数据查找：对于获取数据，通过Hash表进行查找。 数据过期：通过LRU队列进行过期处理  数据存储为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。 Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个s">
+<meta name="keywords" content="nosql,memcache">
+<meta property="og:type" content="article">
+<meta property="og:title" content="3. Memcached详细解释">
+<meta property="og:url" content="http://keything.github.io/2016/04/17/memcached详细解释/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="流程概述 数据存储：保存数据A到mc时，需要先分配空间Item给数据A。 数据查找：对于获取数据，通过Hash表进行查找。 数据过期：通过LRU队列进行过期处理  数据存储为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。 Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个s">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.259Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="3. Memcached详细解释">
+<meta name="twitter:description" content="流程概述 数据存储：保存数据A到mc时，需要先分配空间Item给数据A。 数据查找：对于获取数据，通过Hash表进行查找。 数据过期：通过LRU队列进行过期处理  数据存储为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。 Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个s">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-memcached详细解释" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/17/memcached详细解释/" class="article-date">
+  <time datetime="2016-04-17T06:00:01.000Z" itemprop="datePublished">2016-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      3. Memcached详细解释
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="流程概述"><a href="#流程概述" class="headerlink" title="流程概述"></a>流程概述</h2><ol>
+<li>数据存储：保存数据A到mc时，需要先分配空间Item给数据A。</li>
+<li>数据查找：对于获取数据，通过Hash表进行查找。</li>
+<li>数据过期：通过LRU队列进行过期处理</li>
+</ol>
+<h2 id="数据存储"><a href="#数据存储" class="headerlink" title="数据存储"></a>数据存储</h2><p>为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。</p>
+<p>Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个slab链表所分配的内存大小不同。</p>
+<p>我们在启动的时候就还会看到这个</p>
+<pre><code>memcached -p 11211 -m 44m -vv -f1.25
+slab class   1: chunk size        96 perslab   10922
+slab class   2: chunk size       120 perslab    8738
+....
+slab class  12: chunk size      1184 perslab     885
+.... 
+slab class  41: chunk size    771184 perslab       1
+slab class  42: chunk size   1048576 perslab       1
+</code></pre><p>如何分配</p>
+<ol>
+<li><p>在do_item_alloc中获取item</p>
+<ol>
+<li>首先根据LRU队列，选择过期的item，返回该item，使用该item</li>
+<li>如果都没有过期，那么分配新的slab。实际上就是分配新的page，然后根据chunk size进行内存切割。选择一个item，返回该item。【注意】即使启动参数-m 44M限定的最大内存使用完毕，如果某一个slabclass没有slab，那么依然可以分配一个page，就会出现内存大于44m的情况。在do_slabs_newslab函数中</li>
+<li><p>如果都没有过期，并且不能够分配新的slab，那么就会强行霸占没有过期的item。返回该item</p>
+<p>有一篇大牛的文章（2009年）中提到了相同的问题。 <a href="http://timyang.net/data/Memcached-lru-evictions/" target="_blank" rel="noopener">http://timyang.net/data/Memcached-lru-evictions/</a> </p>
+</li>
+</ol>
+</li>
+<li><p>场景：<br> 我以下面的方式启动</p>
+<pre><code>memcached -p 11211 -m 44m -vv -f1.25
+</code></pre></li>
+</ol>
+<p>下面的方式写入数据</p>
+<pre><code>for (i = 0; i &lt; 10922 * 44m; i++)
+{
+    set( i, &apos;1&apos;, 0); // 写入长度为1，0代表过期时间
+}
+</code></pre><p>这样的话44m空间全部用完。当我们再次写入长度为1000的，将会写入到 slab class 12中。但是我们知道44m空间，已经用完，但实际上我们发现slab class 12可以写入。这儿刚好验证了【注意】中的内容</p>
+<p>##LRU队列：</p>
+<p>上面讲述了如何分配item，那么分配以后的item如何进行管理和查找呢，就需要LRU队列和Hash表。LRU队列管理Item，LRU队列是一个双向链表，个数与subclass的个数相同。同一个subclass的所有item都归同一个LRU队列管理。</p>
+<p>在item.c中</p>
+<pre><code>static item *heads[LARGEST_ID];
+static item *tails[LARGEST_ID];
+static crawler crawlers[LARGEST_ID];
+static itemstats_t itemstats[LARGEST_ID];
+static unsigned int sizes[LARGEST_ID];
+</code></pre><p>通过LRU队列的操作，可以更清楚明白LRU队列的作用：</p>
+<ol>
+<li>插入：插入到LRU队列的头部</li>
+<li>更新：在LRU队列中，排的越靠后就认为越少被使用的item，那么其被淘汰的概率就越大，所以新的item（访问时间新）要排在不那么新的item前面，所以插入在头部是必须的。<br>do_item_update就是先把item从LRU队列中删除，再插入LRU队列，更新time字段（time表示最后访问时间）</li>
+</ol>
+<h2 id="Hash表"><a href="#Hash表" class="headerlink" title="Hash表"></a>Hash表</h2><ol>
+<li>当item分配并赋值以后，需要注册到LRU队列和Hash表中。注册到Hash表以后，将方便我们进行查询。利用item的数据部分（data字段）和键长（nkey字段）进行hash。Hash表的结构是常见的拉链结构。</li>
+<li>Hash表的扩展<br> Hash表的长度并不是不变的。当Hash表中的Item数量达到了Hash表长度的1.5倍时，那么就会扩展哈希表的长度，然后重新进行Hash<br> 由于这一步耗时，是通过专门的线程 迁移线程进行的。</li>
+<li>Hash表与Item的关系<br> Item在分配以后，会通过do_item_link do_\item_unlink将Item注册到Hash表和LRU队列中</li>
+</ol>
+<h2 id="过期失效处理"><a href="#过期失效处理" class="headerlink" title="过期失效处理"></a>过期失效处理</h2><ol>
+<li><p>一个item在两种情况下会过期失效</p>
+<pre><code>item的expire时间戳到了
+用户使用flush_all将全部item变成过期失效
+</code></pre></li>
+<li><p>懒惰删除<br> 只有在进行get时，才会进行判断，然后进行删除</p>
+</li>
+</ol>
+<h2 id="重要原则："><a href="#重要原则：" class="headerlink" title="重要原则："></a>重要原则：</h2><ol>
+<li>按照预定大小，将分配的slab分割成特定长度的块</li>
+<li>分配给某个slab的内存不能给其他slab使用。已经分配出去的slab不会被回收或者重新分配，因为这种原理，也就出现了【注意】里面所描述的情况</li>
+<li>item里面不仅仅存放缓存对象的value，还包括key，expire，time，flag等详细信息。其中time表示最后一次访问时间，expire表示过期时间。</li>
+</ol>
+<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><p>场景1：<br>    一开始大量长度为1kb，全部占用，之后存储大量10kb，只有一个slab，那么10kb大量访问，那么就会出现没到过期时间，数据全部失效。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="ckw1wtyks003futnufb7d80i9" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/04/17/memcache常见问题/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          4. Memcached常见问题
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/04/17/memcache启动及telnet命令/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">2. Memcache启动及Telnet命令</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

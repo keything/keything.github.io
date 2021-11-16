@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Index Condition Pushdown 优化 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="Index Condition Pushdown是一种优化，针对的是使用索引去表中获取记录rows的优化。没有ICP的话，存储引擎遍历索引来定位数据表中的记录（rows），并将其返回给Mysql的server层，在server层对所获取的记录进行WHERE条件的过滤。开启ICP后，如果WHERE条件中的某些字段刚好是索引中的字段，那么Mysql的server层会将这些字段下放到存储引擎，存储引擎会">
+<meta name="keywords" content="mysql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Index Condition Pushdown 优化">
+<meta property="og:url" content="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="Index Condition Pushdown是一种优化，针对的是使用索引去表中获取记录rows的优化。没有ICP的话，存储引擎遍历索引来定位数据表中的记录（rows），并将其返回给Mysql的server层，在server层对所获取的记录进行WHERE条件的过滤。开启ICP后，如果WHERE条件中的某些字段刚好是索引中的字段，那么Mysql的server层会将这些字段下放到存储引擎，存储引擎会">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://keything.github.io/images/no_icp.png">
+<meta property="og:image" content="http://keything.github.io/images/icp.png">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.244Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Index Condition Pushdown 优化">
+<meta name="twitter:description" content="Index Condition Pushdown是一种优化，针对的是使用索引去表中获取记录rows的优化。没有ICP的话，存储引擎遍历索引来定位数据表中的记录（rows），并将其返回给Mysql的server层，在server层对所获取的记录进行WHERE条件的过滤。开启ICP后，如果WHERE条件中的某些字段刚好是索引中的字段，那么Mysql的server层会将这些字段下放到存储引擎，存储引擎会">
+<meta name="twitter:image" content="http://keything.github.io/images/no_icp.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Index-Condition-Pushdown-优化" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/26/Index-Condition-Pushdown-优化/" class="article-date">
+  <time datetime="2016-06-26T00:24:56.000Z" itemprop="datePublished">2016-06-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Index Condition Pushdown 优化
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Index Condition Pushdown是一种优化，针对的是使用索引去表中获取记录rows的优化。没有ICP的话，存储引擎遍历索引来定位数据表中的记录（rows），并将其返回给Mysql的server层，在server层对所获取的记录进行WHERE条件的过滤。<br>开启ICP后，如果WHERE条件中的某些字段刚好是索引中的字段，那么Mysql的server层会将这些字段下放到存储引擎，存储引擎会使用这些WHERE条件进行过滤，只有满足这些字段的条件，存储引擎才会去数据表中读取整行记录。</p>
+<p>ICP的优点就是：减少了存储引擎到达数据表的次数，以及MySQL server层到达存储引擎的次数。</p>
+<p>能够使用ICP优化的索引：range，ref， eq_ref和ref_or_null。这些索引都需要获取全表的记录。<br>能够使用ICP优化的引擎：InnoDB和MyISAM。注意 在MySQL5.6的分区表中不支持，MySQL5.7中支持。<br>注意：只支持辅助索引。因为ICP优化的目标：减少读取整行的次数，从而降低了IO操作。对于InnoDB的聚簇索引，已经读取了整行记录，因此使用ICP并不会降低IO。</p>
+<p>优化器没有使用ICP时，数据访问和提取的过程如下：</p>
+<pre><code>1) 当storage engine读取下一行时，首先读取一个索引，然后使用索引在数据表中定位和读取整行数据。
+2) sever层评估where条件，如果该行数据满足where条件则使用，否则丢弃。
+3) 执行1），直到最后一行数据。
+</code></pre><p><img src="/images/no_icp.png" alt="no-icp"></p>
+<p>优化器使用ICP时，server层会将WHERE条件中某些字段（这些字段在索引中）下推到storage engine层。数据访问和提取过程如下：</p>
+<pre><code>1) storage engine从索引中读取下一条索引。
+2) storage engine使用索引评估下推的索引条件。如果没有满足wehere条件，则回到1）。只有当索引满足下推的索引条件的时候，才会继续去数据表中读取数据。
+3) 如果满足WHERE的索引条件，storage engine通过索引定位数据表的行和读取整行数据并返回给server层。
+4) server层评估没有被下推到storage engine层的where条件，如果该行数据满足where条件则使用，否则丢弃。
+</code></pre><p><img src="/images/icp.png" alt="icp"></p>
+<p>举例来说明：一个表中包含一个人和其地址信息，表中有一个索引(zipcode, lastname, firstname)。如果我们知道一个人的zipcode，但不确定其lastname，因此可以像下面一样进行查询</p>
+<pre><code>SELECT * FROM peope WHERE zipcode = &apos;95054&apos; 
+AND lastname LIKE &apos;%etrunica%&apos;
+AND address LIKE &apos;%Main Street%&apos;;
+</code></pre><p>zipcode = ‘95054’可以使用索引，但是第二部分lastname LIKE ‘%etrunica%’，不使用ICP时不能限制需要扫描的记录的行数，需要获取所有满足zipcode = ‘95054’的所有用户记录。</p>
+<p>如果使用ICP，在去数据表读取整行记录之前，MYSQL会检查lastname LIKE ‘%etrunica%’部分。这样避免了去读取不满足lastname 这个条件的数据记录。</p>
+<p>默认ICP是开启的。可以通过index_condition_pushdown来设置。</p>
+<pre><code>set optimizer_switch=&apos;index_condition_pushdown=off&apos;;
+</code></pre><p>特别注意：</p>
+<ol>
+<li>ICP只能用于二级索引，不能用于主索引</li>
+<li>也不是全部where条件都可以用ICP筛选，如果某where条件的字段不在索引中，当然还是要读取整条记录做筛选，在这种情况下，仍然要到server端做where筛选。</li>
+<li>ICP的加速效果取决于在存储引擎内通过ICP筛选掉的数据的比例</li>
+<li>概括之：对于完全命中索引的查询，不需要ICP。比如索引是idx_abc(a,b,c)。查询是where a = 1 and b = 2 则不需要ICP。如果查询是 where a = 1 and b &gt; 3 则会使用ICP.</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li><a href="http://dev.mysql.com/doc/refman/5.6/en/index-condition-pushdown-optimization.html" target="_blank" rel="noopener">http://dev.mysql.com/doc/refman/5.6/en/index-condition-pushdown-optimization.html</a></li>
+<li><a href="http://ourmysql.com/archives/1351" target="_blank" rel="noopener">http://ourmysql.com/archives/1351</a></li>
+<li><a href="http://mdba.cn/?p=315" target="_blank" rel="noopener">http://mdba.cn/?p=315</a></li>
+<li><a href="https://mariadb.com/kb/en/mariadb/index-condition-pushdown/" target="_blank" rel="noopener">https://mariadb.com/kb/en/mariadb/index-condition-pushdown/</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="ckw1wtyj40009utnutcsl5rqi" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/07/03/php的memcache客户端的几点说明/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          php的memcache客户端的几点说明
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Redis内存优化之小的聚合数据类型的特殊编码</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

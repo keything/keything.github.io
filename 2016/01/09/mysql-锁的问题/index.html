@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>mysql 锁的问题 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="6.5 锁问题0. 概述通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。 1. 脏读脏数据是指未提交的数据，如果读到了脏数据，即一个事务">
+<meta name="keywords" content="mysql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mysql 锁的问题">
+<meta property="og:url" content="http://keything.github.io/2016/01/09/mysql-锁的问题/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="6.5 锁问题0. 概述通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。 1. 脏读脏数据是指未提交的数据，如果读到了脏数据，即一个事务">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.262Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="mysql 锁的问题">
+<meta name="twitter:description" content="6.5 锁问题0. 概述通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。 1. 脏读脏数据是指未提交的数据，如果读到了脏数据，即一个事务">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-mysql-锁的问题" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/09/mysql-锁的问题/" class="article-date">
+  <time datetime="2016-01-09T06:52:01.000Z" itemprop="datePublished">2016-01-09</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      mysql 锁的问题
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 锁问题</h1><h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>通过锁定机制可以实现事务的隔离性要求，使得事务可以并发地工作。锁提高了并发，但是却会带来潜在的问题。不过好在因为事务隔离性的要求，锁只会带来三种问题，如果可以防止这三种情况的发生，那将不会产生并发异常。这三种问题分别是脏读（dirty read),不可重复读（Non-repeatable read），更新丢失。</p>
+<h2 id="1-脏读"><a href="#1-脏读" class="headerlink" title="1. 脏读"></a>1. 脏读</h2><p>脏数据是指未提交的数据，如果读到了脏数据，即一个事务可以读到另外一个事务中未提交的数据，则显然违反了数据库的隔离性。脏读指的就是在不同的事务下，当前事务可以读到另外事务未提交的数据，简单来说就是可以读到脏数据。</p>
+<p>在下表中，事务的隔离级别由默认的可重复读（repeatable read)变成了未提交读( read uncommitted).SessionB读取了SessionA中没有提交的数据，违反了数据库的隔离性。</p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>session A</th>
+<th>sessionB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>set @@tx_isolation=’read-uncommitted’</td>
+<td>–</td>
+</tr>
+<tr>
+<td>2</td>
+<td>–</td>
+<td>set @@tx_isolation=’read-uncommitted’</td>
+</tr>
+<tr>
+<td>3</td>
+<td>start transaction</td>
+<td>start transaction</td>
+</tr>
+<tr>
+<td>4</td>
+<td>–</td>
+<td>select mtime from learn2 where id = 9; <strong><em> 9.row </em></strong> mtime = 9000</td>
+</tr>
+<tr>
+<td>5</td>
+<td>update learn2 set mtime = mtime - 100 where id = 9</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>–</td>
+<td>select * from learn2 where id = 9 mtime = 8900</td>
+</tr>
+</tbody>
+</table>
+<p>在MysqlInnoDb中虽然是脏读，但如果在sessionB中执行update learn2 set mtime = mtime - 100 where id = 9;依然需要等待，sessionA中为id=9这一行加锁了</p>
+<h2 id="2-不可重复读"><a href="#2-不可重复读" class="headerlink" title="2. 不可重复读"></a>2. 不可重复读</h2><ol>
+<li>在一个事务的两次查询之中数据不一致，这可能是两次查询过程中间插入了一个事务更新的原有的数据。在第一个书屋的两次读数据之间，由于第二个事务的修改并提交commit以后，那么第一个事务的两次读到的数据就可能不一样，这样在一个事务内两次读到的数据是不一样的情况，称为不可重复读。</li>
+<li>不可重复读和脏读区别    </li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>脏读</th>
+<th>不可重复读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>读取到没有提交的数据</td>
+<td>读取到其他事务已经提交的数据</td>
+</tr>
+<tr>
+<td>违反了隔离性</td>
+<td>违反了一致性</td>
+</tr>
+</tbody>
+</table>
+<p>举例</p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>session A</th>
+<th>sessionB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>set @@tx_isolation=’read-committed’</td>
+<td>–</td>
+</tr>
+<tr>
+<td>2</td>
+<td>–</td>
+<td>set @@tx_isolation=’read-ncommitted’</td>
+</tr>
+<tr>
+<td>3</td>
+<td>start transaction</td>
+<td>start transaction</td>
+</tr>
+<tr>
+<td>4</td>
+<td>–</td>
+<td>select mtime from learn2 where id = 9; ### <strong><em> 9.row </em></strong> mtime = 8900</td>
+</tr>
+<tr>
+<td>5</td>
+<td>update learn2 set mtime = mtime - 100 where id = 9</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>–</td>
+<td>select * from learn2 where id = 9 #mtime = 999</td>
+</tr>
+<tr>
+<td>7</td>
+<td>commit;</td>
+<td>—</td>
+</tr>
+<tr>
+<td>8</td>
+<td>—</td>
+<td>select * from learn2 where id = 9 #mtime = 8800</td>
+</tr>
+</tbody>
+</table>
+<p>在会话A step5更新后，会话B step6没有发生脏读现象。但在commit以后，会话B step8得到的mtime与会话B step6的mtime取值不同。</p>
+<p>在InnoDB存储引擎中，通过使用Next-Key Lock算法来避免不可重复读的问题。在MySQL官方文档中将不可重复读的问题定义为Phantom Problem即幻像问题。在Next-Key Lock算法下，对于索引的扫描，不仅是锁住扫描到的索引，而且还锁住这些索引覆盖的范围（gap）。因此在这个范围内的插入都是不允许的。这样就避免了另外的事务在这个范围内插入数据导致的不可重复读的问题。因此，InnoDB存储引擎的默认事务隔离级别是READ REPEATABLE，采用Next-Key Lock算法，避免了不可重复读的现象。 </p>
+<h2 id="3-更新丢失"><a href="#3-更新丢失" class="headerlink" title="3. 更新丢失"></a>3. 更新丢失</h2><p>case1 </p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>session A</th>
+<th>sessionB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>start transaction</td>
+<td>start transaction</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select * from learn2 where id = 9; mtime = 9999</td>
+<td>select * from learn2 where id = 9 mtime = 9999</td>
+</tr>
+<tr>
+<td>3</td>
+<td>update learn2 set mtime = mtime - 999 where id = 9</td>
+<td>–</td>
+</tr>
+<tr>
+<td>4</td>
+<td>–</td>
+<td>update learn2 set mtime = mtime - 100 where id = 9</td>
+</tr>
+<tr>
+<td>5</td>
+<td>commit</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>—</td>
+<td>commit</td>
+</tr>
+<tr>
+<td>7</td>
+<td>select * from learn2 where id = 9; mtime = 8900</td>
+<td>select * from learn2 where id = 9 mtime = 8900</td>
+</tr>
+</tbody>
+</table>
+<p>第3步update操作锁住id=9这一行（排它锁），第4步sessionB更新的时候进行等待，只有第5步commit以后第4步的update才更新成功。<br>由于排它锁的存在并且update基于是mtime的数据库取值，保证了不会存在<code>丢失更新</code>的问题。但如果update xx set mtime = some_value 这样的操作，那么就会出现<code>丢失更新</code>的现象。 </p>
+<p>case2 </p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>session A</th>
+<th>sessionB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>start transaction</td>
+<td>start transaction</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select * from learn2 where id = 9; mtime = 9999</td>
+<td>select * from learn2 where id = 9 mtime = 9999</td>
+</tr>
+<tr>
+<td>3</td>
+<td>update learn2 set mtime = 999 where id = 9</td>
+<td>–</td>
+</tr>
+<tr>
+<td>4</td>
+<td>–</td>
+<td>update learn2 set mtime = 100 where id = 9</td>
+</tr>
+<tr>
+<td>5</td>
+<td>commit</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>—</td>
+<td>commit</td>
+</tr>
+<tr>
+<td>7</td>
+<td>select * from learn2 where id = 9; mtime = 100</td>
+<td>select * from learn2 where id = 9 mtime = 100</td>
+</tr>
+</tbody>
+</table>
+<p>如何避免这种<code>丢失更新</code>的情况发生呢<br>case3 </p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>session A</th>
+<th>sessionB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>start transaction</td>
+<td>start transaction</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select * from learn2 where id = 9 for update; mtime = 9999</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3</td>
+<td>—</td>
+<td>select * from learn2 where id = 9 for update; # 等待 其真正发生是在sessionA的commit以后</td>
+</tr>
+<tr>
+<td>4</td>
+<td>一系列操作</td>
+<td>一系列操作</td>
+</tr>
+<tr>
+<td>5</td>
+<td>update learn2 set mtime = 999 where id = 9</td>
+<td>–</td>
+</tr>
+<tr>
+<td>4</td>
+<td>–</td>
+<td>update learn2 set mtime = 100 where id = 9</td>
+</tr>
+<tr>
+<td>5</td>
+<td>commit</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>—</td>
+<td>commit</td>
+</tr>
+<tr>
+<td>7</td>
+<td>select * from learn2 where id = 9; mtime = 100</td>
+<td>select * from learn2 where id = 9 mtime = 100</td>
+</tr>
+</tbody>
+</table>
+<p>在这个例子中，sessionB的select ..for update操作是在sessionA commit以后才会发生。commit之前，sessionB一直处于等待状态。sessionA提交以后，select的结果是mtime = 999;</p>
+<p>在上述的例子中为什么不直接允许UPDATE语句，而首先要进行SELECT…FOR UPDATE的操作。的确，直接使用UPDATE可以避免丢失更新的问题发生。在实际应用中，应用程序可能需要首先检测用户的余额信息，查看是否可以进行转账操作，然后再进行最后的UPDATE操作，因此在SELECT与UPDATE操作之间可能还存在一些其他的SQL操作。</p>
+<p>有用的mysql命令</p>
+<pre><code>查询隔离级别
+SELECT @@global.tx_isolation; 
+SELECT @@session.tx_isolation; 
+SELECT @@tx_isolation;
+设置隔离级别
+set @@tx_isolation=&apos;read-committed&apos;
+</code></pre><p>参考文章：<br>    <a href="http://techlog.cn/article/list/10182853" target="_blank" rel="noopener">http://techlog.cn/article/list/10182853</a><br>    姜承尧. “MySQL技术内幕：InnoDB存储引擎 第2版”</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw1wtyl1003uutnuzhm4h5nm" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/02/07/zsh基础知识/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          zsh基础知识
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/01/04/escape-character/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">转义字符</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

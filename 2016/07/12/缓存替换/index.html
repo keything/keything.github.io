@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>缓存替换 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="零 概述在业务中不可避免的需要使用缓存，当缓存数据很少时，只需要几台缓存服务器即可满足需求。 但是当业务增多时，就需要N个业务M个缓存服务器。缓存服务器不管使用memcache还是redis，都是需要业务方来管理缓存服务器的host和port。 我们业务中使用的memcache服务器接近千台，还需要业务方告知相关人员来处理memcache的问题（memcache机器宕机或者连接数打满）。而实际上，">
+<meta name="keywords" content="nosql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="缓存替换">
+<meta property="og:url" content="http://keything.github.io/2016/07/12/缓存替换/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="零 概述在业务中不可避免的需要使用缓存，当缓存数据很少时，只需要几台缓存服务器即可满足需求。 但是当业务增多时，就需要N个业务M个缓存服务器。缓存服务器不管使用memcache还是redis，都是需要业务方来管理缓存服务器的host和port。 我们业务中使用的memcache服务器接近千台，还需要业务方告知相关人员来处理memcache的问题（memcache机器宕机或者连接数打满）。而实际上，">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.281Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="缓存替换">
+<meta name="twitter:description" content="零 概述在业务中不可避免的需要使用缓存，当缓存数据很少时，只需要几台缓存服务器即可满足需求。 但是当业务增多时，就需要N个业务M个缓存服务器。缓存服务器不管使用memcache还是redis，都是需要业务方来管理缓存服务器的host和port。 我们业务中使用的memcache服务器接近千台，还需要业务方告知相关人员来处理memcache的问题（memcache机器宕机或者连接数打满）。而实际上，">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-缓存替换" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/12/缓存替换/" class="article-date">
+  <time datetime="2016-07-12T01:39:14.000Z" itemprop="datePublished">2016-07-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      缓存替换
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="零-概述"><a href="#零-概述" class="headerlink" title="零 概述"></a>零 概述</h1><p>在业务中不可避免的需要使用缓存，当缓存数据很少时，只需要几台缓存服务器即可满足需求。 但是当业务增多时，就需要N个业务M个缓存服务器。缓存服务器不管使用memcache还是redis，都是需要业务方来管理缓存服务器的host和port。</p>
+<p>我们业务中使用的memcache服务器接近千台，还需要业务方告知相关人员来处理memcache的问题（memcache机器宕机或者连接数打满）。而实际上，对于我们业务方而言，只需要使用缓存服务器即可，业务方不需要关注缓存服务器的重启和健康检查。当然了，业务方还是需要关注访问缓存服务器的访问时间。</p>
+<h2 id="一-我们对缓存服务的要求"><a href="#一-我们对缓存服务的要求" class="headerlink" title="一 我们对缓存服务的要求"></a>一 我们对缓存服务的要求</h2><ol>
+<li>单个请求耗时在2ms以内</li>
+<li>能够抗住30w qps的压力</li>
+</ol>
+<h2 id="二-我们的尝试"><a href="#二-我们的尝试" class="headerlink" title="二 我们的尝试"></a>二 我们的尝试</h2><h3 id="I-首先尝试twitter的twemproxy"><a href="#I-首先尝试twitter的twemproxy" class="headerlink" title="I. 首先尝试twitter的twemproxy"></a>I. 首先尝试twitter的twemproxy</h3><ol>
+<li><p>Twemproxy介绍</p>
+<p> Twemproxy是一个使用C语言编写、以代理的方式实现的、轻量级的代理服务器，通过引入一个代理层，将应用程序后端的多台Redis实例进行统一管理，使应用程序只需要在Twemproxy上进行操作，而不用关心后面具体有多少个真实的Redis或Memcached实例，从而实现了基于Redis和Memcached的集群服务。当某个节点宕掉时，Twemproxy可以自动将它从集群中剔除，而当它恢复服务时，Twemproxy也会自动连接。<br> Twemproxy的缺点：1. 无法平滑地扩容/缩容， 2. 运维不友好，没有控制面板（对于业务方而言，这个不是问题）3. 经过一层代理，对性能有损耗。</p>
+</li>
+</ol>
+<ol start="2">
+<li><p>我们测试的结果</p>
+<p> a. 压测方式一：</p>
+<p> 使用twitter自家的<a href="https://github.com/twitter/twemperf" target="_blank" rel="noopener">mcperf</a>压测工具来压测twemproxy。</p>
+<p> 压测命令：</p>
+<pre><code>/bin/mcperf --timeout=0.2 --conn-rate=1000 --call-rate=5000000 --num-calls=1000 --num-conns=100 --sizes=u32,1024 -s 10.10.10.10 -p 11211
+</code></pre><p> 压测结果：</p>
+<p> |case| 直连memcache|连接twemproxy|<br> |—|—|—|<br> |数据在32字节和1k字节之间|57750 qps, 耗时100ms以内|25589 qps，耗时100ms以上非常多|<br> |数据在4k和8k字节之间|18156 qps | 12376 qps|</p>
+<p> b. 压测方式二：使用n个php进程压测，这种压测方法并不能够得到一个<code>mcperf</code>的准确的qps，但是更接近我们的应用场景，也能够看出一些问题。这种方式压测中发现的问题：</p>
+<p> 1) twemproxy所在机器TIME_WAIT和CLOSE_WAIT非常高<br> 2) 单次请求耗时增加，连接twemproxy的qps小于直连memcache</p>
+<p> <code>TIME_WAIT</code>及<code>CLOSE_WAIT</code>非常高的原因：</p>
+<p>  php端设置超时时间是100ms，即server端100ms内没有响应时，php端就会主动断开连接。上面提到mcperf压测时超过100ms的请求非常多，那么100ms没有收到响应时php段就会主动断开连接。由于twemproxy服务器过于繁忙，没有调用close从而导致twemproxy处于<code>CLOSE_WAIT</code>状态。</p>
+<p> 对于<code>TIME_WAIT</code>而言，则是twemproxy向memcache服务器发送请求，等待某个时间（twemproxy中设置），如果没有响应，twemproxy就会主动断开连接；当大量从twemproxy到达memcache的请求超时时，就会出现<code>TIME_WAIT</code>过多。</p>
+</li>
+</ol>
+<h3 id="II-可以考虑方案"><a href="#II-可以考虑方案" class="headerlink" title="II 可以考虑方案"></a>II 可以考虑方案</h3><p>我们将可以考虑的方案列一下，360的bada，360的<a href="https://github.com/Qihoo360/pika" target="_blank" rel="noopener">pika</a>，豌豆荚的<a href="https://github.com/CodisLabs/codis" target="_blank" rel="noopener">codis</a>。 </p>
+<p>先来说一下豌豆荚的codis，它跟twemproxy一样都是经过一层代理，首先经过一层代理必然会造成一定的性能损耗，其次在内存拷贝上codis并没有进行优化，官方开发者spinlock在<a href="https://github.com/CodisLabs/codis/issues/309" target="_blank" rel="noopener">答疑</a>中提到:a. <code>twemproxy只有redis性能一半</code>, b. <code>codis比twemproxy慢</code>。</p>
+<p>也就是说，不管是twemproxy还是codis，这种经过一层代理的方式都会造成一定的性能损耗；并且在高并发的情况下，代理会带来更多的问题；综合考虑，我们不使用这种代理的方式</p>
+<p>再来说一下公司的pika，数据存在硬盘并且底层是rocksdb，单个请求和并发都不满足需求。</p>
+<p>再来说一下公司的bada，qps在10w以上，但是平均耗时比redis多。</p>
+<p>综合考虑，我们决定测试一下RedisCluster，看是否满足我们的需求。</p>
+<h3 id="III-RedisCluster"><a href="#III-RedisCluster" class="headerlink" title="III RedisCluster"></a>III RedisCluster</h3><ol>
+<li>压测环境<br>Redis3.0.5版的<a href="https://github.com/antirez/redis/issues/2191" target="_blank" rel="noopener">Redis-benchmark并不支持对RedisCluster的压力测试</a>。看了一下常见的压测工具都没有直接对RedisCluster进行压测的工具。没有办法，只好使用25台测试机，单机进程总数，每个进程请求数量10w个，通过日志记录每个请求的耗时时间，对日志进行分析。</li>
+<li><p>qps粗略计算</p>
+<p> 采用php直接压测，qps的粗略计算：</p>
+<pre><code>机器数*每台机器的php进程数*1000（1s=1000ms)/ 单个请求耗时（单位ms）
+</code></pre><p> 如果单次请求是5ms，则预计是<code>25*5*1000/5=2.5w</code></p>
+<p> 当然还可以通过redis-trib.rb得到，将数字部分累加即可。</p>
+<pre><code>$./redis-trib.rb call 10.138.113.202:16001 info | grep -iE &quot;instantaneous_ops_per_sec&quot;
+
+instantaneous_ops_per_sec:3963
+instantaneous_ops_per_sec:3842
+instantaneous_ops_per_sec:4219
+instantaneous_ops_per_sec:3590 
+</code></pre><p> 对RedisCluster，Memcache，Redis进行压力测试，主要是测试在高并发情况下三者的耗时。耗时位于0-5ms的比例Redis好于Memcache好于Cluster。解释：</p>
+<p> 因为RedisCluster在创建对象的时候需要发送<code>cluster slots</code>命令获取一次集群的节点信息，导致耗时比redis和memcache要久。当然这也是其比memcache明智的地方， 因为memcache需要业务方维护一份节点信息，一旦需要更换节点，则需要业务方进行更改；而cluster的节点信息是由cluster的管理员维护。</p>
+<p> 对于单个http请求而言，与memcache和Redis相比，只是多了获取节点信息的操作</p>
+</li>
+<li><p>压测中发现<a href="https://github.com/phpredis/phpredis" target="_blank" rel="noopener">phpredis驱动</a>的一个问题：</p>
+<p> 压测过程中发现单个redis-cluster节点接受cluster-slots命令是4000qps.（该命令获取集群节点映射信息），当大于4000qps时，耗时就会急剧增加。</p>
+<p> 对于这个问题，可以通过增加cluster节点来解决。</p>
+<p> 当然最好的方法是修改phpredis的cluster驱动，能够缓存cluster节点信息，不用每次创建对象的时候都发送clusterslots命令</p>
+</li>
+</ol>
+<h2 id="我们最后的选择"><a href="#我们最后的选择" class="headerlink" title="我们最后的选择"></a>我们最后的选择</h2><ol>
+<li><p>基于上面的压测，我们决定使用RedisCluster，原因有二：</p>
+<p> a. 对于单个http请求（里面可能有多个缓存操作）而言，相比直连memcache或者redis，只是多了一步获取节点信息的耗时，耗时在2ms左右，这点性能损耗我们是可以忍受的。</p>
+<p> b. 对于DBA而言，维护简单，扩容方便；对于业务方而言，我只需要获取RedisCluster的一个节点进行连接即可，跟使用普通Redis差别不大。 </p>
+</li>
+<li><p>使用RedisCluster中存在的问题</p>
+<p> 前端机连接RedisCluster使用短连接，因此造成前端机TIMEWAIT过高，从而导致大量的连接超时。这儿要说明两个问题，第一个是为何使用短连接，因为使用长连接的话就不会存在TIMEWAIT过高的问题。第二个是TIMEWAIT过高的解决方式。</p>
+<p> 问题1：使用短连接而不使用长连接</p>
+<p> 原因是：使用长连接可能造成前端机或cluster机器端口不够用</p>
+<p> 先确定采用长连接时Cluster服务器连接数的计算方式：<code>前端机数量*每台前端机fpm进程数量</code>。如果前端机数量非常多，比如300台，每台前端机fpm128个，那么与某台cluster建立的长连接数量是38400，会造成cluster上连接数过多。<br> 而对于前端机而言，则可能会造成端口不够用。端口范围由net.ipv4.ip_local_port_range决定）。<br> 为了避免出现这个问题，我们使用短连接而不是长连接</p>
+<p> 问题2：TIMEWAIT</p>
+<p> TIMEWAIT出现原因：发送方主动断开连接时，收到接收方发来的FIN以后处于的状态，这是TCP四次挥手的正常状态。但是由于TIMEWAIT状态时，连接依然占有端口和fd，因此可能会出现端口不够用或套接字不够用的情况，从而导致连接失败。<br> TIMEWAIT解决方法：我们采用的是修改net.ipv4.tcp_max_tw_buckets = 5000。</p>
+</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="https://github.com/CodisLabs/codis/issues/309" target="_blank" rel="noopener">codis, redis, twemproxy对比</a></p>
+<p><a href="http://chuansong.me/n/1271889" target="_blank" rel="noopener">redis cluster浅析与bada对比</a></p>
+<p><a href="http://www.infoq.com/cn/articles/effective-ops-part-03" target="_blank" rel="noopener">Redis集群技术及Codis实践</a></p>
+<p><a href="https://github.com/phpredis/phpredis/blob/develop/README.markdown" target="_blank" rel="noopener">PhpRedis集群介绍</a></p>
+<p><a href="https://github.com/antirez/redis/issues/2191" target="_blank" rel="noopener">redis-benchmark cannot work on Redis Cluster</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="ckw1wtylt005iutnub6ev5570" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/07/16/Redis与Memcache作为缓存时的比较/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Redis与memcache作为缓存时的比较
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/07/09/内核参数-tcp-syncookies/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">内核参数 tcp_syncookies-- 默认开启tcp_syncookies</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

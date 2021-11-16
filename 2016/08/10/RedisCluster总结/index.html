@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>RedisCluster总结 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一、RedisCluster基本内容1. 项目背景a. 整个项目背景 云盘memcache服务器分散，监控和替换麻烦   云盘100多个集群，每个集群4个memcache，需要业务方配置和监控这些memcache。一旦memcache超时或者不可用，需要业务方和ops共同操作才能解决memcache的问题。  云盘缓存并发高、空间大   云盘缓存有36亿，400G空间，每秒钟25万的请求量，因此需">
+<meta name="keywords" content="nosql,redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RedisCluster总结">
+<meta property="og:url" content="http://keything.github.io/2016/08/10/RedisCluster总结/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="一、RedisCluster基本内容1. 项目背景a. 整个项目背景 云盘memcache服务器分散，监控和替换麻烦   云盘100多个集群，每个集群4个memcache，需要业务方配置和监控这些memcache。一旦memcache超时或者不可用，需要业务方和ops共同操作才能解决memcache的问题。  云盘缓存并发高、空间大   云盘缓存有36亿，400G空间，每秒钟25万的请求量，因此需">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://keything.github.io/images/redis_cluster/脑裂.png">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.247Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RedisCluster总结">
+<meta name="twitter:description" content="一、RedisCluster基本内容1. 项目背景a. 整个项目背景 云盘memcache服务器分散，监控和替换麻烦   云盘100多个集群，每个集群4个memcache，需要业务方配置和监控这些memcache。一旦memcache超时或者不可用，需要业务方和ops共同操作才能解决memcache的问题。  云盘缓存并发高、空间大   云盘缓存有36亿，400G空间，每秒钟25万的请求量，因此需">
+<meta name="twitter:image" content="http://keything.github.io/images/redis_cluster/脑裂.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-RedisCluster总结" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/08/10/RedisCluster总结/" class="article-date">
+  <time datetime="2016-08-10T13:39:06.000Z" itemprop="datePublished">2016-08-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      RedisCluster总结
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="一、RedisCluster基本内容"><a href="#一、RedisCluster基本内容" class="headerlink" title="一、RedisCluster基本内容"></a>一、RedisCluster基本内容</h1><h2 id="1-项目背景"><a href="#1-项目背景" class="headerlink" title="1. 项目背景"></a>1. 项目背景</h2><h3 id="a-整个项目背景"><a href="#a-整个项目背景" class="headerlink" title="a. 整个项目背景"></a>a. 整个项目背景</h3><ul>
+<li><p>云盘memcache服务器分散，监控和替换麻烦</p>
+<p>  云盘100多个集群，每个集群4个memcache，需要业务方配置和监控这些memcache。一旦memcache超时或者不可用，需要业务方和ops共同操作才能解决memcache的问题。</p>
+</li>
+<li><p>云盘缓存并发高、空间大</p>
+<p>  云盘缓存有36亿，400G空间，每秒钟25万的请求量，因此需要高并发的缓存集群才能满足需求。</p>
+</li>
+</ul>
+<h3 id="b-现在的替代方案"><a href="#b-现在的替代方案" class="headerlink" title="b. 现在的替代方案"></a>b. 现在的替代方案</h3><p>使用RedisCluster作为缓存集群。其特点（也是其设计目标）是：</p>
+<ul>
+<li>水平扩展：最大可以扩展到1000个节点</li>
+<li>可以接受的写安全：当出现网络分区（即脑裂）的时候能保证连接到大多数节点分区的写是安全的。</li>
+<li>高可用性：当出现网络分区时，大多数节点所在的分区是可用的；并且通过复制转移（replicas migration）保证没有从节点的主节点获得一个从节点。<br>  （所谓的复制转移：当一个主节点A有多个从节点A1,A2,A3，而另外一个主节点B没有从节点时，RedisCluster集群会从多个从节点A1,A2,A3中选择一个从节点A2作为主节点B的从节点）</li>
+</ul>
+<p>目前RedisCluster 目前集群大小是：</p>
+<ul>
+<li>一个机房一个大集群</li>
+<li>bjdt：集群中有24个节点，每个节点一主一从。每个节点18.63G</li>
+<li>bjcc：集群内有16个节点，每个节点一主一从。每个节点18.63G。</li>
+</ul>
+<h2 id="2-使用方法"><a href="#2-使用方法" class="headerlink" title="2. 使用方法"></a>2. 使用方法</h2><h3 id="a-业务方使用："><a href="#a-业务方使用：" class="headerlink" title="a. 业务方使用："></a>a. 业务方使用：</h3><p>有两种客户端，一种是笨蛋客户端，一种是智能客户端。</p>
+<p><code>笨蛋客户端</code>：本地不缓存节点信息，请求达到任意一个RedisCluster节点后，被告知真正的节点，然后再次请求。比如：redis-cli，telnet</p>
+<pre><code>redis-cli -c -h 10.10.10.10 -p 6666
+10.10.10.10:6666&gt; get ab
+-&gt; Redirected to slot [13567] located at 11.11.11.11:6666
+&quot;1&quot;
+</code></pre><p><code>智能客户端</code>：本地缓存节点信息，通过本地计算出槽位，直接发一次请求即可。</p>
+<h3 id="b-phpredis"><a href="#b-phpredis" class="headerlink" title="b. phpredis"></a>b. phpredis</h3><p>目前<a href="https://github.com/phpredis/phpredis" target="_blank" rel="noopener">phpredis</a>是智能客户端。</p>
+<p>不过在最开始的版本中，phpredis每次new RedisCluster都会发送cluster slots来获取节点信息，其实对于一个业务而言是没有必要的。原因是因为RedisCluster一旦稳定后一般不会调整，那么其节点信息就维持不变，因此没有必要每次都去获取。并且cluster slots非常消耗cluster节点的cpu。这一点<a href="https://github.com/JacketWoo" target="_blank" rel="noopener">吴晓飞</a>同学已经给phpredis提了<a href="https://github.com/phpredis/phpredis/pull/826" target="_blank" rel="noopener">pullrequest</a></p>
+<h2 id="3-RedisCluster基本概念"><a href="#3-RedisCluster基本概念" class="headerlink" title="3. RedisCluster基本概念"></a>3. RedisCluster基本概念</h2><h3 id="a-集群创建"><a href="#a-集群创建" class="headerlink" title="a. 集群创建"></a>a. 集群创建</h3><ol>
+<li>Redis实例启动，redis.conf中多了一个配置项<code>cluster-enabled yes</code></li>
+<li>Redis节点通过<code>cluster meet</code>形成一个集群，但是集群不可用</li>
+<li>分配槽位：需要将16384个槽位分配到集群中各个节点。如果有的槽位没有分配成功，那么集群就可能不可用（跟<code>cluster-require-full-coverage</code>参数有关系）</li>
+</ol>
+<h3 id="b-RedisCluster-keys分布模型"><a href="#b-RedisCluster-keys分布模型" class="headerlink" title="b. RedisCluster keys分布模型"></a>b. RedisCluster keys分布模型</h3><p>一共有16384个hash槽位。集群中每个主节点负责16384个槽位中的一部分。如果没有正在进行中的集群重新配置，那么槽位的分布是稳定的。</p>
+<p>key与槽位的映射关系计算算法（如果有hash tags则不使用该计算算法）</p>
+<pre><code>HASH_SLOT=CRC(key) mod 16384
+</code></pre><h3 id="c-RedisCluster与Memcache比较"><a href="#c-RedisCluster与Memcache比较" class="headerlink" title="c. RedisCluster与Memcache比较"></a>c. RedisCluster与Memcache比较</h3><p>我们知道Memcached是“分布式”缓存服务器，但是服务器端没有分布式功能，需要客户端来实现分布式，也就是需要客户端配置好几台memcached服务器，根据分布式算法（一般采用一致性hash算法）计算哪个key位于哪台memcached机器上。</p>
+<p>而RedisCluster没有采用一致性hash算法，而是采用了一种<code>hash 槽位</code>的概念。与Memcached相比，业务方不需要维护memcached服务器的列表。使用智能客户端，可以先获取一份节点信息，然后在本地进行计算hash槽位。</p>
+<h3 id="d-RedisCluster-HashTags"><a href="#d-RedisCluster-HashTags" class="headerlink" title="d. RedisCluster HashTags"></a>d. RedisCluster HashTags</h3><p>所谓的<code>hash tags</code>是指key中出现了<code>{&quot;字符串&quot;}</code>或者空的符合<code>{}</code>。 当出现<code>HashTags</code>时，key的<code>hash 槽位</code>不是计算整个key所在的槽位，而是计算<code>{}</code>中间字符串的槽位。<br>举例：<code>{user1000}.following</code> 与 <code>{user1000}.followers</code> 这两个key在同一个slot里面。因为其<code>hash tags</code>中的字符串是 <code>user1000</code></p>
+<h3 id="e-RedisCluster和Redis比较"><a href="#e-RedisCluster和Redis比较" class="headerlink" title="e. RedisCluster和Redis比较"></a>e. RedisCluster和Redis比较</h3><ul>
+<li>RedisCluster实现了所有单key的命令，比如get,set</li>
+<li>RedisCluster中多key操作的命令要求多key必须在同一个节点上，可以通过<code>hash tags</code>强迫这些key存在相同节点上。</li>
+</ul>
+<h3 id="f-RedisCluster重定向"><a href="#f-RedisCluster重定向" class="headerlink" title="f. RedisCluster重定向"></a>f. RedisCluster重定向</h3><h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><p>RedisCluster有两种重定向错误：<code>-MOVED</code>和<code>-ASK</code>两种重定向错误</p>
+<p>刚刚在<code>RedisCluster keys</code>分布模型中提到如果没有进行中的集群重新配置，那么槽位分布是稳定的。<br>如果集群正在发生调整呢，那么集群会返回给客户端<code>-MOVED 8 127.0.0.1:8080</code>错误或者 <code>-ASK 8 127.0.0.1:8080</code>这两个重定向错误。 </p>
+<h4 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h4><p>举例：假设集群中节点A(<code>127.0.0.1:8080</code>)负责hash槽位13565,13566,13567。 节点B(<code>127.0.0.2:8080</code>)负责hash槽位100，101，102。</p>
+<p><code>根据crc(ab) mod 16384计算得到ab这个key的slot是13567</code></p>
+<p>a. 如果集群没有调整，那么 向节点B请求get ab ，那么节点B会返回<code>-MOVED 127.0.0.1:8080</code>。 </p>
+<p>b. 如果集群有所调整，将hash槽位13567从节点A迁移到节点B。</p>
+<p>在迁移过程中，节点A处于<code>MIGRATING</code>状态，节点B处于<code>IMPORTING</code>状态。</p>
+<p>此时向节点A请求get ab， </p>
+<p>1) 如果ab这个位于13567的key已经迁移到节点B了，那么将会受到<code>-ASK 127.0.0.2:8080</code>，此时客户端先向节点B发送一个ASKING的命令，然后再get ab就可以获得数据。如果客户端不向节点B发送一个ASKING命令，而是直接向节点B发送get ab则会返回<code>-MOVED</code>错误。<br>2) 如果ab这个位于13567的key没有迁移到节点B，即依然在节点A上，那么直接返回数据。</p>
+<p>c. 如果集群已经调整完毕，即hash槽位13567位于节点B，那么向节点A请求 get ab就会返回<code>-MOVED 127.0.0.2:8080</code></p>
+<h4 id="MOVED和-ASK两个重定向区别："><a href="#MOVED和-ASK两个重定向区别：" class="headerlink" title="-MOVED和-ASK两个重定向区别："></a><code>-MOVED</code>和<code>-ASK</code>两个重定向区别：</h4><ol>
+<li>MOVED代表槽已经完全从一个节点迁移到另外一个节点</li>
+<li>ASK是槽位迁移的中间态，代表这个槽位的节点正在迁移。只针对这个槽位的这个key进行重定向，该槽位上其他key依然先到原来的节点</li>
+</ol>
+<h3 id="f-RedisCluster节点属性"><a href="#f-RedisCluster节点属性" class="headerlink" title="f. RedisCluster节点属性"></a>f. RedisCluster节点属性</h3><pre><code>redis-cli cluster nodes
+d1861060fe6a534d42d8a19aeb36600e18785e04 127.0.0.1:6379 myself - 0 1318428930 1 connected 0-1364
+3886e65cc906bfd9b1f7e7bde468726a052d1dae 127.0.0.1:6380 master - 1318428930 1318428931 2 connected 1365-2729
+d289c575dcbc4bdd2931585fd4339089e461a27d 127.0.0.1:6381 master - 1318428931 1318428931 3 connected 2730-4095
+</code></pre><p>通过<a href="http://redis.io/commands/cluster-nodes" target="_blank" rel="noopener">cluster nodes</a>命令可以知道RedisCluster集群的很多信息，比如当前槽位分布，当前节点个数及其ip:port等等</p>
+<h1 id="二、RedisCluster的高可用原理"><a href="#二、RedisCluster的高可用原理" class="headerlink" title="二、RedisCluster的高可用原理"></a>二、RedisCluster的高可用原理</h1><h2 id="1-RedisCluster的CAP"><a href="#1-RedisCluster的CAP" class="headerlink" title="1. RedisCluster的CAP"></a>1. RedisCluster的CAP</h2><p>RedisCluster本身是一个分布式NoSQL，因此必然符合CAP定理中的相关内容。</p>
+<h3 id="CAP定理"><a href="#CAP定理" class="headerlink" title="CAP定理"></a>CAP定理</h3><p>CAP定理基本描述：</p>
+<p>给定”一致性Consistency“、”可用性Availability“、”分区耐受性Partition tolerance”这三个属性，我们只能同时满足其中两个属性。</p>
+<ul>
+<li><p>分区耐受性：如果发生通信故障，导致整个集群被分隔成多个无法互相通信的分区时（这种情况也叫“脑裂” split brain），集群依然可用。</p>
+<p>  在RedisCluster中有个参数cluster-require-full-coverage<br>  该参数取值为yes时，出现分区时则不可用；反之则不可用</p>
+<p>  <img src="/images/redis_cluster/脑裂.png" alt="脑裂"></p>
+</li>
+<li><p><code>一致性</code>：在各个节点上数据一样。<br>  一致性的关键在于：将请求序列化，使之成为原子的（atomic）、相互隔离的（Isolated）”工作单元“（work unit）。</p>
+</li>
+<li><p><code>可用性</code>：如果客户可以同集群中的某个节点通信，那么该节点就必须能够处理读取及写入操作。<br>CAP定理中将可用性定义为：系统中某个无故障节点所接受的每一条请求，无论成功或失败，都必将得到响应。所以按照这个定义，发生故障且无法响应客户请求的节点，并不会导致系统失去“CAP定理”所定义的那种“可用性”。</p>
+</li>
+</ul>
+<p>这意味着你可以构建一个CA集群，如果出现“分区”现象，那么所有节点必须全部停止工作。</p>
+<p>尽管CAP定理经常表述为“三个属性中只能保有两个”，但实际上是在讲：当系统可能遭遇“分区”状况时，我们需要在“一致性”与“可用性”之间进行权衡。通常我们会略微舍弃“一致性”，以获取某种程度的“可用性”。这样产生的系统，既不具备完美的“一致性”，也不具备完美的“可用性”，但是这两种不完美的特性结合起来却能够满足特定需求。</p>
+<h3 id="RedisCluster满足了AP，最终一致性"><a href="#RedisCluster满足了AP，最终一致性" class="headerlink" title="RedisCluster满足了AP，最终一致性"></a>RedisCluster满足了AP，最终一致性</h3><ol>
+<li>分区耐受性：大多数节点可用时，RedisCluster可以分区可用。当出现分区时，连接到多数节点分区和连接到少数节点分区有很大不同。</li>
+<li>可用性：通过复制转移（replicas migration），没有从节点的主节点会获得一个从节点，从而提供可用性。</li>
+<li>高性能并且能够线性扩展到1000个节点。</li>
+<li><p>最终一致性，异步复制，存在写入安全问题。</p>
+<p> 最终一致性：eventually consistent：也就是说在任意时刻，节点中都可能存在“复制不一致”问题，然而只要不再继续执行其他更新操作，那么上一次更新操作的结果最终将会反映到全部节点中去。</p>
+</li>
+</ol>
+<h3 id="RedisCluster写入的流程"><a href="#RedisCluster写入的流程" class="headerlink" title="RedisCluster写入的流程"></a>RedisCluster写入的流程</h3><p>RedisCluster的写入是异步复制。</p>
+<ul>
+<li>client先写入主，主回复<code>+OK</code>，此时client认为写入成功</li>
+<li>主节点开始异步复制，将写入同步到从节点</li>
+</ul>
+<h3 id="RedisCluster写入安全"><a href="#RedisCluster写入安全" class="headerlink" title="RedisCluster写入安全"></a>RedisCluster写入安全</h3><ul>
+<li>写入安全情况1:<br>  先写入主<br>  再由主传播到从。<br>  主从式分布模型，存在主写入成功，主挂没有传播<br>  从升为主，数据丢失。</li>
+</ul>
+<ul>
+<li><p>写入安全情况2: 发生分区时写丢失</p>
+<p>  举例：6节点集群，3主3从，节点是A,B,C, A1,B1,C1。还有一个客户端Z1。发生分区时，一个分区是A,C,A1,B1,C1，另外一个分区是B和Z1.此时Z1还可以向B写入，B也可以接收写操作。<br>  如果在很短时间内，B恢复了那么集群正常；<br>  如果分区持续太久，那么B1就被推举为新主，此时过了NODE_TIMEOUT时间，节点B也不写，那么分区后写入B的数据就丢失了。<br>  写操作丢失的最大持续时间是NODE_TIMEOUT+从推举时间</p>
+<p>  NoSQL倡导者经常说，与关系型数据库所支持的ACID事务不同，NoSQL系统具备“BASE属性“（基本可用，柔性状态，最终一致性）英文是 Basically Available, Soft state, Eventual consistency.</p>
+</li>
+</ul>
+<h2 id="2-容错-Fault-Tolerance"><a href="#2-容错-Fault-Tolerance" class="headerlink" title="2. 容错 Fault Tolerance"></a>2. 容错 Fault Tolerance</h2><h3 id="心跳包和流言消息"><a href="#心跳包和流言消息" class="headerlink" title="心跳包和流言消息"></a>心跳包和流言消息</h3><p>心跳包的目的：RedisCluster集群中各个节点会通过发送心跳包（ping包和pong包）来进行通信，更新集群的配置信息。通常节点发送ping包以后，期待对方回复pong包。</p>
+<p>RedisCluster一个节点一次只向集群中某些节点发送心跳包（目前一次发送的节点数量是总节点个数的十分之一）。同时考虑到RedisCluster发送对象节点是随机的，所以存在两个节点很久都没有交换消息，为了保证集群状态能够在很多时间内达到一致性，RedisCluster规定当两个节点超过<code>NODE_TIMEOUT一半</code>的时间没有交换消息时，下次发心跳包交换消息。</p>
+<p>比如，对于100个节点的集群，NODE_TIMEOUT设置为60秒，那么根据上面的理论，一个节点在30s内要向99个节点发送ping，对于100各节点则每秒发送330个pings。<a href="https://mp.weixin.qq.com/s?__biz=MzAwMDU1MTE1OQ==&amp;mid=2653547585&amp;idx=1&amp;sn=9a664b16f656f757632cd4eb29f9a5dc&amp;scene=0&amp;key=8dcebf9e179c9f3a346c582e0a5712dda1ec87878842175cce35a5ea1cd92ee99c770c79d2f99f97dcb43597000373f8&amp;ascene=0&amp;uin=NTE5MDc2ODU1&amp;devicetype=iMac+MacBookPro11%2C1+OSX+OSX+10.11.3+build(15D21" target="_blank" rel="noopener">近千节点的Redis Cluster高可用集群案例</a>&amp;version=11020201&amp;pass_ticket=4CBC9RgbSswvChRwX4aHuDwbNTxwAjmPNbOVneP4ac8%2BaS%2BQ8YWN5LJF3ipxB8fR)</p>
+<p>通过这一点可以看出，集群间通信占用大量带宽资源。</p>
+<h3 id="故障检测"><a href="#故障检测" class="headerlink" title="故障检测"></a>故障检测</h3><p>目的：当大多数节点不能访问某个主或从节点时，其从节点就会被推举为主节点。当从推举失败后，集群是error state, 将会停止接收来自客户端的请求。</p>
+<p>实现：</p>
+<ol>
+<li>PFAIL状态：<br>集群中有n个节点，当节点A自己认为节点B不可用了，并不能认为节点B不可用，</li>
+<li>FAIL状态：<br>必须集群中大多数节点认为节点B不可用了，节点B才是真的不可用。<br>当在<code>NODE_TIME * FAIL_REPORT_VALIDITY_MULT</code>时间内超过一半的节点认为B不可达时，节点B才真的是不可达<br>（当前实现中该validity参数是2）。<br> 节点不可达的概念：节点发送的ping包超过NODE_TIMEOUT时间依然收不到pong包。<br> 工作原理：当发送的ping包，在<code>NODE_TIMEOUT/2</code>时间后依然收不到pong包时，节点会去重连集群中的其他节点。</li>
+<li>广播：<br>此时节点A会广播一条FAIL消息，告知大家节点B不可达。所有收到FAIL消息的节点，都被强制设定节点B不可达。<br> FAIL标志只是为了安全的触发从推举的算法。</li>
+</ol>
+<h3 id="故障转移-failover"><a href="#故障转移-failover" class="headerlink" title="故障转移 failover"></a>故障转移 failover</h3><ol>
+<li><p>从节点选举</p>
+<p> 从已经下线的主节点的所有从节点里面，选中一个从节点。从节点的选举需要得到大多数主节点的授权</p>
+</li>
+<li><p>成为主节点</p>
+<p> 被选中的从节点会执行SLAVEOF no one命令，成为新的主节点并且负责旧主节点的槽位</p>
+</li>
+<li><p>广播</p>
+<p> 广播一条pong消息，通知其他节点更新节点映射信息</p>
+</li>
+</ol>
+<h3 id="复制转移-replicas-migration"><a href="#复制转移-replicas-migration" class="headerlink" title="复制转移 replicas migration"></a>复制转移 replicas migration</h3><p>复制转移的定义：如果一个主节点A没有从节点，而集群中有的主节点B有多个从节点s1,s2,s3；那么RedisCluster会从多个从节点中选择一个从节点作为主节点A的从节点。<br>复制转移的目的：为了提高系统的可用性。</p>
+<p>比如一个集群中A,B,C 3个主节点，其从节点分别是A1,B1,C1,C2，其中C的从节点有两个。<br>当B挂了以后，B1升为主节点，此时B1节点没有从节点。</p>
+<p>a. 如果没有复制转移的话，那么B1再挂了的话，这个节点上的槽位都不可用了。<br>b. 如果有复制转移的话，那么会从C的两个从节点C1和C2中选择一个作为B1的从节点，我们假设选择的是C2。那么现在集群的情况是A-A1，B1-C2，C-C1。如果这时候B节点又可用了，那么他将会作为某个主节点的从节点。</p>
+<h2 id="4-配置操作、传播、故障转移"><a href="#4-配置操作、传播、故障转移" class="headerlink" title="4. 配置操作、传播、故障转移"></a>4. 配置操作、传播、故障转移</h2><h3 id="Cluster-currentEpoch"><a href="#Cluster-currentEpoch" class="headerlink" title="Cluster currentEpoch"></a>Cluster currentEpoch</h3><p>其目的是为了当节点信息发生冲突的时候来解决冲突。解决冲突的方法很简单，epoch高的配置覆盖epoch低的配置，即以epoch高的配置为准。</p>
+<h3 id="configuration-epoch"><a href="#configuration-epoch" class="headerlink" title="configuration epoch"></a>configuration epoch</h3><ol>
+<li>新节点创建时，configEpoch是0</li>
+<li>从节点推举后，生成新的configEpoch，从节点尝试取代失败主节点的epoch，并且获得大多数主节点的授权，那么configEpoch会加1. </li>
+<li>configEpoch帮助解决的是当不同节点声明不同配置配置时，用于解决冲突。</li>
+</ol>
+<p>RedisCluster配置参数：</p>
+<pre><code>cluster-enabled 
+cluster-config-file &lt;filename&gt;
+cluster-node-timeout &lt;milliseconds&gt;
+cluster-slave-validity-factor &lt;factor&gt;
+cluster-migration-barrier &lt;count&gt;
+cluster-require-full-coverage &lt;yes/no&gt;
+</code></pre><h1 id="三、期间出现问题"><a href="#三、期间出现问题" class="headerlink" title="三、期间出现问题"></a>三、期间出现问题</h1><ol>
+<li><p>客户端cluster slots没有缓存，造成RedisCluster节点cpu过高。</p>
+<p> phpredis虽然是智能客户端，<br> 但对于每个RedisCluster类都需要发送<code>cluster slots</code>命令获取节点和slot的对应关系，从而造成节点CPU过高。<br> 因为<code>cluster slots</code>命令需要执行两层主循环，分别是循环nodes和slot。对于master节点还需要扫描slave，cpu的计算开销就出来了</p>
+</li>
+<li><p>timewait过高</p>
+<p> 由于我们代码中设置100ms超时，当RedisCluster服务器返回过慢时，客户端会主动断开连接，因此出现大量timewait</p>
+</li>
+<li><p>为何不使用长连接。</p>
+<p> a. 因为云盘前端机非常多，300台前端机，每台前端机128个进程，那么对于cluster节点而言是38400个长连接，cluster节点所占用的内存和fd开销非常大。<br> b. 长连接：cpu明显下降，但是连接数暴涨<br> c. 短连接：通过客户端缓存节点信息能够降低部分cpu，但cpu依然偏高</p>
+</li>
+<li><p>del返回warning</p>
+<p>原因是del对返回值校验严格，要求必须是整形（即<code>:1</code>)这种格式，当出现<code>-MOVED</code>错误或者超时没有读取到数据时，则会报warning<br>出现时机：当RedisCluster的CPU过高时，del在100ms（设定的读超时是100ms）内没有响应，那么返回<code>?</code>的值，不是整形，因此会报warning</p>
+</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li><a href="http://itindex.net/detail/52699-redis-cluster-failover" target="_blank" rel="noopener">Redis Cluster的FailOver失败案例分析</a></li>
+<li><a href="http://itindex.net/detail/54098-redis-cluster-%E7%99%BE%E4%B8%87" target="_blank" rel="noopener">Redis 百万QPS挑战</a></li>
+<li><a href="http://redis.io/topics/cluster-spec" target="_blank" rel="noopener">Redis Cluster Specification</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="ckw1wtyjp0013utnuogegjymg" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/08/17/linux定时任务/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          linux定时任务
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/07/28/mysql锁/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">chapter6:mysql锁</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

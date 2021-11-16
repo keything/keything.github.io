@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>自动化测试 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="自动化测试目的在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。 自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。 简要概括单元测试、集成测试、接口测试 单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。 集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。 接口测试：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="自动化测试">
+<meta property="og:url" content="http://keything.github.io/2017/03/31/自动化测试/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="自动化测试目的在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。 自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。 简要概括单元测试、集成测试、接口测试 单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。 集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。 接口测试：">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.281Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="自动化测试">
+<meta name="twitter:description" content="自动化测试目的在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。 自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。 简要概括单元测试、集成测试、接口测试 单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。 集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。 接口测试：">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-自动化测试" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/31/自动化测试/" class="article-date">
+  <time datetime="2017-03-31T15:14:55.000Z" itemprop="datePublished">2017-03-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      自动化测试
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="自动化测试"><a href="#自动化测试" class="headerlink" title="自动化测试"></a>自动化测试</h2><h3 id="目的"><a href="#目的" class="headerlink" title="目的"></a>目的</h3><p>在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。</p>
+<p>自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。</p>
+<h3 id="简要概括单元测试、集成测试、接口测试"><a href="#简要概括单元测试、集成测试、接口测试" class="headerlink" title="简要概括单元测试、集成测试、接口测试"></a>简要概括单元测试、集成测试、接口测试</h3><ul>
+<li>单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。</li>
+<li>集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。</li>
+<li>接口测试：通过单元测试和集成测试验证了小功能，还需要通过接口测试验证整个链路是否按照预期执行。</li>
+</ul>
+<h2 id="自动化测试之单元测试"><a href="#自动化测试之单元测试" class="headerlink" title="自动化测试之单元测试"></a>自动化测试之单元测试</h2><h3 id="1-单元测试的FIRST准则"><a href="#1-单元测试的FIRST准则" class="headerlink" title="1. 单元测试的FIRST准则"></a>1. 单元测试的FIRST准则</h3><ul>
+<li>Fast：测试不能每跑一次都要耗费大量的时间。</li>
+<li>Independent： 测试与测试之间不应该存在依赖关系。</li>
+<li>Repeatable： 测试应该在任何环境下都能运行，不论是生产环境、测试环境，或者是在家里的笔记本电脑上。</li>
+<li>Self-Validating 测试的结果应该是显而易见的，不应该是靠人去查看它的输出才能判断测试的成功与失败，即使用断言来判断实际是否满足预期。</li>
+<li>Timely： 测试需要在正式代码之前就写好。</li>
+</ul>
+<h3 id="2-单元测试的一些其他要求"><a href="#2-单元测试的一些其他要求" class="headerlink" title="2. 单元测试的一些其他要求"></a>2. 单元测试的一些其他要求</h3><ul>
+<li>单元测试Case就是文档，因为说明了输入和输出</li>
+<li>每个case只测试单一函数的单一行为</li>
+<li>测试用例的名称要清晰表明测试目的，如TestCreateOrder_Failed_Pid_NotExist </li>
+<li>在编写正式代码之前，必须写出其相对应的单元测试；<br>这就是说一定要先写出一个单元测试（因为还没有编写正式代码，所以它肯定会失败），再编写正式代码。</li>
+<li>只要一个单元测试失败了，就不要再编写任何更多的单元测试了；<br>而是要去编写相应的的可以使之通过的正是代码，编译失败也算；</li>
+<li>只要正式代码可以使单元测试通过，就不要再编写更多的正式代码了；<br>正式代码需要满足的唯一目标就是通过单元测试，只要通过单元测试，就表示我们此部分的代码已经写完了。</li>
+</ul>
+<h3 id="3-单元测试的三段式"><a href="#3-单元测试的三段式" class="headerlink" title="3. 单元测试的三段式"></a>3. 单元测试的三段式</h3><p>单元测试的三段式：</p>
+<ul>
+<li>准备测试数据。</li>
+<li>对测试数据进行操作。</li>
+<li>进行判定。</li>
+</ul>
+<h3 id="3-单元测试的三大模块"><a href="#3-单元测试的三大模块" class="headerlink" title="3. 单元测试的三大模块"></a>3. 单元测试的三大模块</h3><ul>
+<li>驱动模块：相当于所测模块的主程序。它接收测试数据，把这些测试数据传送给被测模块，最后再输出实测结果。</li>
+<li>桩模块。由被测模块调用，用以代替由被测单元所调用的模块的功能，返回适当的数据或进行适当的操作使被测单元能继续运行下去，同时还要进行一定的数据处理，如打印入口和返回等，以便检验被测模块与其下级模块的接口</li>
+<li>被测系统 SUT （System Under Test）</li>
+</ul>
+<h3 id="4-测试替身-Test-Double"><a href="#4-测试替身-Test-Double" class="headerlink" title="4. 测试替身 Test Double"></a>4. 测试替身 Test Double</h3><p>前面提到了测试替身。</p>
+<p>替身、依赖注入<br>+参数传入<br>+构造函数<br>+set函数</p>
+<p>设计决定一切</p>
+<p>测试替身有很多种：</p>
+<ol>
+<li>mock是测试替身的一种，复杂的一种</li>
+<li>一般用mock来指定一个测试替身</li>
+<li>为什么用mock object</li>
+<li>返回一个数据</li>
+<li>返回一个true/false 状态，可以使用一个测试替身</li>
+<li>使用mock？是否按照预定顺序，是否执行？</li>
+</ol>
+<p>测试与实现的顺序：<br>先写测试在写实现</p>
+<h2 id="持续集成"><a href="#持续集成" class="headerlink" title="持续集成"></a>持续集成</h2><h3 id="1-持续集成Continuous-integration"><a href="#1-持续集成Continuous-integration" class="headerlink" title="1. 持续集成Continuous integration"></a>1. 持续集成Continuous integration</h3><ul>
+<li>定义：频繁地（一天多次）将代码集成到主干。它的核心措施是，代码集成到主干之前，必须通过自动化测试。只要有一个测试用例失败，就不能集成</li>
+</ul>
+<h3 id="2-持续集成的整个过程分为几步："><a href="#2-持续集成的整个过程分为几步：" class="headerlink" title="2. 持续集成的整个过程分为几步："></a>2. 持续集成的整个过程分为几步：</h3><ul>
+<li>代码提交</li>
+<li>代码测试：代码仓库对commit操作配置钩子（hook），只要提交代码或者合并进主干，就会跑自动化测试。</li>
+<li>构建：</li>
+<li>第二轮测试：进行全面测试，包含单元测试、集成测试、全链路接口测试。以自动化为主，少数无法自动化的测试用例需要人工跑</li>
+<li>部署</li>
+<li>回滚</li>
+</ul>
+<p>参考：</p>
+<p><a href="https://codeship.com/continuous-integration-essentials" target="_blank" rel="noopener">https://codeship.com/continuous-integration-essentials</a></p>
+<p><a href="http://codecloud.net/10516.html" target="_blank" rel="noopener">http://codecloud.net/10516.html</a><br><a href="http://www.uml.org.cn/test/201107085.asp" target="_blank" rel="noopener">http://www.uml.org.cn/test/201107085.asp</a><br><a href="http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd" target="_blank" rel="noopener">http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckw1wtylv005nutnujnrx94zm" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2017/04/04/C-编译错误汇总/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          C++编译错误汇总
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2017/03/31/spark-learn/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">spark_learn</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

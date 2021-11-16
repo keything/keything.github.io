@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>PHP源码之用户代码的执行 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="二.用户代码的执行一切的开始：SAPI接口SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。 开始和结束PHP开始执行以后会经过两个主要阶段： 处理请求之前的开始阶段：又分为两个过程 第一个过程：模块初始化阶段（MINIT），在整个">
+<meta name="keywords" content="php,php源码学习">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHP源码之用户代码的执行">
+<meta property="og:url" content="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="二.用户代码的执行一切的开始：SAPI接口SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。 开始和结束PHP开始执行以后会经过两个主要阶段： 处理请求之前的开始阶段：又分为两个过程 第一个过程：模块初始化阶段（MINIT），在整个">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://www.php-internals.com/images/book/chapt02/02-01-01-cgi-lift-cycle.png">
+<meta property="og:image" content="http://www.php-internals.com/images/book/chapt02/02-02-01-sapi.png">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.247Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PHP源码之用户代码的执行">
+<meta name="twitter:description" content="二.用户代码的执行一切的开始：SAPI接口SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。 开始和结束PHP开始执行以后会经过两个主要阶段： 处理请求之前的开始阶段：又分为两个过程 第一个过程：模块初始化阶段（MINIT），在整个">
+<meta name="twitter:image" content="http://www.php-internals.com/images/book/chapt02/02-01-01-cgi-lift-cycle.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-PHP源码之用户代码的执行" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/18/PHP源码之用户代码的执行/" class="article-date">
+  <time datetime="2016-09-18T05:45:57.000Z" itemprop="datePublished">2016-09-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      PHP源码之用户代码的执行
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="二-用户代码的执行"><a href="#二-用户代码的执行" class="headerlink" title="二.用户代码的执行"></a>二.用户代码的执行</h1><h2 id="一切的开始：SAPI接口"><a href="#一切的开始：SAPI接口" class="headerlink" title="一切的开始：SAPI接口"></a>一切的开始：SAPI接口</h2><p>SAPI（Server Application Programming Interface) 指的是PHP具体应用的编程接口。<br>脚本执行的开始都是以SAPI接口实现开始的。只是不同的SAPI接口实现会完成他们特定的工作。</p>
+<h2 id="开始和结束"><a href="#开始和结束" class="headerlink" title="开始和结束"></a>开始和结束</h2><h3 id="PHP开始执行以后会经过两个主要阶段："><a href="#PHP开始执行以后会经过两个主要阶段：" class="headerlink" title="PHP开始执行以后会经过两个主要阶段："></a>PHP开始执行以后会经过两个主要阶段：</h3><ul>
+<li>处理请求之前的开始阶段：又分为两个过程<ul>
+<li>第一个过程：模块初始化阶段（MINIT），在整个SAPI生命周期内只进行一次。比如<code>sudo /etc/init.d/php-fpm start</code>时。例如PHP在MINIT阶段会回调所有模块的MINIT函数，进行一些初始化工作，如注册常量，定义模块使用的类等等</li>
+<li>第二个过程：模块激活阶段(RINIT)，该过程发生在请求阶段，在每个请求到来之前都会进行模块激活。其目的是请求到达以后PHP初始化执行脚本的基本环境，例如创建一个执行环境，包含保存PHP允许过程中变量名称和值内容的符号表，以及当前所有的函数和类的符号表。然后PHP调用所有模块的RINIT函数。</li>
+</ul>
+</li>
+<li><p>处理请求之后的结束阶段</p>
+<ul>
+<li>第一个过程：请求结束后停用模块（RSHUTDOWN，对应RINIT）</li>
+<li>第二个过程：关闭模块，在SAPI生命周期结束（WEB服务器退出或者命令行脚本执行完毕退出）MSHUTDOWN，对应MINIT。</li>
+</ul>
+</li>
+<li><p>处理流程图（引用TIPI图）<br>  <img src="http://www.php-internals.com/images/book/chapt02/02-01-01-cgi-lift-cycle.png" alt="图片"> </p>
+</li>
+</ul>
+<h2 id="fastcgi详细执行流程"><a href="#fastcgi详细执行流程" class="headerlink" title="fastcgi详细执行流程"></a>fastcgi详细执行流程</h2><h3 id="初始化：即-etc-init-d-php-fpm-start"><a href="#初始化：即-etc-init-d-php-fpm-start" class="headerlink" title="初始化：即 /etc/init.d/php-fpm start"></a>初始化：即 /etc/init.d/php-fpm start</h3><ol>
+<li>入口函数：在<code>sapi/fpm/fpm/fpm_main.c</code>中的main函数</li>
+<li><p>调用<code>cgi_sapi_module.startup</code>(函数指针startup的取值是<code>php_cgi_startup</code>），<code>php_cgi_startup</code>做了以下几件事情：</p>
+<ul>
+<li>初始化若干全局变量。如<code>zuf.printf_function = php_printf</code>，<code>PHP_VERSION</code>等</li>
+<li>初始化zend引擎和核心组件。php_module_startup会调用<code>zend_startup</code>(zend/zend.c)函数。<code>zend_startup</code>函数的作用就是初始化zend引擎。这里的初始化操作包括内存管理初始化、 全局使用的函数指针初始化（如前面所说的<code>zend_printf</code>等），对PHP源文件进行词法分析、语法分析、 中间代码执行的函数指针的赋值，初始化若干HashTable（比如函数表，常量表等等），为ini文件解析做准备， 为PHP源文件解析做准备，注册内置函数（如strlen、define等），注册标准常量（如<code>E_ALL</code>、TRUE、NULL等）、注册GLOBALS全局变量(<code>zend_register_auto_global(&quot;GLOBALS&quot;,..., php_auto_globals_create_globals)</code>)等。<ul>
+<li><code>zend_startup</code>-&gt;<code>zend_startup_builtin_functions</code>-&gt;<code>zend_register_module_ex</code>注册core模块，core模块的<code>module_number</code>是0。core模块中的函数分别是<code>zend_version</code>, <code>func_num_args</code>…<code>gc_disable</code>。</li>
+<li>注册<code>E_ERROR</code>，<code>E_WARNING</code>这些常量。<code>zend_startup-&gt;zend_register_standard_constants</code></li>
+</ul>
+</li>
+<li>解析php.ini：<code>php_init_config</code>函数的作用就是读取php.ini文件，设置配置参数，加载zend扩展并注册php扩展函数。</li>
+<li>全局操作函数的初始化：<ul>
+<li><code>php_startup_auto_globals</code>(<code>main/php_variables.c</code>)函数会初始化在用户空间使用频率很高的一些全局变量，如<code>$_GET,$_POST,$_FILES等</code>。其调用的<code>zend_register_auto_global</code>函数会将这些变量名添加到<code>CG(auto_globals)</code>这个变量表。</li>
+<li><code>php_startup_sapi_content_types</code>函数用来初始化SAPI对于不同类型内容的处理函数。这里的处理函数包括POST数据默认处理函数</li>
+</ul>
+</li>
+<li>初始化静态构建的模块和共享模块MINIT<ul>
+<li><code>php_register_internal_extensions_func</code>函数用来注册静态构建的模块，也就是默认加载的模块。</li>
+<li>模块初始化会执行两个操作：1. 将这些模块注册到已注册的模块列表(<code>module_registry</code>) 2. 将每个模块中包含的注册到函数表CG(<code>function_table</code>).可以看到各个模块是按照首字母排序的（date模块的<code>module_number</code>是2， ereg模块是3，libxml是4，xsl是46，zip是47。特别是cgi-fcgi是48）</li>
+<li>在所有的模块都注册有，PHP会马上执行模块初始化操作（<code>zend_startup_modules</code>）。它的整个过程就是依次遍历每个模块，调用每个模块的模块初始化函数（<code>PHP_MINIT_FUNCTION</code>)。</li>
+</ul>
+</li>
+<li>禁用函数和类 <code>php_disable_functions</code>和<code>php_disable_classes</code></li>
+</ul>
+</li>
+<li><p>补充一段 进程初始化部分</p>
+<ul>
+<li>fpm_init</li>
+<li>fpm_run中会调用fpm_children_create_initial(wp)进行worker进程（子进程）的初始化，<ul>
+<li>fpm_children_create_initial函数返回：0表示是子进程、1表示父进程、2表示错误。</li>
+<li>fpm_run函数对于父进程不返回，执行fpm_event_loop(0); 永远进行事件循环</li>
+<li>fpm_run函数对于子进程返回listen_fd</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>此时调用<code>fcgi_accept_request</code>(fpm/fpm/fastcgi.c)。因为没有请求，因此listen_socket加锁，卡在accept处，等待请求的到来</p>
+</li>
+<li><p>当有请求到来时，会从accept后续开始执行。</p>
+</li>
+</ol>
+<h3 id="接受请求"><a href="#接受请求" class="headerlink" title="接受请求"></a>接受请求</h3><p>在处理了文件相关的内容，PHP会调用<code>php_request_startup</code>做请求初始化操作。 请求初始化操作，除了图中显示的调用每个模块的请求初始化函数外，还做了较多的其它工作，其主要内容如下</p>
+<ol>
+<li><p>用户空间中需要用到的一些环境变化的初始化，包括服务器环境、请求数据环境等。实际用到的就是<code>$_POST, $_GET, $_COOKIE, $_SERVER, $_ENV, $_FILES</code>。</p>
+<ul>
+<li>在 <code>php_request_startup</code>-&gt;<code>php_hash_environment</code>，调用<code>CG(auto_globals)</code>中的回调来处理。到了这里说个题外话， 就是在php.ini中， 可以使用variables_order来控制PHP是否生成某个大变量，已经大变量的生成顺序。关于顺序，就是说， 如果打开了auto_register_globals的情况下， 如果先处理p，后处理g，那么$_GET[‘a’],就会覆盖$_POST[‘a’];</li>
+<li><p>php.ini设置中variables_order string<br>设置了EGPCS(Environment, Get, Post, Cookie and Server)变量的解析顺序。比如，variables_order顺序设置为SP，那么PHP将会创建超级全局变量$_SERVER和$_POST，而不会创建$_ENV, $_GET, $_COOKIE。</p>
+</li>
+<li><p>和<code>sapi_module.default_post_reader</code>一样，<code>sapi_module.treat_data</code>的值也是在模块初始化时， 通过<code>php_startup_sapi_content_types</code>函数注册了默认数据处理函数为<code>main/php_variables.c</code>文件中<code>php_default_treat_data</code>函数。</p>
+</li>
+<li>以$_COOKIE为例，<code>php_default_treat_data</code>函数会对依据分隔符，将所有的cookie拆分并赋值给对应的变量。</li>
+</ul>
+</li>
+<li><p>模块请求的初始化。PHP通过zend_activate_modules函数实现模块请求的初始化。会调用各个模块的RINIT函数。这儿的调用并没有按照字母排序的顺序调用模块。比如libxml,zlib,intl,mbstring…</p>
+</li>
+<li>运行。<ul>
+<li>php_execute_script函数包含了运行php脚本的全部过程。当一个php文件需要解析执行时，它可能会需要执行三个文件，其中包括一个前置执行文件、当前需要执行文件和一个后置文件。非当前的两个文件可以在php.ini文件通过auto_prepend_file参数和auto_append_file参数设置。如果这两个参数设置为空，则禁用对应执行文件。</li>
+<li>对于需要解析执行的文件，通过zend_compile_file（compile_file函数）做词法分析、语法分析和中间代码生成操作，返回此文件的所有中间代码。 如果解析的文件有生成有效的中间代码，则调用zend_execute（execute函数）执行中间代码。 如果在执行过程中出现异常并且用户有定义对这些异常的处理，则调用这些异常处理函数。 在所有的操作都处理完后，PHP通过EG(return_value_ptr_ptr)返回结果</li>
+</ul>
+</li>
+</ol>
+<h3 id="PHP关闭请求"><a href="#PHP关闭请求" class="headerlink" title="PHP关闭请求"></a>PHP关闭请求</h3><p>PHP关闭请求的过程是一个若干个关闭操作的集合，这个集合存在于php_request_shutdown函数中。 这个集合包括如下内容：</p>
+<ul>
+<li>调用所有通过register_shutdown_function()注册的函数。这些在关闭时调用的函数是在用户空间添加加来的。我们可以在脚本出错时调用一个统一的函数，给用户一个友好一些的页面，这个有点类似于网页中的404页面。</li>
+<li>执行所有可用的__destruct函数。 这里的析构函数包括在对象池（EG(objects_store）中的所有对象的析构函数以及EG(symbol_table)中各个元素的析构方法。</li>
+<li>将所有的输出刷出去</li>
+<li>发送HTTP应答头。也是一个输出字符串的过程，只是这个字符串可能符合某些规范</li>
+<li>遍历每个模块的关闭请求方法，执行模块的请求关闭操作，即RSHUTDOWN</li>
+<li>销毁全局变量表（PG(http_globals)）的变量。</li>
+<li>通过zend_deactivate函数，关闭词法分析器、语法分析器和中间代码执行器</li>
+<li>调用每个扩展的post-RSHUTDOWN函数。只是基本每个扩展的post_deactivate_func函数指针都是NULL</li>
+<li>关闭SAPI，通过sapi_deactivate销毁SG(sapi_headers)、SG(request_info)等的内容。</li>
+<li>关闭流的包装器、关闭流的过滤器</li>
+<li>关闭内存管理</li>
+<li>重新设置最大执行时间</li>
+</ul>
+<h3 id="结束"><a href="#结束" class="headerlink" title="结束"></a>结束</h3><ol>
+<li><p>flush</p>
+<p> sapi_flush将最后的内容刷回去。调用的是sapi_module.flush。</p>
+</li>
+<li><p>关闭zend引擎</p>
+<p> 此时对应图中的流程，我们应该是执行每个模块的关闭模块操作。 在这里只有一个zend_hash_graceful_reverse_destroy函数将module_registry销毁了。 当然，它最终也是调用了关闭模块的方法的，其根源在于在初始化module_registry时就设置了这个hash表析构时调用ZEND_MODULE_DTOR宏。 而ZEND_MODULE_DTOR宏对应的是module_destructor函数。 在此函数中会调用模块的module_shutdown_func方法，即PHP_RSHUTDOWN_FUNCTION宏产生的那个函数。</p>
+<p> 在关闭所有的模块后，PHP继续销毁全局函数表，销毁全局类表、销售全局变量表等。 通过zend_shutdown_extensions遍历zend_extensions所有元素，调用每个扩展的shutdown函数。</p>
+</li>
+</ol>
+<p>【todo】目前需要看的地方有： </p>
+<ol>
+<li>redismemcache的持久化连接是如何处理的 </li>
+<li>全局变量表这些如何做的呢 </li>
+<li>最后关闭这儿是如何处理的呢，还没有详细看代码</li>
+<li>opcode：一个代码构造出来的完整opcode是什么样子呢<br>【todo】opcode这部分还是没有理解请求</li>
+</ol>
+<h1 id="2-深入理解PHP内核之SAPI概述（讲述FASTCGI）"><a href="#2-深入理解PHP内核之SAPI概述（讲述FASTCGI）" class="headerlink" title="2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）"></a>2. 深入理解PHP内核之SAPI概述（讲述FASTCGI）</h1><p>在各个服务器抽象层之间遵守着相同的约定，这里我们称之为SAPI接口。 每个SAPI实现都是一个_sapi_module_struct结构体变量。（SAPI接口）。 在PHP的源码中，当需要调用服务器相关信息时，全部通过SAPI接口中对应方法调用实现， 而这对应的方法在各个服务器抽象层实现时都会有各自的实现。如下图所示，为SAPI的简单示意图（引用TIPI图）</p>
+<p><img src="http://www.php-internals.com/images/book/chapt02/02-02-01-sapi.png" alt="SAPI简单示意图"></p>
+<p>因为平时使用fastcgi，因此这儿参考TIPI中讲述apache2的方式来讲讲<code>fastcgi</code>。<br>它的启动方法如下：</p>
+<pre><code>cgi_sapi_module.startup(&amp;cgi_sapi_module) // fastcgi模式 sapi/fpm/fpm/fpm_main.c
+</code></pre><p>这儿的cgi_sapi_module.startup是sapi_module_struct结构体的静态变量。静态变量的详细解释如下（引用TIPI内容）：</p>
+<pre><code>struct _sapi_module_struct {
+char *name;         //  名字（标识用）
+char *pretty_name;  //  更好理解的名字（自己翻译的）
+
+int (*startup)(struct _sapi_module_struct *sapi_module);    //  启动函数
+int (*shutdown)(struct _sapi_module_struct *sapi_module);   //  关闭方法
+
+int (*activate)(TSRMLS_D);  // 激活
+int (*deactivate)(TSRMLS_D);    //  停用
+
+int (*ub_write)(const char *str, unsigned int str_length TSRMLS_DC);
+ //  不缓存的写操作(unbuffered write)
+void (*flush)(void *server_context);    //  flush
+struct stat *(*get_stat)(TSRMLS_D);     //  get uid
+char *(*getenv)(char *name, size_t name_len TSRMLS_DC); //  getenv
+
+void (*sapi_error)(int type, const char *error_msg, ...);   /* error handler */
+
+int (*header_handler)(sapi_header_struct *sapi_header, sapi_header_op_enum op,
+    sapi_headers_struct *sapi_headers TSRMLS_DC);   /* header handler */
+
+ /* send headers handler */
+int (*send_headers)(sapi_headers_struct *sapi_headers TSRMLS_DC);
+
+void (*send_header)(sapi_header_struct *sapi_header,
+        void *server_context TSRMLS_DC);   /* send header handler */
+
+int (*read_post)(char *buffer, uint count_bytes TSRMLS_DC); /* read POST data */
+char *(*read_cookies)(TSRMLS_D);    /* read Cookies */
+
+/* register server variables */
+void (*register_server_variables)(zval *track_vars_array TSRMLS_DC);
+
+void (*log_message)(char *message);     /* Log message */
+time_t (*get_request_time)(TSRMLS_D);   /* Request Time */
+void (*terminate_process)(TSRMLS_D);    /* Child Terminate */
+
+char *php_ini_path_override;    //  覆盖的ini路径
+
+...
+...
+};
+</code></pre><p>其中一些函数指针的说明如下：</p>
+<ul>
+<li>startup：当sapi初始化时，首先会调用该函数。 startup函数只在父进程中创建一次，在其fork的子进程中不会调用。在fastcgi的</li>
+<li>activate：在每个请求开始时调用，他会再次初始化每个请求前的数据结构。</li>
+</ul>
+<p>其中fastcgi的sapi_module_struct的定义在fpm/fpm/fpm_main.c中，定义如下：</p>
+<pre><code>static sapi_module_struct cgi_sapi_module = {
+&quot;fpm-fcgi&quot;,                        /* name */
+&quot;FPM/FastCGI&quot;,                    /* pretty name */
+
+php_cgi_startup,                /* startup */
+php_module_shutdown_wrapper,    /* shutdown */
+
+sapi_cgi_activate,                /* activate */
+sapi_cgi_deactivate,            /* deactivate */
+
+sapi_cgibin_ub_write,            /* unbuffered write */
+sapi_cgibin_flush,                /* flush */
+NULL,                            /* get uid */
+sapi_cgibin_getenv,                /* getenv */
+
+php_error,                        /* error handler */
+
+NULL,                            /* header handler */
+sapi_cgi_send_headers,            /* send headers handler */
+NULL,                            /* send header handler */
+
+sapi_cgi_read_post,                /* read POST data */
+sapi_cgi_read_cookies,            /* read Cookies */
+
+sapi_cgi_register_variables,    /* register server variables */
+sapi_cgi_log_message,            /* Log message */
+NULL,                            /* Get request time */
+NULL,                            /* Child terminate */
+
+STANDARD_SAPI_MODULE_PROPERTIES
+};
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.php-internals.com/book/?p=chapt02/02-02-00-overview" target="_blank" rel="noopener">SAPI概述</a></p>
+<p><a href="https://mengkang.net/668.html" target="_blank" rel="noopener">fastcgi概述</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="ckw1wtyji000qutnus8kiryab" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/09/19/1PHP变量之存储结构/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          1. PHP变量的存储结构
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/09/18/PHP源码之准备工作和背景知识/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">PHP源码之准备工作和背景知识</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="查询时是否查询所有分片。   如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。 routing字段有两个位置： a. query string中加入。 _search?routing=hello,mmm 的方式 b. _msearch的header中加入 {&amp;quot;index&amp;qu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Keything的日志">
+<meta property="og:url" content="http://keything.github.io/2021/11/16/elasticsearch路由规则学习/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="查询时是否查询所有分片。   如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。 routing字段有两个位置： a. query string中加入。 _search?routing=hello,mmm 的方式 b. _msearch的header中加入 {&amp;quot;index&amp;qu">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.252Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Keything的日志">
+<meta name="twitter:description" content="查询时是否查询所有分片。   如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。 routing字段有两个位置： a. query string中加入。 _search?routing=hello,mmm 的方式 b. _msearch的header中加入 {&amp;quot;index&amp;qu">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-elasticsearch路由规则学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/16/elasticsearch路由规则学习/" class="article-date">
+  <time datetime="2021-11-16T09:45:21.252Z" itemprop="datePublished">2021-11-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>查询时是否查询所有分片。 </p>
+<p> 如果在查询中指定了routing字段， 那么将只在特定shard上进行操作。<br> 如果在查询中没有指定routing字段，默认会在该索引的所有shard上进行操作。<br> routing字段有两个位置：</p>
+<pre><code>a. query string中加入。 _search?routing=hello,mmm 的方式
+b. _msearch的header中加入 {&quot;index&quot;:&quot;myindex&quot;,&quot;routing&quot;:&quot;hello,mm&quot;}
+</code></pre><p> 打开trace日志，观察查询过程。可以清晰看到是query then fetch的执行过程。<br> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/search-multi-search.html" target="_blank" rel="noopener">链接</a></p>
+</li>
+<li><p>写入时路由规则指定。</p>
+<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/6.6/docs-bulk.html" target="_blank" rel="noopener">bulk接口文档</a></p>
+<p> bulk是用于创建、删除、更新索引使用。<br> 其中routing是要放在query string中才生效。 </p>
+<p> 写入举例：<br> <code>curl  -s -H &quot;Content-Type: application/x-ndjson&quot; -XPOST localhost:9201/_bulk -d &#39;
+ {&quot;index&quot;:{&quot;_index&quot;:&quot;index_sorting_2&quot;,&quot;_type&quot;:&quot;prod&quot;}, &quot;routing&quot;:&quot;hello&quot;}
+ {&quot;address&quot;:&quot;北京我爱你&quot;,&quot;address_nor_pre&quot;:&quot;北京我爱你&quot;,&quot;click_score&quot;:6}
+ &#39;</code></p>
+</li>
+<li><p>关于search_type解释</p>
+<p> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html" target="_blank" rel="noopener">search_type文档</a></p>
+<p> 注意：在es5.3版本后，已经移除search_type=query_and_fetch的选项。 </p>
+<p> 原因：query_and_fetch 主要是用来进行内部优化的，如果你只有一个分片，你完全不需要分两个阶段（记住，你只有一个分片，不用管其他分片的情况），先拿一次分片下的得分信息再拿具体的文档，不如一次性拿回来就好了。因此query_and_fetch从来不是直接给用户使用的。 </p>
+<p> search_type=QUERY_THEN_FETCH 从日志来看</p>
+<p> <code>[2019-02-04T09:50:43,512][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0]
+ [2019-02-04T09:50:43,513][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] got first-phase result from [ToJiwmLwTlaxtovU98sizw][index_sorting_2][1]
+ [2019-02-04T09:50:43,514][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [query] Moving to next phase: [fetch], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
+ [2019-02-04T09:50:43,517][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [fetch] Moving to next phase: [expand], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)
+ [2019-02-04T09:50:43,518][TRACE][o.e.a.s.TransportSearchAction] [ToJiwmL] [expand] Moving to next phase: [response], based on results from: [ToJiwmLwTlaxtovU98sizw][index_sorting_2][0],[ToJiwmLwTlaxtovU98sizw][index_sorting_2][1] (cluster state version: 15)</code></p>
+</li>
+<li><p>reroute操作</p>
+<p> <a href="">reroute接口文档</a></p>
+<p> 举例：<br> `<br> curl -XPOST -H”Content-Type: application/json” ‘localhost:9200/_cluster/reroute’ -d ‘{<br> “commands” : [ </p>
+<pre><code>{  
+    &quot;move&quot; :   {  
+          &quot;index&quot; : &quot;index_sorting_1&quot;, 
+          &quot;shard&quot; : 3,   
+          &quot;from_node&quot; : &quot;ToJiwmL&quot;, 
+          &quot;to_node&quot; : &quot;Febek5M&quot;  
+    }  
+}
+</code></pre><p> ]<br> }’<br> `</p>
+</li>
+<li><p>磁盘空间阈值的设置</p>
+<p> 在本地mac电脑执行reroute时报错：</p>
+<p> NO(the node is above the low watermark cluster setting [cluster.routing.allocation.disk.watermark.low=85%], using more disk space than the maximum allowed [85.0%]</p>
+</li>
+</ol>
+<pre><code>[文章](https://elasticsearch.cn/question/4911)中介绍了：
+1. 这个参数是对“未分配过的&quot;主分片无效，即新创建的索引的场景。 也就是说一个结点的磁盘空间消耗达到low watermark以后，新创建的索引不受限制，依然可以分配到上面
+2. 不能够分配上去的场景主要是以下两个:
+集群有结点挂掉或者用户更改了集群的复制片数量， 需要挑选某个结点复制分片的时候
+集群触发了rebalance的时候
+
+
+在我们的case中需要做的是：
+`
+curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cluster/settings&quot; -d &apos;
+{
+    &quot;transient&quot;:{
+        &quot;cluster.routing.allocation.disk.watermark.low&quot;:&quot;90%&quot;
+    }  
+}
+&apos;`
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/16/elasticsearch路由规则学习/" data-id="ckw1wtyk60020utnu8ldnyt19" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2021/11/16/hello-world/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Hello World
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2021/11/16/Spark-DataSource-Hive Tables/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title"></div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

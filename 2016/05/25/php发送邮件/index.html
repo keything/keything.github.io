@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>php发送邮件 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="0. 概述php manual中关于mail的介绍很简单， @param to 电子邮件收件人或收件人列表 @param subjct 电子邮件的主题 也就是收件人或收件人列表 @param message 所要发送的消息  @return true if the mail was successfully accepted fro delivery, FALSE otherwise bool m">
+<meta name="keywords" content="php">
+<meta property="og:type" content="article">
+<meta property="og:title" content="php发送邮件">
+<meta property="og:url" content="http://keything.github.io/2016/05/25/php发送邮件/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="0. 概述php manual中关于mail的介绍很简单， @param to 电子邮件收件人或收件人列表 @param subjct 电子邮件的主题 也就是收件人或收件人列表 @param message 所要发送的消息  @return true if the mail was successfully accepted fro delivery, FALSE otherwise bool m">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.264Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="php发送邮件">
+<meta name="twitter:description" content="0. 概述php manual中关于mail的介绍很简单， @param to 电子邮件收件人或收件人列表 @param subjct 电子邮件的主题 也就是收件人或收件人列表 @param message 所要发送的消息  @return true if the mail was successfully accepted fro delivery, FALSE otherwise bool m">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-php发送邮件" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/25/php发送邮件/" class="article-date">
+  <time datetime="2016-05-25T08:31:31.000Z" itemprop="datePublished">2016-05-25</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      php发送邮件
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>php manual中关于mail的介绍很简单，</p>
+<pre><code>@param to 电子邮件收件人或收件人列表
+@param subjct 电子邮件的主题 也就是收件人或收件人列表
+@param message 所要发送的消息 
+@return true if the mail was successfully accepted fro delivery, FALSE otherwise
+bool mail ( string $to , string $subject , string $message [, string $additional_headers [, string $additional_parameters ]] )
+</code></pre><h2 id="0-我的代码"><a href="#0-我的代码" class="headerlink" title="0. 我的代码"></a>0. 我的代码</h2><p>根据邮件协议，使用基本的php代码进行编写，直接包含这个类即可使用</p>
+<h2 id="1-发送html"><a href="#1-发送html" class="headerlink" title="1. 发送html"></a>1. 发送html</h2><ol>
+<li>发送html就是将正文的message以文本格式发送<h2 id="2-发送附件"><a href="#2-发送附件" class="headerlink" title="2. 发送附件"></a>2. 发送附件</h2></li>
+<li><p>附件需要以multipart/form-data的格式进行组装，这儿与web上传form表单的格式一样。例子如下</p>
+<pre><code>--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+Content-Transfer-Encoding: base64
+
+54eV5YevQm9keQoKCgo=
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+X-Attachment-Id: 15259
+Content-Transfer-Encoding: base64
+Content-Type: application/octet-stream; name=&quot;keything.txt&quot;
+Content-Disposition: attachment; filename=&quot;keything.txt&quot;
+
+54eV5Yev
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx--
+</code></pre></li>
+<li>我们所发出的数据就如上面文本所示，因此要将其组装</li>
+</ol>
+<ol start="3">
+<li><p>class KTMail</p>
+<pre><code>&lt;?php
+class KTMail
+{
+    const UTF8_PREFIX  = &apos;=?UTF-8?B?&apos;;
+    const UTF8_POSTFIX = &apos;?=&apos;;
+    const RN = &quot;\r\n&quot;;
+    /**
+     * @param from: who send this mail
+     * @param to: who receive this mail
+     * @param subject: the title of mail
+     * @param body: the content of mail
+     * @param attachment_fname: the file name of attachement
+     * @param attachment_fdata: the file content of attachment
+     * @return true if send succeed, FALSE otherwise
+     * TODO if attachment_fname is chinese, it will be messay code.
+     */
+    public static function sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata)
+    {
+        // a random string 
+        $semi_rand = md5(time()); 
+        $mime_boundary = &apos;==Mime_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+        $part_boundary = &apos;==Part_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+
+        // header 
+        $headers = [];
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-Type: multipart/mixed; boundary=&apos; . $mime_boundary;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $msg = [];
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos; . self::RN;
+        $msg[] =  chunk_split(base64_encode($body));
+
+        // Attachment
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;X-Attachment-Id: &apos; . rand(1000, 99999);
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos;;
+        $msg[] = &apos;Content-Type: application/octet-stream;&apos; . &apos; name=&quot;&apos; . $attachment_fname . &apos;&quot;&apos;;
+        $msg[] = &apos;Content-Disposition: attachment; filename=&quot;&apos;. $attachment_fname . &apos;&quot;&apos; . self::RN;
+        $msg[] = chunk_split(base64_encode($attachment_fdata));
+        $msg[] = &apos;--&apos; . $mime_boundary . &apos;--&apos;;
+
+        $msg_raw = implode(self::RN, $msg);
+        error_log($msg_raw, 3, &apos;/tmp/sendmail.log&apos;);
+
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+    public static function sendWithHtml($from, $to, $subject, $body)
+    {
+        // header 
+        $headers = array();
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-type: text/html; charset=utf-8&apos;;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+        $msg_raw = $body;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+}
+</code></pre></li>
+<li><p>测试用例</p>
+<pre><code>&lt;?php
+include (&apos;ktmail.php&apos;);
+$from = &apos;local@a.cn&apos;;
+$to = &apos;your-email&apos;;
+$subject = &apos;keything.net&apos;;
+$body = &apos;keything.net&apos;;
+$attachment_fname = &apos;keything.txt&apos;;
+$attachment_fdata = &apos;keything&apos;;
+$attach_res = KTMail::sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata);
+echo &apos;attach_res = &apos; . var_export($attach_res, true).&quot;\n&quot;;
+
+$html_body = &apos;
+    &lt;html&gt;
+        &lt;head&gt; keything &lt;/head&gt;
+        &lt;body&gt; 
+            keything body 
+            &lt;table border=&quot;1&quot;&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 1, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 1, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 2, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 2, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+            &lt;/table&gt;
+        &lt;/body&gt;
+        &lt;/head&gt;
+    &lt;/html&gt;
+    &apos;;
+$html_res = KTMail::sendWithHtml($from, $to, $subject, $html_body);
+echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
+</code></pre></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckw1wtylb004eutnuwv0ze0qy" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Redis内存优化之小的聚合数据类型的特殊编码
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/05/08/nginx模块执行顺序/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">nginx模块执行顺序</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

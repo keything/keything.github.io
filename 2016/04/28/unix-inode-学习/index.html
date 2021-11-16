@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Unix/Linux文件系统--目录，inode，硬链接 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="1. 简介：文件和Inodes在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes） 1.1 甚至硬件设备都有文件名Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。 你">
+<meta name="keywords" content="基础知识">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Unix&#x2F;Linux文件系统--目录，inode，硬链接">
+<meta property="og:url" content="http://keything.github.io/2016/04/28/unix-inode-学习/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="1. 简介：文件和Inodes在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes） 1.1 甚至硬件设备都有文件名Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。 你">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.267Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Unix&#x2F;Linux文件系统--目录，inode，硬链接">
+<meta name="twitter:description" content="1. 简介：文件和Inodes在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes） 1.1 甚至硬件设备都有文件名Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。 你">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-unix-inode-学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/28/unix-inode-学习/" class="article-date">
+  <time datetime="2016-04-28T10:00:01.000Z" itemprop="datePublished">2016-04-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Unix/Linux文件系统--目录，inode，硬链接
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-简介：文件和Inodes"><a href="#1-简介：文件和Inodes" class="headerlink" title="1. 简介：文件和Inodes"></a>1. 简介：文件和Inodes</h2><p>在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes）</p>
+<h3 id="1-1-甚至硬件设备都有文件名"><a href="#1-1-甚至硬件设备都有文件名" class="headerlink" title="1.1 甚至硬件设备都有文件名"></a>1.1 甚至硬件设备都有文件名</h3><p>Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。</p>
+<pre><code>你的电脑内存是 /dev/mem
+你的第一块硬盘是 /dev/sda
+你的终端是 /dev/tty1
+...
+</code></pre><p>举例</p>
+<pre><code>$ ls -li /dev/mem /dev/sda /dev/tty1
+5792 crw-r----- 1 root kmem 1, 1 Oct 13 02:30 /dev/mem
+ 888 brw-rw---- 1 root disk 8, 0 Oct 13 02:30 /dev/sda
+5808 crw-rw---- 1 root tty  4, 1 Oct 13 02:31 /dev/tty1
+</code></pre><p>在Linux中大多数的输入输出设备和目录都被看做文件。如果你有足够的权限，你可以使用它们的文件系统的名字来读取这些设备。</p>
+<h3 id="1-2-Index-Nodes-inodes"><a href="#1-2-Index-Nodes-inodes" class="headerlink" title="1.2 Index Nodes = inodes"></a>1.2 Index Nodes = inodes</h3><p>文件系统的内容都不是以名字的形式存储，而是以数字的形式存储。Linux是以序号化结构来存储每个硬盘对象（disk object, 如文件或目录）的数据和信息。这个序号化的结构称之为index node或inode。</p>
+<p>每个inode都是由唯一的inode number来标识，可以使用ls -i选项查看。</p>
+<pre><code>$ ls -l -i /usr/bin/perl*
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl5.14.2
+266331 -rwxr-xr-x 2 root root 45183 Mar 18  2013 /usr/bin/perlbug
+266328 -rwxr-xr-x 1 root root   224 Mar 18  2013 /usr/bin/perldoc
+</code></pre><p>Unix的目录将文件系统的名字与inode number进行关联。正如上面例子，/usr/bin/perl与inode number 266327关联。当你到达perl程序的时候，系统将会在目录中找到perl这个名字，与perl名字相关联的inode number是266327，这个inode存有真正的数据，系统通过inode找到真正的数据。文件数据与inode number关联，而不是与名字关联。</p>
+<p>在目录中，每个文件有自己名字和与之关联的inode number。每个文件名字可以映射到一个inode number，但是一个inode number可以有多个名字。</p>
+<p>Inode numbers are specific to a file system inside a disk partition. Every file on a file system (in that partition) has a unique inode number. Numbering is done separately for each file system, so different disk partitions may have file system objects with the same inode numbers.</p>
+<p>每个文件系统初始化的时候会有大量可用的inodes，可以使用<code>df -i</code>列出可用的inodes。</p>
+<h2 id="2-文件系统示意图"><a href="#2-文件系统示意图" class="headerlink" title="2. 文件系统示意图"></a>2. 文件系统示意图</h2><p>大多数关于文件系统的示意图都是错误的，下面是真相。<br>inodes的名字（如文件、目录、设备等的名字）是在目录中存储的。目录中只存储了名字和inodenumber的关联关系。文件中数据的真正存储的硬盘空间是在inode中，而不是在目录中。目录中保存的是名字和inode number，名字不会与数据有关联。</p>
+<p>目录中，每个名字有一个inode number，inode number指出了存储数据的硬盘空间的位置。通过<code>ls -i</code>看到名字和inode对应关系。</p>
+<pre><code>$ ls -i /usr/bin/perl*
+266327 /usr/bin/perl        266329 /usr/bin/perldoc.stub
+266327 /usr/bin/perl5.14.2  266330 /usr/bin/perlivp
+266331 /usr/bin/perlbug     266331 /usr/bin/perlthanks
+266328 /usr/bin/perldoc
+</code></pre><p>最重要的事情是知道名字和数据真正存储的位置是分开的。大多数示意图都会把ROOT的名字搞成命名的。这会造成对unix/linux文件和目录的误解。</p>
+<pre><code>WRONG - names on things      RIGHT - names above things
+=======================      ==========================
+
+    R O O T            ---&gt;         [etc,bin,home]   &lt;-- ROOT directory
+   /   |   \                         /    |      \
+etc   bin   home       ---&gt;  [passwd]  [ls,rm]  [abcd0001]
+ |   /   \    \                 |      /    \       |
+ |  ls   rm  abcd0001  ---&gt;     |  &lt;data&gt;  &lt;data&gt;  [.bashrc]
+ |               |              |                   |
+passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
+</code></pre><p>目录是名字和数字的列表，右侧示意图以中括号的方式列出，在示意图中忽略了innode number。目录中每一个对象（文件、目录、特殊文件等）的名字与真正的存储空间是分开的。这就允许一个inode可以有多个名字和多个目录。使用相同的inode number，所有的名字指向相同的存储空间。</p>
+<p>右侧示意图中，树中目录有自己的名字。右侧最顶层目录是ROOT目录的inode，包含了etc,bin,home..的名字列表。因为在ROOT目录上面没有目录，因此ROOT目录是没有名字的。</p>
+<p>ROOT目录下的名字bin与之关联的inodenumber是一个目录的inodenumber，包含了在bin目录下的names的列表，names列表包含名字ls和rm。从bin目录下的ls往下走就是文件/bin/ls的数据节点了。数据节点中不会包含文件的名字，名字在文件的目录中保存。</p>
+<p>ROOT节点没有名字，因为ROOT节点上面没有目录了。其他目录有名字是因为在这些目录上面还有目录，上层目录包含了其名字。</p>
+<h2 id="3-Inodes-Manage-disk-blocks"><a href="#3-Inodes-Manage-disk-blocks" class="headerlink" title="3 Inodes Manage disk blocks"></a>3 Inodes Manage disk blocks</h2><p>每个Uninx文件或目录储存在硬盘的真正数据是由序号化的硬盘数据结构进行管理的，序号化的硬盘数据结构称为Inodes。每个文件和每个目录都分配一个inode。</p>
+<p>Unix节点管理每个文件或目录的硬盘存储空间。inode中包含了一系列指针，指向属于那个文件或目录的硬盘块（disk blocks）。文件或目录越大，inode中需要的硬盘块指针就越多。inode还存储文件或目录的属性（权限、所有者、group、size，access/modify times, etc.) ，唯独没有文件或目录的名字。Inodes只有数字、属性和硬盘块–没有名字。名字分开存储，在目录中进行保存。</p>
+<h2 id="4-目录节点保存所有的名字"><a href="#4-目录节点保存所有的名字" class="headerlink" title="4. 目录节点保存所有的名字"></a>4. 目录节点保存所有的名字</h2><p>文件有硬盘块用于包含文件数据，目录同样有硬盘块，保存的是名字和inode number的对应关系。</p>
+<p>像大多数其他的节点，目录节点也包含了节点的属性信息（权限、所有者等等）和一个或多个硬盘块指针用来存储数据。但是，目录的硬盘块存储的不是文件数据而是目录的数据：名字和inode numbers。</p>
+<h2 id="5-多个名字–硬连接"><a href="#5-多个名字–硬连接" class="headerlink" title="5. 多个名字–硬连接"></a>5. 多个名字–硬连接</h2><p>因为</p>
+<pre><code>1. 一个唯一数字的inode管理一个文件
+2. inode中不会保存文件的名字
+3. 目录中保存文件的名字和inodenumber对应关系
+</code></pre><p>因此</p>
+<pre><code>一个unix文件可以在一个或多个目录中有多个name-and-inode对，从而有多个名字。
+</code></pre><h3 id="5-1-Link-Counts-count-names"><a href="#5-1-Link-Counts-count-names" class="headerlink" title="5.1 Link Counts count names"></a>5.1 Link Counts count names</h3><p>硬链接hardlinks：相同inode有多个名字。<br><code>ln</code>命令为目录中已经存在的节点创建一个新的名字。系统在每个inode中维持一个<code>link count</code>的字段，用于对inode指向的names进行计数。<code>rm</code>命令从目录中删除一个名字（hark link），并减少link count。当一个inode的link count减为0以后，inode就没有名字了，inode就会被回收，所有与inode关联的存储和数据都被释放了。</p>
+<p>rm命令不是删除文件，而是删除文件的名字。当所有的名字都没有了，系统会删除文件并且释放空间</p>
+<h2 id="6-Tracing-Inodes-in-Pathnames"><a href="#6-Tracing-Inodes-in-Pathnames" class="headerlink" title="6. Tracing Inodes in Pathnames"></a>6. Tracing Inodes in Pathnames</h2><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html" target="_blank" rel="noopener">http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="ckw1wtylm0050utnupsw8q9m1" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/05/04/nginx配置-最小配置/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          nginx配置-最小配置
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/04/26/Lvs学习笔记/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Lvs学习笔记</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

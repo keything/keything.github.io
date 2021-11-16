@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="Keything的日志">
+<meta property="og:url" content="http://keything.github.io/page/8/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:locale" content="default">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Keything的日志">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-Redis内存优化-聚合数据类型的特殊编码" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" class="article-date">
+  <time datetime="2016-06-10T00:24:56.000Z" itemprop="datePublished">2016-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/">Redis内存优化之小的聚合数据类型的特殊编码</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="Redis内存优化之小的聚合数据类型的特殊编码"><a href="#Redis内存优化之小的聚合数据类型的特殊编码" class="headerlink" title="Redis内存优化之小的聚合数据类型的特殊编码"></a>Redis内存优化之小的聚合数据类型的特殊编码</h2><p>从Redis2.2开始，很多数据类型被优化为使用更小的空间。对于由数字组成的Hashes，Lists， Sets，Sorted Sets 在某些情况下可以使用使用更加有效的内存方式来进行编码，这种更有效的内存方式可以节约最少5倍最大10倍的内存。那么在什么情况这些数字组成的类型可以使用这种更有效的内存方式呢?</p>
+<pre><code>当元素个数小于给定的数量时，
+当到了一个最大的元素大小时，
+</code></pre><p>从用户和API角度来看，这完全是透明的。因为这是一种CPU/内存的平衡。可以使用redis.conf中的指令来调整元素的最大个数和最大的元素大小。</p>
+<pre><code>hash-max-zipmap-entries 512 (hash-max-ziplist-entries for Redis &gt;= 2.6)
+hash-max-zipmap-value 64  (hash-max-ziplist-value for Redis &gt;= 2.6)
+list-max-ziplist-entries 512
+list-max-ziplist-value 64
+zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+set-max-intset-entries 512
+</code></pre><p>如果一个特定编码值超过了设置的最大值，Redis被自动将其转为普通编码。这个转换过程，对于小的取值非常快，但如果你为了使用特殊编码值而改变了配置，那么就需要允许压力测试来测试这个转换时间了。 </p>
+<h2 id="实践"><a href="#实践" class="headerlink" title="实践"></a>实践</h2><p>进行三个实践。</p>
+<p>第一个使用key/value的形式存储1w个数据，占用空间608175字节。</p>
+<p>第二个使用hash的形式存储1w个数据，占用空间79424字节</p>
+<ol>
+<li>采用k/v形式</li>
+</ol>
+<pre><code>#! /bin/bash
+
+redis-cli info|grep used_memory:
+
+for (( start = 10000; start &lt;20000 ; start++ ))
+do
+    redis-cli set $start 100 &gt; /dev/null
+done
+
+redis-cli info|grep used_memory:
+</code></pre><ol start="2">
+<li>采用hash形式</li>
+</ol>
+<pre><code>#! /bin/bash
+
+redis-cli info|grep used_memory:
+
+for (( start = 10000; start &lt; 20000 ; start++ ))
+do
+    hash=$((start % 100))
+    redis-cli hset $hash $start 100 &gt; /dev/null
+done
+
+redis-cli info|grep used_memory:
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://redis.io/topics/memory-optimization" target="_blank" rel="noopener">redis内存优化</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="ckw1wtyjn0010utnuufxo2kg8" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-php发送邮件" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/25/php发送邮件/" class="article-date">
+  <time datetime="2016-05-25T08:31:31.000Z" itemprop="datePublished">2016-05-25</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/25/php发送邮件/">php发送邮件</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>php manual中关于mail的介绍很简单，</p>
+<pre><code>@param to 电子邮件收件人或收件人列表
+@param subjct 电子邮件的主题 也就是收件人或收件人列表
+@param message 所要发送的消息 
+@return true if the mail was successfully accepted fro delivery, FALSE otherwise
+bool mail ( string $to , string $subject , string $message [, string $additional_headers [, string $additional_parameters ]] )
+</code></pre><h2 id="0-我的代码"><a href="#0-我的代码" class="headerlink" title="0. 我的代码"></a>0. 我的代码</h2><p>根据邮件协议，使用基本的php代码进行编写，直接包含这个类即可使用</p>
+<h2 id="1-发送html"><a href="#1-发送html" class="headerlink" title="1. 发送html"></a>1. 发送html</h2><ol>
+<li>发送html就是将正文的message以文本格式发送<h2 id="2-发送附件"><a href="#2-发送附件" class="headerlink" title="2. 发送附件"></a>2. 发送附件</h2></li>
+<li><p>附件需要以multipart/form-data的格式进行组装，这儿与web上传form表单的格式一样。例子如下</p>
+<pre><code>--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+Content-Transfer-Encoding: base64
+
+54eV5YevQm9keQoKCgo=
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+X-Attachment-Id: 15259
+Content-Transfer-Encoding: base64
+Content-Type: application/octet-stream; name=&quot;keything.txt&quot;
+Content-Disposition: attachment; filename=&quot;keything.txt&quot;
+
+54eV5Yev
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx--
+</code></pre></li>
+<li>我们所发出的数据就如上面文本所示，因此要将其组装</li>
+</ol>
+<ol start="3">
+<li><p>class KTMail</p>
+<pre><code>&lt;?php
+class KTMail
+{
+    const UTF8_PREFIX  = &apos;=?UTF-8?B?&apos;;
+    const UTF8_POSTFIX = &apos;?=&apos;;
+    const RN = &quot;\r\n&quot;;
+    /**
+     * @param from: who send this mail
+     * @param to: who receive this mail
+     * @param subject: the title of mail
+     * @param body: the content of mail
+     * @param attachment_fname: the file name of attachement
+     * @param attachment_fdata: the file content of attachment
+     * @return true if send succeed, FALSE otherwise
+     * TODO if attachment_fname is chinese, it will be messay code.
+     */
+    public static function sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata)
+    {
+        // a random string 
+        $semi_rand = md5(time()); 
+        $mime_boundary = &apos;==Mime_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+        $part_boundary = &apos;==Part_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+
+        // header 
+        $headers = [];
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-Type: multipart/mixed; boundary=&apos; . $mime_boundary;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $msg = [];
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos; . self::RN;
+        $msg[] =  chunk_split(base64_encode($body));
+
+        // Attachment
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;X-Attachment-Id: &apos; . rand(1000, 99999);
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos;;
+        $msg[] = &apos;Content-Type: application/octet-stream;&apos; . &apos; name=&quot;&apos; . $attachment_fname . &apos;&quot;&apos;;
+        $msg[] = &apos;Content-Disposition: attachment; filename=&quot;&apos;. $attachment_fname . &apos;&quot;&apos; . self::RN;
+        $msg[] = chunk_split(base64_encode($attachment_fdata));
+        $msg[] = &apos;--&apos; . $mime_boundary . &apos;--&apos;;
+
+        $msg_raw = implode(self::RN, $msg);
+        error_log($msg_raw, 3, &apos;/tmp/sendmail.log&apos;);
+
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+    public static function sendWithHtml($from, $to, $subject, $body)
+    {
+        // header 
+        $headers = array();
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-type: text/html; charset=utf-8&apos;;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+        $msg_raw = $body;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+}
+</code></pre></li>
+<li><p>测试用例</p>
+<pre><code>&lt;?php
+include (&apos;ktmail.php&apos;);
+$from = &apos;local@a.cn&apos;;
+$to = &apos;your-email&apos;;
+$subject = &apos;keything.net&apos;;
+$body = &apos;keything.net&apos;;
+$attachment_fname = &apos;keything.txt&apos;;
+$attachment_fdata = &apos;keything&apos;;
+$attach_res = KTMail::sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata);
+echo &apos;attach_res = &apos; . var_export($attach_res, true).&quot;\n&quot;;
+
+$html_body = &apos;
+    &lt;html&gt;
+        &lt;head&gt; keything &lt;/head&gt;
+        &lt;body&gt; 
+            keything body 
+            &lt;table border=&quot;1&quot;&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 1, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 1, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 2, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 2, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+            &lt;/table&gt;
+        &lt;/body&gt;
+        &lt;/head&gt;
+    &lt;/html&gt;
+    &apos;;
+$html_res = KTMail::sendWithHtml($from, $to, $subject, $html_body);
+echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
+</code></pre></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckw1wtylb004eutnuwv0ze0qy" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx模块执行顺序" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/08/nginx模块执行顺序/" class="article-date">
+  <time datetime="2016-05-08T10:00:01.000Z" itemprop="datePublished">2016-05-08</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/08/nginx模块执行顺序/">nginx模块执行顺序</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>整篇文章参考</p>
+<ol>
+<li><a href="http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html" target="_blank" rel="noopener">http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html</a></li>
+<li><a href="http://www.nginxguts.com/2011/01/phases/" target="_blank" rel="noopener">http://www.nginxguts.com/2011/01/phases/</a></li>
+</ol>
+<h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><h2 id="1-简要介绍"><a href="#1-简要介绍" class="headerlink" title="1. 简要介绍"></a>1. 简要介绍</h2><p> 在每个阶段都可以注册多个自定义的handlers。但是下面的几个阶段是不能够注册自定义的handler的：</p>
+<pre><code>1. find-config阶段
+2. post-access阶段
+3. post-rewrite阶段
+4. try-files阶段
+</code></pre><p>每个阶段都有一个与之相关的handler的列表。一旦把handler注册到对应阶段，那么handler就会返回下面的取值：</p>
+<pre><code>NGX_OK：请求已经成功处理，请求将会传到下一个阶段。
+
+NGX_DECLINED：请求需要被转发到本阶段的下一个handler
+
+NGX_AGAIN,NGX_DONE：请求已经被正确处理，同时请求被挂起，直到某个事件（子请求结束、socket可写或超时等）到来，handler才会再次被调用
+</code></pre><h2 id="2-如何注册自定义的handler"><a href="#2-如何注册自定义的handler" class="headerlink" title="2. 如何注册自定义的handler"></a>2. 如何注册自定义的handler</h2><p> 为了在某个阶段注册自定义的handler，需要找到<code>ngx_http_core_module</code>，并添加（<code>ngx_array_push</code>)到指定的phrase向量中。handlers以相反的顺序被调用。因此在配置中最后注册的handler会首先被调用。</p>
+<p>  从上面可以看出，请求处理的顺序和配置文件中的配置指令的先后顺序无关，无论配置文件中指令的顺序如何，各个阶段的处理函数都会按照预先的顺序执行。因此一个处理函数需要知道自己什么时候会被调用，何时需要返回NGX_DECLINED，而且保证减少性能损耗。</p>
+<h2 id="3-各个phase对于返回值的处理："><a href="#3-各个phase对于返回值的处理：" class="headerlink" title="3. 各个phase对于返回值的处理："></a>3. 各个phase对于返回值的处理：</h2><ol>
+<li><p>Access阶段</p>
+<pre><code>NGX_OK：允许访问请求URI指定的资源
+   NGX_HTTP_FORBIDDEN，NGX_HTTP_UNAUTHORIZED：不允许访问请求URI指定的资源
+</code></pre></li>
+<li><p>Content阶段</p>
+<pre><code> NGX_AGAIN或NGX_DONE时，content handler不会再被调用。取而代之的handler改变请求的读或写的handler
+如果content handler返回NGX_DECLINED， nginx将会将请求转发到content phrase handlers。
+</code></pre></li>
+<li><p>关于content phase handler与content handler的区别</p>
+</li>
+</ol>
+<p>a. content phase handler是混乱的：每个到达content阶段的请求都可以调用content phase handler. 对于配置content handler的location，这些请求只能调用一次content handler。</p>
+<p>b. 在一个location中可以调用多个content phase handler。但是在一个location中只能有一个content handler。</p>
+<p>这儿借用agentzh 文章Nginx配置指令的执行顺序（五）中例子。</p>
+<pre><code>location /test {
+    echo_before_body &quot;before...&quot;;
+    proxy_pass http://127.0.0.1:8080/foo;
+    echo_after_body &quot;after...&quot;;
+}
+
+location /foo {
+    echo &quot;contents to be proxied&quot;;
+}
+</code></pre><p>测试结果表明这一次我们成功了：</p>
+<pre><code>$ curl &apos;http://localhost:8080/test&apos;
+before...
+contents to be proxied
+after...
+
+因此我们知道echo_before_body 和echo_after_body指令都属于content phase handler。也就是Agentzh文中的输出过滤器。
+</code></pre><h1 id="二、详细介绍"><a href="#二、详细介绍" class="headerlink" title="二、详细介绍"></a>二、详细介绍</h1><p>Nginx 处理请求的过程一共划分为 11 个阶段，按照执行顺序依次是 post-read、server-rewrite、find-config、rewrite、post-rewrite、preaccess、access、post-access、try-files、content 以及 log.</p>
+<h2 id="1-post-read"><a href="#1-post-read" class="headerlink" title="1. post-read"></a>1. post-read</h2><ol>
+<li>支持模块注册处理程序</li>
+<li>发生阶段:nginx读取并解析完请求头之后立即开始执行 </li>
+<li>示例模块：标准模块 ngx_realip，目的：改写请求的来源地址。</li>
+<li><p>举例</p>
+<pre><code>server {
+    listen 8080;
+
+    set_real_ip_from 127.0.0.1; # 规定来源地址的改写只对那些来自127.0.0.1请求生效
+    real_ip_header   X-My-IP;
+
+    location /test {
+        set $addr $remote_addr;
+        echo &quot;from: $addr&quot;;
+    }
+}
+</code></pre><p> 结果</p>
+<pre><code>$curl -H &apos;X-My-IP: 1.2.3.4&apos; your.domain/test
+from: 1.2.3.4
+</code></pre></li>
+</ol>
+<h2 id="2-server-rewrite"><a href="#2-server-rewrite" class="headerlink" title="2. server-rewrite"></a>2. server-rewrite</h2><ol>
+<li>支持模块注册处理程序</li>
+</ol>
+<h2 id="3-find-config"><a href="#3-find-config" class="headerlink" title="3. find-config"></a>3. find-config</h2><ol>
+<li>不支持模块注册处理程序</li>
+<li>目的：由nginx核心完成当前请求与location配置块之间的配对工作。在此阶段之前，请求没有与任何location配置块相关联。</li>
+</ol>
+<h2 id="4-rewrite"><a href="#4-rewrite" class="headerlink" title="4. rewrite"></a>4. rewrite</h2><ol>
+<li>支持模块注册处理程序</li>
+<li>目的：对当前请求进行各种修改，比如URI，URL，或者创建并初始化一系列后续处理阶段所需要的变量</li>
+</ol>
+<h2 id="5-post-rewrite"><a href="#5-post-rewrite" class="headerlink" title="5. post-rewrite"></a>5. post-rewrite</h2><p>location级别重写的后一阶段，用来检查上阶段是否有uri重写，并根据结果跳转到合适的阶段；</p>
+<ol>
+<li>不支持模块注册处理程序</li>
+<li>目的：nginx核心完成rewrite阶段所要求的“内部跳转”操作。“内部跳转”本质上其实是把当前请求的处理阶段倒退到find-config阶段，以便重新进行请求URI与location配置块的配对。 </li>
+<li><p>注意：有趣的地方是，倒退回find-config阶段的动作并不是发生在rewrite阶段，而是发生在后面的POST-REWRITE阶段。rewrite指令只是简单地指示Nginx有必要在POST-REWRITE阶段发起“内部跳转”。这个设计的目的是：为了在最初匹配的location块中支持多次反复地改写URI。</p>
+<pre><code>location /foo {
+rewrite ^ /bar;
+rewrite ^ /baz;
+
+echo foo;
+}
+
+location /bar {
+    echo bar;
+}
+
+location /baz {
+    echo baz;
+}
+</code></pre><p>请求</p>
+<pre><code> $ curl localhost:8080/foo
+baz
+</code></pre><p> 日志</p>
+<pre><code>$ grep &apos;using config&apos; logs/error.log
+   [debug] 89449#0: *1 using configuration &quot;/foo&quot;
+   [debug] 89449#0: *1 using configuration &quot;/baz&quot;
+</code></pre></li>
+<li><p>server配置块中的rewrite指令</p>
+<p> server配置块中的rewrite指令对请求URI进行改写，则不会涉及”内部跳转“，因为此时URI改写发生在server-rewrite阶段，早于location配对的find-config阶段。</p>
+</li>
+</ol>
+<h2 id="6-pre-access"><a href="#6-pre-access" class="headerlink" title="6. pre-access"></a>6. pre-access</h2><ol>
+<li>标准模块<code>ngx_limit_req</code>和<code>ngx_limit_zone</code> 就运行在此阶段，前者控制请求的访问频度，后者限制访问的并发度。</li>
+<li>【建议】 尽量在server配置块中配置ngx_realip这样的模块</li>
+</ol>
+<h2 id="7-acess"><a href="#7-acess" class="headerlink" title="7. acess"></a>7. acess</h2><ol>
+<li>标准模块 ngx_access</li>
+<li>第三方模块 ngx_auth_request, access_by_lua</li>
+</ol>
+<h2 id="8-post-access阶段"><a href="#8-post-access阶段" class="headerlink" title="8. post-access阶段"></a>8. post-access阶段</h2><ol>
+<li>不支持模块注册处理程序</li>
+<li>目的：主要配合acess阶段实现标准ngx_http_core模块提供的配置指令satisfy的功能。在access阶段注册多个处理指令，satisfy指令可以用于控制它们彼此之间的协作方式。有两种协作方式，一种是all（与关系），一种是any（或关系）。</li>
+<li><p>举例：</p>
+<pre><code>location /test {
+satisfy all;
+
+deny all;
+access_by_lua &apos;ngx.exit(ngx.OK)&apos;;
+
+echo something important;
+}
+</code></pre><p> 请求</p>
+<pre><code>satisfy all; $curl your.domain/test ----403 forbidden
+satisfy any; $curl your.domain/test ---- something important
+</code></pre></li>
+</ol>
+<h2 id="9-try-files"><a href="#9-try-files" class="headerlink" title="9. try-files"></a>9. try-files</h2><ol>
+<li>不支持模块注册处理程序</li>
+<li>目的：专门实现标准配置指令<code>try_files</code>功能</li>
+<li><code>try_files</code> 指令接受两个以上任意数量的参数，每个参数都指定了一个 URI. 这里假设配置了 N 个参数，则 Nginx 会在 try-files 阶段，依次把前 N-1 个参数映射为文件系统上的对象（文件或者目录），然后检查这些对象是否存在。一旦 Nginx 发现某个文件系统对象存在，就会在 try-files 阶段把当前请求的 URI 改写为该对象所对应的参数 URI（但不会包含末尾的斜杠字符，也不会发生 “内部跳转”）。如果前 N-1 个参数所对应的文件系统对象都不存在，try-files 阶段就会立即发起“内部跳转”到最后一个参数（即第 N 个参数）所指定的 URI. </li>
+<li><code>try_files</code> 指令本质上只是有条件地改写当前请求的 URI，而这里说的“条件”其实就是文件系统上的对象是否存在。当“条件”都不满足时，它就会无条件地发起一个指定的“内部跳转”。当然，除了无条件地发起“内部跳转”之外， try_files 指令还支持直接返回指定状态码的 HTTP 错误页，例如try_files /foo /bar =404;</li>
+<li><p>特别注意：对于<code>try_files</code>指令，通过URI末尾的斜杠字符来区分”目录“和”文件“的。</p>
+<pre><code> root /var/www/;
+
+location /test {
+    try_files /foo /bar/ /baz;
+    echo &quot;uri: $uri&quot;;
+}
+
+location /foo {
+    echo $uri;
+    echo &quot;foo&quot;;
+}
+
+location /bar/ {
+       echo $uri;
+     echo bar;
+}
+
+location /baz {
+    echo $uri;
+    echo baz;
+}
+</code></pre></li>
+</ol>
+<p>case1 ：根目录下没有foo文件，bar目录，输出/baz, baz</p>
+<pre><code>$ grep trying logs/error.log
+[debug] 3869#0: *1 trying to use file: &quot;/foo&quot; &quot;/var/www/foo&quot;
+[debug] 3869#0: *1 trying to use dir: &quot;/bar&quot; &quot;/var/www/bar&quot;
+[debug] 3869#0: *1 trying to use file: &quot;/baz&quot; &quot;/var/www/baz&quot;
+</code></pre><p> 这里最后一条“调试信息”容易产生误解，会让人误以为 Nginx 也把最后一个参数 /baz 给映射成了文件系统对象进行检查，事实并非如此。当 try_files 指令处理到它的最后一个参数时，总是直接执行“内部跳转”，而不论其对应的文件系统对象是否存在。</p>
+<p> case2 :根目录下有foo文件，输出 uri: /foo</p>
+<h2 id="10-content"><a href="#10-content" class="headerlink" title="10. content"></a>10. content</h2><ol>
+<li><p>目的：内容生成阶段。肩负着生成“内容”， 并输出HTTP响应的使命。echo, proxy_pass都属于该阶段。</p>
+</li>
+<li><p>对于content阶段，有两种情况：</p>
+<p>  a. 没有使用任何content阶段的指令。那么就会执行静态资源服务模块：<code>ngx_index</code>, <code>ngx_autoindex</code>, <code>ngx_static</code>模块</p>
+<p>  b. 如果使用了content阶段的指令，如echo，proxy_pass。</p>
+<pre><code>每个location只能有一个内容处理程序content handler.有多个时content阶段指令时，只有一个能够被注册并执行。
+</code></pre><p>  比如指令中有 <code>echo ‘hello’;proxy_pass so.com;</code>到底哪个被执行是不一定的。因为在同一个阶段phase中，各个handler的执行顺序是不一定的。</p>
+</li>
+</ol>
+<h2 id="11-log"><a href="#11-log" class="headerlink" title="11. log"></a>11. log</h2>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="ckw1wtyl60044utnuvo1ls5jn" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-rewrite详解" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/05/nginx-rewrite详解/" class="article-date">
+  <time datetime="2016-05-05T10:00:01.000Z" itemprop="datePublished">2016-05-05</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/05/nginx-rewrite详解/">nginx-rewrite详解</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="一-概述"><a href="#一-概述" class="headerlink" title="一. 概述"></a>一. 概述</h3><p><code>ngx_http_rewrite_module</code>模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。<br><code>ngx_http_rewrite_module</code>模块中的指令以下面的顺序执行：</p>
+<pre><code>1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行
+2. 重复的：
+    1. 根据请求URI匹配一个location
+    2. 在匹配的location中，该模块的指令按先后顺序依次执行
+    3. 如果一个请求URI被重定向，这个循环被重复，但最多不超过10次。
+</code></pre><p>【解释】在<code>ngx_http_rewrite_module</code>初始化的时候(<code>ngx_http_rewrite_init</code>)的时候，在<code>SERVER_REWRITE</code>和<code>REWRITE</code>两个阶段注册了相同的处理函数<code>ngx_http_rewrite_handler</code>.</p>
+<h3 id="二-指令"><a href="#二-指令" class="headerlink" title="二. 指令"></a>二. 指令</h3><h4 id="1-break"><a href="#1-break" class="headerlink" title="1. break"></a>1. break</h4><pre><code>Syntax:break;
+Default:—
+Context:server, location, if
+</code></pre><p>停止处理<code>ngx_http_rewrite_module</code>模块的指令。<br>如果在location里面使用，那么这个请求接下来phase的处理也都是在这个location里面。<br>看下面的例子</p>
+<pre><code>location /proxy3 {
+    rewrite (.*) /third;
+    set $a 35;
+    break;
+    rewrite (.*) /second;
+    set $a 76;
+    echo $a;
+}
+location /second {
+    echo &apos;second&apos;;
+    echo $a;
+}
+location /third {
+    echo &apos;third&apos;;
+    echo $a;
+}
+</code></pre><p>curl <a href="http://your.domain/proxy3" target="_blank" rel="noopener">http://your.domain/proxy3</a> </p>
+<table>
+<thead>
+<tr>
+<th>case</th>
+<th>result</th>
+<th>reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>有break</td>
+<td>输出35</td>
+</tr>
+<tr>
+<td>没有break</td>
+<td>输出second 76</td>
+<td>因为4条指令顺序执行，rewrite (.*) /second是最后一条rewrite指令，生效。set $a 76生效。因此在POST-REWRITE阶段转到location /second</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2-if"><a href="#2-if" class="headerlink" title="2. if"></a>2. if</h4><pre><code>Syntax: if (condition) {...}
+Default: ---
+Context: server, location
+</code></pre><p>指定的condition参数被判断。如果为true，在if里面的模块指令被执行，请求进入到if指令里面的配置。在if指令里面的配置继承于上一层的配置。<br>condition可以是下面几种情况：</p>
+<pre><code>1. 一个变量名; 如果变量是空字符串或0，则false
+2. 使用= !=运算符比较
+3. 使用~(区分大小写) ~*(不区分大小写) 正则表达式包含capture，可以使用$1...$9来使用捕获的值。!~ !~*也可以使用.如果正则表达式包含} ;的话，整个正则表达式要放在单引号或双引号里面。
+4. 检查文件是否存在 -f !-f
+5. 检查目录是否存在 -d !-d
+6. 检查文件，目录，软链是否存在 -e !-e
+7. 检查是否可执行文件 -x !-x
+</code></pre><p>举例：</p>
+<pre><code>if ($http_user_agent ~ MSIE) {
+       rewrite ^(.*)$ /msie/$1 break;
+}
+
+if ($http_cookie ~* &quot;id=([^;]+)(?:;|$)&quot;) {
+    set $id $1;
+}
+
+if ($request_method = POST) {
+    return 405;
+}
+
+if ($slow) {
+    limit_rate 10k;
+}
+
+if ($invalid_referer) {
+    return 403;
+}
+</code></pre><h4 id="3-return"><a href="#3-return" class="headerlink" title="3. return"></a>3. return</h4><pre><code>Syntax: return code [text];
+        return code URL;
+        return URL;
+</code></pre><p> 停止处理，并将code返回给客户端。非标准code444 关闭连接并且不发送响应头。<br> 从版本0.8.42开始，可以指定一个URL（对于301，302，303和307）或者响应体（其他code）。一个响应体和重定向的URL可以包含变量。<br> 另外，URL可以指定为单个参数，这样就是302临时跳转。这样一个参数需要以http://, https://, $scheme开头。</p>
+<h4 id="4-rewrite"><a href="#4-rewrite" class="headerlink" title="4. rewrite"></a>4. rewrite</h4><pre><code>Syntax: rewrite regex replacement [flag];
+Default: ---
+Context: server, location, if
+</code></pre><p>如果指定的正则表达式匹配了一个请求的URI，URI被指定的replacement改变。</p>
+<p>配置文件中多个rewrite指令时，按照出现顺序依次执行，只执行最后一个。可以使用[flags]终止指令的处理。</p>
+<p>如果replacement以<code>http:// https://</code> 开头，那么处理将会停止，并重定向返回给客户端。</p>
+<p>可选参数flag，可以是下面几个中的某一个:</p>
+<pre><code>last:
+    停止处理ngx_http_rewrite_module模块的指令集，然后使用改变后的URI去查找新的location。
+    【注释】即遇到last以后，执行阶段从rewrite阶段回到了find-config阶段。
+break:
+    停止处理ngx_http_rewrite_module模块的指令集。
+    【注释】遇到break以后，执行阶段从rewrite阶段转到下一个阶段。如果是server-rewrite则转到find-config, 如果是rewrite则转到post-rewrite。
+redirect:
+    返回一个302临时跳转。当replacement不是以http://, https://开头的时候使用
+permanent:
+    返回一个301永久跳转。
+</code></pre><p>last其实就相当于一个新的url，对nginx进行了一次请求，需要走一遍大多数的处理过程，最重要的是会做一次find config，提供了一个可以转到其他location的配置中处理的机会，</p>
+<p>而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理。</p>
+<h4 id="5-rewrite-log"><a href="#5-rewrite-log" class="headerlink" title="5. rewrite_log"></a>5. rewrite_log</h4><pre><code>Syntax: rewrite_log on | off;
+Default: rewrite_log off;
+Context: http,server,location,if
+</code></pre><p>开启或关闭<code>ngx_http_rewrite_module</code>模块指令处理结果到error_log文件，日志级别notice.</p>
+<h2 id="三-例子"><a href="#三-例子" class="headerlink" title="三. 例子"></a>三. 例子</h2><ol>
+<li><p>echo $a被if继承。因此输出45</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     if ($a = 35) {
+         set $a 45;
+     }
+}
+</code></pre></li>
+<li><p>echo $a被if继承，但if指令里面有echo指令，根据配置的基本规则，if里面的echo指令有效。因此输出43 【todo】配置的基本原则是毛线？？？</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     set $b 43;
+     if ($a = 35) {
+         set $a 45;
+         echo $b;
+     }
+}
+</code></pre></li>
+<li><p>由于if处于rewrite阶段，执行if以后依然处于rewrite阶段，因此if{}后面的模块指令依然执行。<br>因此输出67;</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     if ($a = 35) {
+         set $a 45;
+     }
+     set $a 67;
+}
+</code></pre></li>
+<li><p>演示rewrite</p>
+<pre><code>location /proxy3 {
+    #rewrite (.*) http://your.domain/third;
+    rewrite (.*) /third;
+    set $a 67;
+    echo $a;
+}
+set $a 99;
+location /third {
+    echo $a;
+}
+</code></pre><p>如果rewrite后面是/third 则输出67<br>如果是http:// 则输出99。<br>解释：<br>set $a 99 发生在server-rewrite阶段<br>之后在find-config阶段，找到location /proxy3<br>在location /proxy3里面 如果是<code>rewrite http://...</code>那么直接跳转。类似 rewrite (.<em>) /third redirect;<br>如果是rewrite (.</em>) /third呢 则还会继续执行接下来的rewrite阶段的指令，set $a 67将会被执行。然后在post-rewrite阶段调转到location /third</p>
+</li>
+<li><p>rewrite中带有flag</p>
+<pre><code>location /proxy3 {
+      set $a 35;
+      if ($a = 35) {
+          set $a 73;
+          rewrite (.*) /main break;
+      }
+      rewrite (.*) /second;
+      set $a 76;
+      echo &apos;proxy3&apos;;
+      echo $uri;
+      echo $a;
+  }
+  location /main {
+      echo &apos;main&apos;;
+      echo $a;
+  }
+  location /second {
+      echo &apos;second&apos;;
+      echo $a;
+  }
+</code></pre><p> 如果是<code>rewrite (.*) main break</code> 。 则输出proxy3 /main 73</p>
+<p> 如果是<code>rewrite (.*) main; break;</code>，则输出proxy3 /main 73<br> 原因是而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理；</p>
+<p> 如果是<code>rewrite (.*) main last</code>，则输出main 35</p>
+<p> 如果是<code>rewrite (.*) main</code> 不加break,last, 则rewrite (.*) /second; set $a 76执行 输出 second 76</p>
+</li>
+</ol>
+<ol start="6">
+<li><p>多个rewrite只有最后一个起作用</p>
+<pre><code>location /proxy3 {
+    rewrite (.*) /third;
+    set $a 35;
+    if ($a = 35) {
+        rewrite (.*) /main;
+    }
+    rewrite (.*) /second; 
+    set $a 76;
+    echo $a;
+}
+</code></pre></li>
+</ol>
+<h2 id="四-几点事实："><a href="#四-几点事实：" class="headerlink" title="四. 几点事实："></a>四. 几点事实：</h2><ol>
+<li>rewrite 指令被称为 action directives. 下一层级的location不会从上一级中继承。</li>
+<li>server 作用域中的 rewrite 模块指令也不会向下传递到 location 作 用域，但是这些指令会在 SERVER_REWRITE 阶段 (先于 REWRITE 阶段) 被执行.</li>
+<li>rewrite 模块提供的指令的执行顺序和其在配置文件中的定义顺序一致</li>
+<li><p>if 指令在nginx内部创建了一个无名location，if条件为真时，nginx使用这个无名location作用域的配置处理当前请求。 </p>
+</li>
+<li><p>rewrite模块<br>rewrite 模块是一个 phase handler， 其初始化函数 <code>ngx_http_rewrite_init</code> 在 SERVER REWRITE 和 REWRITE 阶段 注册了相同的处理函数<code>ngx_http_rewrite_handler</code>。其中，SERVER REWRITE 阶段 的处理函数用于执行 server 作用域中的 rewrite 模块指令，而 REWRITE 阶 段的处理函数用于执行 location 和 if 作用域的 rewrite 模块指令。</p>
+</li>
+<li><p>POST REWRITE 是 Nginx 内部定义的阶段，通过检查请求 uri 是否被 rewrite 模块修改 (r-&gt;uri_changed)，判断是否需要使用修改后的 uri 重新开始 FIND CONFIG 以重新匹配合适的 location。比如在 location 中有配置如 rewrite … last; 且 rewrite 成功和请求 uri 匹配成功时。</p>
+</li>
+</ol>
+<ol start="7">
+<li>指令执行顺序</li>
+</ol>
+<p>nginx大部分模块提供的配置指令的生效顺序和其在配置文件中的顺序并没有什么关系。但有些是有关系的，比如</p>
+<pre><code>1. http core模块中使用正则表达式的location。跟顺序有关
+2. rewrite模块中提供的if，break，return，rewrite指令
+</code></pre><h2 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五. 参考文章"></a>五. 参考文章</h2><p><a href="http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/" target="_blank" rel="noopener">http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/</a><br><a href="http://nginx.org/en/docs/http/ngx_http_rewrite_module.html" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_rewrite_module.html</a><br><a href="https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/" target="_blank" rel="noopener">https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/</a><br><a href="http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/" target="_blank" rel="noopener">http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/</a><br><a href="http://blog.csdn.net/brainkick/article/details/7475770" target="_blank" rel="noopener">http://blog.csdn.net/brainkick/article/details/7475770</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="ckw1wtyl40041utnuov1bt634" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
+<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
+
+location [ = | ~ | ~* | ^~ ] uri { ... }
+location @name { ... }
+
+Default:
+
+—
+
+Context:
+
+server, location
+</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
+<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
+<ol>
+<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
+<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
+<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
+<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
+<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
+<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
+<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
+</ol>
+<p>location检查的策略：</p>
+<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
+2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
+对于匹配正则location并不是所有情况都进行，有两种情况是例外：
+1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
+2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
+
+   简要概述：
+    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
+如下图所示：
+</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
+<p>举例说明：</p>
+<pre><code>location = / {
+    [ configuration A ]
+}
+
+location / {
+    [ configuration B ]
+}
+
+location /documents/ {
+    [ configuration C ]
+}
+
+location ^~ /images/ {
+    [ configuration D ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration E ]
+}
+
+请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
+</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
+<p>参考文章</p>
+<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="ckw1wtyl3003zutnu1q92ggs1" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx配置-最小配置" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx配置-最小配置/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx配置-最小配置/">nginx配置-最小配置</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前述"><a href="#前述" class="headerlink" title="前述"></a>前述</h2><p>很多时候都会提到最小模块。对于Nginx的配置，当然也要有最小配置呢。当然下面的配置也不是最小配置，因为里面有很多配置都是有默认值的。大家可以查看一下nginx.org上的文档说明。</p>
+<h2 id="主配置文件nginx-conf详细说明"><a href="#主配置文件nginx-conf详细说明" class="headerlink" title="主配置文件nginx.conf详细说明"></a>主配置文件nginx.conf详细说明</h2><p>在nginx.conf中包括了事件模块events{}, http模块http{}。并没有看到预想的虚拟主机server{}。因为我们通过include host/*.conf将虚拟主机的配置放在了vhost文件夹中。类似C语言中include。</p>
+<pre><code>##nginx.conf
+error_log  /usr/local/var/log/nginx/error.log  info;
+pid        /usr/local/var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    include vhost/*.conf;
+}
+</code></pre><h2 id="普通HTTP虚拟主机配置"><a href="#普通HTTP虚拟主机配置" class="headerlink" title="普通HTTP虚拟主机配置"></a>普通HTTP虚拟主机配置</h2><p>vhost/basic.conf<br>     basic.conf配置中必要的配置是listen，root，location /, location ~ .php$ {}.<br>其中location ~.php${}的作用是将以php结尾的文件转向FastCGI服务器。</p>
+<pre><code># vhost/basic.conf
+server {
+    listen       80 default;
+    server_name  localhost;
+    access_log  /usr/local/var/log/nginx/access.log;
+
+    charset utf8;
+
+    root   /Users/xx/Documents/Study/nginx/learn_conf;
+    location / {
+        index  index.php index.html index.htm;
+    }
+
+    error_page 404 404.php;
+    fastcgi_intercept_errors on;
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    location ~ \.php$ {
+        fastcgi_pass   localhost:9000;
+        fastcgi_index  index.php;
+        include        fastcgi.conf;
+    }
+}
+</code></pre><h2 id="加密HTTPS虚拟主机配置"><a href="#加密HTTPS虚拟主机配置" class="headerlink" title="加密HTTPS虚拟主机配置"></a>加密HTTPS虚拟主机配置</h2><p>加密HTTPS与普通HTTP虚拟主机的区别在于：<br>1）端口号后加 ssl<br>2）加入ssl_certificate   ssl_certificate_key两个指令</p>
+<p>其他方面二者相同：比如端口号改变，server_name更改</p>
+<pre><code>server {
+    listen 443 ssl;
+    server_name learn.ssl1;
+
+    ssl_certificate /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq.crt;
+    ssl_certificate_key /Users/Documents/GitLibrary/nginx/nginx_conf/vhost/33iq_nopass.key;
+
+    root /Users/Documents/Study/nginx/learn_ssl2;
+    location / {
+        index index.php index.html index.htm;
+    }
+
+    error_page 404 404.php;
+    fastcgi_intercept_errors on;
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    location ~ \.php$ {
+        fastcgi_pass   localhost:9000;
+        fastcgi_index  index.php;
+        include        fastcgi.conf;
+    }
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="ckw1wtyl70046utnuh1wiwii5" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-unix-inode-学习" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/28/unix-inode-学习/" class="article-date">
+  <time datetime="2016-04-28T10:00:01.000Z" itemprop="datePublished">2016-04-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/28/unix-inode-学习/">Unix/Linux文件系统--目录，inode，硬链接</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-简介：文件和Inodes"><a href="#1-简介：文件和Inodes" class="headerlink" title="1. 简介：文件和Inodes"></a>1. 简介：文件和Inodes</h2><p>在Unix/Linux中，文件是没有结构的一个字节序列。文件中控制数据的程序（比如mysql）会添加任何所需要的结构。linux自己并不需要知道数据库文件的内部结构，对于linux而言只需要返回字节（bytes）</p>
+<h3 id="1-1-甚至硬件设备都有文件名"><a href="#1-1-甚至硬件设备都有文件名" class="headerlink" title="1.1 甚至硬件设备都有文件名"></a>1.1 甚至硬件设备都有文件名</h3><p>Unix/Linux尽可能的将每个设备都当做一系列字节。因此包括网卡、硬盘驱动、键盘、打印机、文件在内，一切都被当做文件。</p>
+<pre><code>你的电脑内存是 /dev/mem
+你的第一块硬盘是 /dev/sda
+你的终端是 /dev/tty1
+...
+</code></pre><p>举例</p>
+<pre><code>$ ls -li /dev/mem /dev/sda /dev/tty1
+5792 crw-r----- 1 root kmem 1, 1 Oct 13 02:30 /dev/mem
+ 888 brw-rw---- 1 root disk 8, 0 Oct 13 02:30 /dev/sda
+5808 crw-rw---- 1 root tty  4, 1 Oct 13 02:31 /dev/tty1
+</code></pre><p>在Linux中大多数的输入输出设备和目录都被看做文件。如果你有足够的权限，你可以使用它们的文件系统的名字来读取这些设备。</p>
+<h3 id="1-2-Index-Nodes-inodes"><a href="#1-2-Index-Nodes-inodes" class="headerlink" title="1.2 Index Nodes = inodes"></a>1.2 Index Nodes = inodes</h3><p>文件系统的内容都不是以名字的形式存储，而是以数字的形式存储。Linux是以序号化结构来存储每个硬盘对象（disk object, 如文件或目录）的数据和信息。这个序号化的结构称之为index node或inode。</p>
+<p>每个inode都是由唯一的inode number来标识，可以使用ls -i选项查看。</p>
+<pre><code>$ ls -l -i /usr/bin/perl*
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl
+266327 -rwxr-xr-x 2 root root 10376 Mar 18  2013 /usr/bin/perl5.14.2
+266331 -rwxr-xr-x 2 root root 45183 Mar 18  2013 /usr/bin/perlbug
+266328 -rwxr-xr-x 1 root root   224 Mar 18  2013 /usr/bin/perldoc
+</code></pre><p>Unix的目录将文件系统的名字与inode number进行关联。正如上面例子，/usr/bin/perl与inode number 266327关联。当你到达perl程序的时候，系统将会在目录中找到perl这个名字，与perl名字相关联的inode number是266327，这个inode存有真正的数据，系统通过inode找到真正的数据。文件数据与inode number关联，而不是与名字关联。</p>
+<p>在目录中，每个文件有自己名字和与之关联的inode number。每个文件名字可以映射到一个inode number，但是一个inode number可以有多个名字。</p>
+<p>Inode numbers are specific to a file system inside a disk partition. Every file on a file system (in that partition) has a unique inode number. Numbering is done separately for each file system, so different disk partitions may have file system objects with the same inode numbers.</p>
+<p>每个文件系统初始化的时候会有大量可用的inodes，可以使用<code>df -i</code>列出可用的inodes。</p>
+<h2 id="2-文件系统示意图"><a href="#2-文件系统示意图" class="headerlink" title="2. 文件系统示意图"></a>2. 文件系统示意图</h2><p>大多数关于文件系统的示意图都是错误的，下面是真相。<br>inodes的名字（如文件、目录、设备等的名字）是在目录中存储的。目录中只存储了名字和inodenumber的关联关系。文件中数据的真正存储的硬盘空间是在inode中，而不是在目录中。目录中保存的是名字和inode number，名字不会与数据有关联。</p>
+<p>目录中，每个名字有一个inode number，inode number指出了存储数据的硬盘空间的位置。通过<code>ls -i</code>看到名字和inode对应关系。</p>
+<pre><code>$ ls -i /usr/bin/perl*
+266327 /usr/bin/perl        266329 /usr/bin/perldoc.stub
+266327 /usr/bin/perl5.14.2  266330 /usr/bin/perlivp
+266331 /usr/bin/perlbug     266331 /usr/bin/perlthanks
+266328 /usr/bin/perldoc
+</code></pre><p>最重要的事情是知道名字和数据真正存储的位置是分开的。大多数示意图都会把ROOT的名字搞成命名的。这会造成对unix/linux文件和目录的误解。</p>
+<pre><code>WRONG - names on things      RIGHT - names above things
+=======================      ==========================
+
+    R O O T            ---&gt;         [etc,bin,home]   &lt;-- ROOT directory
+   /   |   \                         /    |      \
+etc   bin   home       ---&gt;  [passwd]  [ls,rm]  [abcd0001]
+ |   /   \    \                 |      /    \       |
+ |  ls   rm  abcd0001  ---&gt;     |  &lt;data&gt;  &lt;data&gt;  [.bashrc]
+ |               |              |                   |
+passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
+</code></pre><p>目录是名字和数字的列表，右侧示意图以中括号的方式列出，在示意图中忽略了innode number。目录中每一个对象（文件、目录、特殊文件等）的名字与真正的存储空间是分开的。这就允许一个inode可以有多个名字和多个目录。使用相同的inode number，所有的名字指向相同的存储空间。</p>
+<p>右侧示意图中，树中目录有自己的名字。右侧最顶层目录是ROOT目录的inode，包含了etc,bin,home..的名字列表。因为在ROOT目录上面没有目录，因此ROOT目录是没有名字的。</p>
+<p>ROOT目录下的名字bin与之关联的inodenumber是一个目录的inodenumber，包含了在bin目录下的names的列表，names列表包含名字ls和rm。从bin目录下的ls往下走就是文件/bin/ls的数据节点了。数据节点中不会包含文件的名字，名字在文件的目录中保存。</p>
+<p>ROOT节点没有名字，因为ROOT节点上面没有目录了。其他目录有名字是因为在这些目录上面还有目录，上层目录包含了其名字。</p>
+<h2 id="3-Inodes-Manage-disk-blocks"><a href="#3-Inodes-Manage-disk-blocks" class="headerlink" title="3 Inodes Manage disk blocks"></a>3 Inodes Manage disk blocks</h2><p>每个Uninx文件或目录储存在硬盘的真正数据是由序号化的硬盘数据结构进行管理的，序号化的硬盘数据结构称为Inodes。每个文件和每个目录都分配一个inode。</p>
+<p>Unix节点管理每个文件或目录的硬盘存储空间。inode中包含了一系列指针，指向属于那个文件或目录的硬盘块（disk blocks）。文件或目录越大，inode中需要的硬盘块指针就越多。inode还存储文件或目录的属性（权限、所有者、group、size，access/modify times, etc.) ，唯独没有文件或目录的名字。Inodes只有数字、属性和硬盘块–没有名字。名字分开存储，在目录中进行保存。</p>
+<h2 id="4-目录节点保存所有的名字"><a href="#4-目录节点保存所有的名字" class="headerlink" title="4. 目录节点保存所有的名字"></a>4. 目录节点保存所有的名字</h2><p>文件有硬盘块用于包含文件数据，目录同样有硬盘块，保存的是名字和inode number的对应关系。</p>
+<p>像大多数其他的节点，目录节点也包含了节点的属性信息（权限、所有者等等）和一个或多个硬盘块指针用来存储数据。但是，目录的硬盘块存储的不是文件数据而是目录的数据：名字和inode numbers。</p>
+<h2 id="5-多个名字–硬连接"><a href="#5-多个名字–硬连接" class="headerlink" title="5. 多个名字–硬连接"></a>5. 多个名字–硬连接</h2><p>因为</p>
+<pre><code>1. 一个唯一数字的inode管理一个文件
+2. inode中不会保存文件的名字
+3. 目录中保存文件的名字和inodenumber对应关系
+</code></pre><p>因此</p>
+<pre><code>一个unix文件可以在一个或多个目录中有多个name-and-inode对，从而有多个名字。
+</code></pre><h3 id="5-1-Link-Counts-count-names"><a href="#5-1-Link-Counts-count-names" class="headerlink" title="5.1 Link Counts count names"></a>5.1 Link Counts count names</h3><p>硬链接hardlinks：相同inode有多个名字。<br><code>ln</code>命令为目录中已经存在的节点创建一个新的名字。系统在每个inode中维持一个<code>link count</code>的字段，用于对inode指向的names进行计数。<code>rm</code>命令从目录中删除一个名字（hark link），并减少link count。当一个inode的link count减为0以后，inode就没有名字了，inode就会被回收，所有与inode关联的存储和数据都被释放了。</p>
+<p>rm命令不是删除文件，而是删除文件的名字。当所有的名字都没有了，系统会删除文件并且释放空间</p>
+<h2 id="6-Tracing-Inodes-in-Pathnames"><a href="#6-Tracing-Inodes-in-Pathnames" class="headerlink" title="6. Tracing Inodes in Pathnames"></a>6. Tracing Inodes in Pathnames</h2><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html" target="_blank" rel="noopener">http://teaching.idallen.com/cst8207/13w/notes/450_file_system.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="ckw1wtylm0050utnupsw8q9m1" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Lvs学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/26/Lvs学习笔记/" class="article-date">
+  <time datetime="2016-04-26T09:02:01.000Z" itemprop="datePublished">2016-04-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/26/Lvs学习笔记/">Lvs学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在使用lvs的过程中，我一直担心一个问题：lvs能够抗住最大的并发是多少？当并发非常大的时候，lvs这一台机器的性能会不会变得很差？</p>
+<p>我去查看了章文嵩的文章<a href="http://www.linuxvirtualserver.org/zh/lvs1.html" target="_blank" rel="noopener">http://www.linuxvirtualserver.org/zh/lvs1.html</a><br>发现以下几个点：</p>
+<h2 id="1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"><a href="#1-lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式" class="headerlink" title="1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式"></a>1. lvs是基于ip层和基于内容请求分发的负载平衡调度。基于ip层和基于内容请求分发两种方式</h2><h2 id="2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。"><a href="#2-IP负载均衡技术有三种：VS-NAT，-VS-TUN，VS-DR。" class="headerlink" title="2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。"></a>2. IP负载均衡技术有三种：VS/NAT， VS/TUN，VS/DR。</h2><p>基于IP负载调度技术中，当一个TCP连接的初始SYN报文到达时，调度器就选择一台服务器，将报文转发给它。此后通过查发报文的IP和TCP报文头地址，保证此连接的后继报文被转发到该服务器。这样，IPVS无法检查到请求的内容再选择服务器，这就要求后端服务器组提供相同的服务，不管请求被发送到哪 一台服务器，返回结果都是一样的</p>
+<h2 id="3-VS-NT-virtual-server-via-Network-Address-Translation"><a href="#3-VS-NT-virtual-server-via-Network-Address-Translation" class="headerlink" title="3. VS/NT virtual server via Network Address Translation"></a>3. VS/NT virtual server via Network Address Translation</h2><p>通过网络地址转换，调度器重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文通过调度器时，报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p>
+<p>假如结构如下图所示，client要与服务器端建立连接，在lvs层ip包的目的地址被改为node1，那么该TCP连接的初始SYN报文送到node1，node1返回ACK报文给lvs层，lvs将ACK报文的源地址修改为lvs。以后通过查找发报文的IP和TCP报文头地址，保证此连接的后续报文被转发到node1。 如果我们在client通过tcpdump抓包的话，看到的都是client和lvs之间的交互。</p>
+<pre><code>                 _ _ _ node1
+                /
+client---&gt; lvs ------  node2
+                \_ _ _ _ node3
+</code></pre><h2 id="4-LVS集群的性能"><a href="#4-LVS集群的性能" class="headerlink" title="4. LVS集群的性能"></a>4. LVS集群的性能</h2><p>LVS服务器集群系统具有良好的伸缩性，可支持几百万个并发连接。配置100M网卡，采用VS/TUN或VS/DR调度技术，集群系统的吞吐量可高达1Gbits/s；如配置千兆网卡，则系统的最大吞吐量可接近10Gbits/s。</p>
+<p>因为工作在IP层，只用作分发，因此没有流量产生，内存和CPU资源消耗很低，IO性能不会受到大流量的影响</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="ckw1wtyj9000gutnurijbehfb" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-memcache获取所有的key及value" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/18/memcache获取所有的key及value/" class="article-date">
+  <time datetime="2016-04-18T01:32:56.000Z" itemprop="datePublished">2016-04-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/18/memcache获取所有的key及value/">6. memcache获取所有的key及value</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-特别注意："><a href="#0-特别注意：" class="headerlink" title="0. 特别注意："></a>0. 特别注意：</h2><pre><code>通过cachedump命令只能获取1M的数据，无法获取更多的数据。
+</code></pre><h2 id="1-命令行来查看memcache的key及取值"><a href="#1-命令行来查看memcache的key及取值" class="headerlink" title="1. 命令行来查看memcache的key及取值"></a>1. 命令行来查看memcache的key及取值</h2><ol>
+<li><p>stats slabs  查看有哪些slab</p>
+<p> STAT 18:chunk_size 4544<br> STAT 18:chunks_per_page 230<br> STAT 18:total_pages 1<br> STAT 18:total_chunks 230<br> STAT 18:used_chunks 0<br> STAT 18:free_chunks 7<br> STAT 18:free_chunks_end 223<br> STAT 18:mem_requested 18446744073709551411<br> STAT 18:get_hits 777<br> STAT 18:cmd_set 103<br> STAT 18:delete_hits 0<br> STAT 18:incr_hits 0<br> STAT 18:decr_hits 0<br> STAT 18:cas_hits 0<br> STAT 18:cas_badval 0</p>
+</li>
+<li><p>stats cachedump slab_id limit</p>
+<p> 将slab为slab_id的数据展示出来。 limit是展示的个数，如果取值为0， 则不作限制（其实是限制了1m）</p>
+</li>
+</ol>
+<p><a href="http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/" target="_blank" rel="noopener">http://blog.elijaa.org/2010/12/24/understanding-memcached-stats-cachedump-command/</a><br><a href="http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats" target="_blank" rel="noopener">http://blog.elijaa.org/2010/05/21/memcached-telnet-command-summary/#slabs_stats</a></p>
+<h2 id="2-php代码来获取"><a href="#2-php代码来获取" class="headerlink" title="2. php代码来获取"></a>2. php代码来获取</h2><pre><code>&lt;?php
+$mcobj = new Memcache();
+$mcobj-&gt;addServer(&apos;xxx&apos;,9150);
+
+$to_mcobj = new Memcache();
+$to_mcobj-&gt;addServer(&apos;xxx&apos;, 21212);
+
+$allSlabs = $mcobj-&gt;getExtendedStats(&apos;slabs&apos;);
+$items    = $mcobj-&gt;getExtendedStats(&apos;items&apos;);
+foreach ($allSlabs as $server =&gt; $slabs) {
+    foreach ($slabs as $slabId =&gt; $slabMeta) {
+        $cdump = $mcobj-&gt;getExtendedStats(&apos;cachedump&apos;, (int)$slabId, 0);
+        foreach ($cdump as $keys =&gt; $vals) {
+            foreach ((array)$vals as $k =&gt; $v) {
+                $real_val = $mcobj-&gt;get($k);
+                $set_res = $to_mcobj-&gt;set($k, $real_val);
+                error_log(&apos;|slabId=&apos;.$slabId.&apos;set--&apos;.&apos;|key=&apos;.$k.&apos;|val=&apos;.json_encode($real_val).&apos;|res=&apos;.$set_res.&quot;\n&quot;,3,&apos;/tmp/yk.log&apos;);
+            }
+        }
+   }
+                                                                                            }
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="ckw1wtykz003sutnuupxakttg" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-memcache参考文章" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/17/memcache参考文章/" class="article-date">
+  <time datetime="2016-04-17T10:00:01.000Z" itemprop="datePublished">2016-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/17/memcache参考文章/">5. Memcache好的文章</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>火丁笔记 Memcache <a href="http://huoding.com/2012/12/30/205" target="_blank" rel="noopener">http://huoding.com/2012/12/30/205</a></li>
+<li>mc基础讲解 <a href="http://charlee.li/memcached-001.html" target="_blank" rel="noopener">http://charlee.li/memcached-001.html</a></li>
+<li>twemcache <a href="https://github.com/twitter/twemcache" target="_blank" rel="noopener">https://github.com/twitter/twemcache</a></li>
+<li>当我谈缓存的时候 我谈些什么 <a href="http://www.tuicool.com/wx/nMfmaeb" target="_blank" rel="noopener">http://www.tuicool.com/wx/nMfmaeb</a></li>
+<li>缓存系列无底洞 <a href="http://www.tuicool.com/wx/BjeIJzE" target="_blank" rel="noopener">http://www.tuicool.com/wx/BjeIJzE</a></li>
+<li>关于redis与Memcached的一点澄清 <a href="http://www.tuicool.com/wx/bmQFNjm" target="_blank" rel="noopener">http://www.tuicool.com/wx/bmQFNjm</a></li>
+<li>PHP使用Memcached扩展的一个坑 <a href="http://www.tuicool.com/articles/qaAnUz" target="_blank" rel="noopener">http://www.tuicool.com/articles/qaAnUz</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="ckw1wtykv003jutnupvq1hzqe" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/page/7/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><a class="page-number" href="/page/7/">7</a><span class="page-number current">8</span><a class="page-number" href="/page/9/">9</a><a class="page-number" href="/page/10/">10</a><a class="extend next" rel="next" href="/page/9/">Next &raquo;</a>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>gitflow工作流 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="概述一. 现有开发方式在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。 存在的问题：  代码不能进行review master分支不能保持可用状态  二. 引入pull request我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。 接下来，我们将会介">
+<meta name="keywords" content="git">
+<meta property="og:type" content="article">
+<meta property="og:title" content="gitflow工作流">
+<meta property="og:url" content="http://keything.github.io/2016/03/15/gitflow工作流/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="概述一. 现有开发方式在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。 存在的问题：  代码不能进行review master分支不能保持可用状态  二. 引入pull request我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。 接下来，我们将会介">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://keything.github.io/images/gitflow/simple_br.png">
+<meta property="og:image" content="http://keything.github.io/images/gitflow/gitflow.png">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.254Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="gitflow工作流">
+<meta name="twitter:description" content="概述一. 现有开发方式在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。 存在的问题：  代码不能进行review master分支不能保持可用状态  二. 引入pull request我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。 接下来，我们将会介">
+<meta name="twitter:image" content="http://keything.github.io/images/gitflow/simple_br.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-gitflow工作流" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/03/15/gitflow工作流/" class="article-date">
+  <time datetime="2016-03-15T00:23:25.000Z" itemprop="datePublished">2016-03-15</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      gitflow工作流
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><h3 id="一-现有开发方式"><a href="#一-现有开发方式" class="headerlink" title="一. 现有开发方式"></a>一. 现有开发方式</h3><p>在原有的开发中，我们的工作方式有两种，一是master上直接修改，二是开一个分支feature，开发测试直接合并master。</p>
+<p>存在的问题：</p>
+<ol>
+<li>代码不能进行review</li>
+<li>master分支不能保持可用状态</li>
+</ol>
+<h3 id="二-引入pull-request"><a href="#二-引入pull-request" class="headerlink" title="二. 引入pull request"></a>二. 引入pull request</h3><p>我们引入pull request的目的很简单，就是进行code review。code review对比的是两个分支。</p>
+<p>接下来，我们将会介绍两种工作方式，我们将采用gitflow这种工作流，为了让大家有个更加清晰的了解，我们先介绍单纯采用分支的工作方式，然后再介绍采用gitflow工作流的方式。</p>
+<h3 id="三-最简单的采用分支的工作方式"><a href="#三-最简单的采用分支的工作方式" class="headerlink" title="三. 最简单的采用分支的工作方式"></a>三. 最简单的采用分支的工作方式</h3><p>最简单的方式，我们所有的开发（包括简单的一次修改和复杂的新功能开发）都是走分支，分支开发完毕以后跟master进行比较，从而进行code review。流程简单如下</p>
+<p><img src="/images/gitflow/simple_br.png" alt="simple"></p>
+<pre><code>1. 从master分支checkout出feature/fa分支
+2. 在feature/fa分支进行开发，每个节点代表一次修改和一次commit
+3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
+4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxx..net上创建一个merge request。
+    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
+5. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
+6. 将feature/fa分支合并到mater分支上。
+7. 将master分支推到远程仓库origin的master从而完成开发。
+</code></pre><h3 id="四-引入gitflow工作流"><a href="#四-引入gitflow工作流" class="headerlink" title="四. 引入gitflow工作流"></a>四. 引入gitflow工作流</h3><p>（一） gitflow的简要介绍</p>
+<p>在gitflow中有两个永久存在的分支develop和master分支，有很多临时的功能分支feature,release,hotfix。详细介绍可以看 <a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a></p>
+<p>（二） 我们如何使用gitflow</p>
+<p>结合我们项目特点，目前我们使用阉割版的gitflow，不使用它的hotfix和release分支，仅仅使用master,develop,feature三个分支。流程如下：</p>
+<p><img src="/images/gitflow/gitflow.png" alt="gitflow"></p>
+<pre><code>1. 开辟一个feature分支，我们使用gitflow命令，好处就是他默认从develop分支checkout出一个分支
+2. 正常的分支开发，每个节点代表依次修改和commit
+3. 将本地的feature/fa 推到远程仓库，从而其他小伙伴能够拉取代码
+4. 分支feature/fa开发完毕以后，开始进行code view，我们需要到xxxxx..net上创建一个merge request。
+    4.1 如果在review中发现代码修改，那么在feature/fa分支进行修改，然后再将feature/fa分支push到远程仓库即可
+5. 将feature/fa分支合并到develop分支，并删除feature/fa分支，听着很复杂，实际上只需要执行一条命令 git flow feature finish fa即可
+6. 将develop分支推送到远程仓库，之所以这样是为了让小伙伴同步代码
+7. 分支开发完毕，现在切到master分支，在master分支上拉取远程仓库origin的master分支
+8. 将develop分支合并到mater分支上。
+9. 将master分支推到远程仓库origin的master从而完成开发。
+</code></pre><h3 id="四-受限分支master"><a href="#四-受限分支master" class="headerlink" title="四. 受限分支master"></a>四. 受限分支master</h3><ol>
+<li><p>目前存在问题</p>
+<p> 到目前为止，我们引入了pull request进行codereview，引入工作流gitflow规范大家的开发流程。但是！但是！master分支依然允许所有的人进行操作，那么可能有人不遵循规则，而对master进行修改和上线。</p>
+</li>
+<li><p>解决方法</p>
+<p> 通过gitlab，我们对master分支进行保护，即受限分支。只有具有权限的小伙伴才能对远程仓库的master分支进行操作。当然了，你操作你本地的master分支木有问题，但你想向远程的master分支推送，不好意思，你被禁止了。</p>
+</li>
+<li><p>引入受限分支以后，开发流程的变化</p>
+<p> 在上面描述的流程中，gitflow的7，8，9三步交给具有操作master分支权限的小伙伴来执行。</p>
+</li>
+</ol>
+<h3 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五 参考文章"></a>五 参考文章</h3><p><a href="http://nvie.com/posts/a-successful-git-branching-model/" target="_blank" rel="noopener">http://nvie.com/posts/a-successful-git-branching-model/</a> </p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw1wtyk70022utnuvq9hlc46" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/04/17/memcache概述/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          1. memcache概述
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/03/11/svn迁移git-完美保留日志/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">svn迁移git-完美保留日志</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

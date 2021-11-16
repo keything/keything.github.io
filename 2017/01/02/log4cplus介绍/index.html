@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>log4cplus介绍 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="概述最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。 首先说一下我的几个困惑：  版本问题，目前官方wiki, 例子 介绍的是版本2.0。而我们在使用多是1.2版本。   代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的">
+<meta name="keywords" content="cpp">
+<meta property="og:type" content="article">
+<meta property="og:title" content="log4cplus介绍">
+<meta property="og:url" content="http://keything.github.io/2017/01/02/log4cplus介绍/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="概述最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。 首先说一下我的几个困惑：  版本问题，目前官方wiki, 例子 介绍的是版本2.0。而我们在使用多是1.2版本。   代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.257Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="log4cplus介绍">
+<meta name="twitter:description" content="概述最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。 首先说一下我的几个困惑：  版本问题，目前官方wiki, 例子 介绍的是版本2.0。而我们在使用多是1.2版本。   代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-log4cplus介绍" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/02/log4cplus介绍/" class="article-date">
+  <time datetime="2017-01-02T14:57:32.000Z" itemprop="datePublished">2017-01-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      log4cplus介绍
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。</p>
+<p>首先说一下我的几个困惑：</p>
+<ol>
+<li><p>版本问题，目前<a href="https://sourceforge.net/p/log4cplus/wiki/Home/" target="_blank" rel="noopener">官方wiki</a>, <a href="https://github.com/log4cplus/log4cplus/blob/master/docs/examples.md" target="_blank" rel="noopener">例子</a> 介绍的是版本2.0。而我们在使用多是1.2版本。 </p>
+</li>
+<li><p>代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的代码只有很少的代码。<br>经过查证，log4cplus有两种方式，一种是代码中写appender,layout,一种是通过配置。</p>
+</li>
+</ol>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>有关log4cplus的配置有一篇不错的文章。 <a href="http://blog.csdn.net/fksec/article/details/41546189" target="_blank" rel="noopener">log4cplus介绍</a></p>
+<p>log4cplus的组成：</p>
+<ul>
+<li><ol>
+<li>logger： 一个应用程序可以使用多个logger，logger是我们打印log的句柄</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>appender：一个logger可以拥有多个appender，appender决定了log的输出方向</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>filter：一个appender可以有多个filter，在配置文件中设置过滤条件</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>layout：支持多种layout，一个appender一个layout</li>
+</ol>
+</li>
+</ul>
+<h2 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h2><p>demo.cpp </p>
+<pre><code>// demo.cpp
+#include &lt;log4cplus/logger.h&gt;
+#include &lt;log4cplus/configurator.h&gt;
+#include &lt;log4cplus/helpers/loglog.h&gt;
+#include &lt;log4cplus/helpers/stringhelper.h&gt;
+#include &lt;log4cplus/helpers/sleep.h&gt;
+#include &lt;log4cplus/loggingmacros.h&gt;
+#include &lt;iostream&gt;
+
+using namespace log4cplus;
+using namespace log4cplus::helpers;
+
+
+Logger log_1 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_1&quot;));
+Logger log_2 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_2&quot;));
+Logger log_3 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_3&quot;));
+
+
+void
+printMsgs(Logger&amp; logger)
+{
+    LOG4CPLUS_TRACE_METHOD(logger, LOG4CPLUS_TEXT(&quot;printMsgs()&quot;));
+    //LOG4CPLUS_DEBUG(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_INFO(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_WARN(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_ERROR(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_ERROR_FMT(logger, &quot;printMsgs(%s)&quot;, &quot;helloworld&quot;);
+}
+
+
+
+int
+main()
+{
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Entering main()...&quot;) &lt;&lt; std::endl;
+    log4cplus::initialize();
+    LogLog::getLogLog()-&gt;setInternalDebugging(true);
+    Logger root = Logger::getRoot();
+    try 
+    {
+        ConfigureAndWatchThread configureThread(
+            LOG4CPLUS_TEXT(&quot;log4cplus.properties&quot;), 5 * 1000);
+
+        LOG4CPLUS_WARN(root, &quot;Testing....&quot;);
+
+        for(int i=0; i&lt;4; ++i) {
+            //printMsgs(log_1);
+            printMsgs(log_2);
+            //printMsgs(log_3);
+            log4cplus::helpers::sleep(1);
+        }
+    }
+    catch(...) {
+        std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exception...&quot;) &lt;&lt; std::endl;
+        LOG4CPLUS_FATAL(root, &quot;Exception occured...&quot;);
+    }
+
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exiting main()...&quot;) &lt;&lt; std::endl;
+    return 0;
+}
+</code></pre><p>配置文件</p>
+<pre><code>log4cplus.rootLogger= WARN, M
+log4cplus.logger.test.log_1=WARN
+log4cplus.logger.test.log_2=WARN
+log4cplus.logger.test.log_3=WARN
+
+log4cplus.appender.TT=log4cplus::ConsoleAppender
+log4cplus.appender.TT.layout=log4cplus::PatternLayout
+log4cplus.appender.TT.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+
+log4cplus.appender.M=log4cplus::DailyRollingFileAppender
+log4cplus.appender.M.Schedule=MINUTELY
+log4cplus.appender.M.filters.1.LogLevelToMatch=DEBUG
+log4cplus.appender.M.filters.1.AcceptOnMatch=TRUE
+log4cplus.appender.M.filters.2=log4cplus::spi::DenyAllFilter
+log4cplus.appender.M.File=output.log
+#log4cplus.appender.M.MaxFileSize=5MB
+log4cplus.appender.M.MaxBackupIndex=1
+log4cplus.appender.M.layout=log4cplus::PatternLayout
+log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+</code></pre><p>编译</p>
+<pre><code>g++ -llog4cplus -lpthread -o test log4cplus.demo.cpp
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.csdn.net/cchd0001/article/details/49928421" target="_blank" rel="noopener">log4cplus学习速记</a><br><a href="http://blog.csdn.net/skyztttt/article/details/51492935" target="_blank" rel="noopener">log4cplush学习</a></p>
+<p>安装</p>
+<p> ./configure –enable-static –prefix=/Users/keything/log4cplus_static CXXFLAGS=”-std=c++0x”</p>
+<p>因为如果需要log4cplus支持C++11，必须在g++编译的时候需要加选项“-std=c++0x”。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckw1wtykq0038utnu8l28jsgm" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2017/01/16/thrift-install/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          thrift install
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/11/27/mac安装hive/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">mac安装hive</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

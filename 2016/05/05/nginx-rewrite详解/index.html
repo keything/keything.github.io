@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>nginx-rewrite详解 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一. 概述ngx_http_rewrite_module模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。ngx_http_rewrite_module模块中的指令以下面的顺序执行： 1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行 2. 重复的：     1. 根据请求URI匹">
+<meta name="keywords" content="nginx">
+<meta property="og:type" content="article">
+<meta property="og:title" content="nginx-rewrite详解">
+<meta property="og:url" content="http://keything.github.io/2016/05/05/nginx-rewrite详解/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="一. 概述ngx_http_rewrite_module模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。ngx_http_rewrite_module模块中的指令以下面的顺序执行： 1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行 2. 重复的：     1. 根据请求URI匹">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.262Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="nginx-rewrite详解">
+<meta name="twitter:description" content="一. 概述ngx_http_rewrite_module模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。ngx_http_rewrite_module模块中的指令以下面的顺序执行： 1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行 2. 重复的：     1. 根据请求URI匹">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-nginx-rewrite详解" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/05/nginx-rewrite详解/" class="article-date">
+  <time datetime="2016-05-05T10:00:01.000Z" itemprop="datePublished">2016-05-05</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      nginx-rewrite详解
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="一-概述"><a href="#一-概述" class="headerlink" title="一. 概述"></a>一. 概述</h3><p><code>ngx_http_rewrite_module</code>模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。<br><code>ngx_http_rewrite_module</code>模块中的指令以下面的顺序执行：</p>
+<pre><code>1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行
+2. 重复的：
+    1. 根据请求URI匹配一个location
+    2. 在匹配的location中，该模块的指令按先后顺序依次执行
+    3. 如果一个请求URI被重定向，这个循环被重复，但最多不超过10次。
+</code></pre><p>【解释】在<code>ngx_http_rewrite_module</code>初始化的时候(<code>ngx_http_rewrite_init</code>)的时候，在<code>SERVER_REWRITE</code>和<code>REWRITE</code>两个阶段注册了相同的处理函数<code>ngx_http_rewrite_handler</code>.</p>
+<h3 id="二-指令"><a href="#二-指令" class="headerlink" title="二. 指令"></a>二. 指令</h3><h4 id="1-break"><a href="#1-break" class="headerlink" title="1. break"></a>1. break</h4><pre><code>Syntax:break;
+Default:—
+Context:server, location, if
+</code></pre><p>停止处理<code>ngx_http_rewrite_module</code>模块的指令。<br>如果在location里面使用，那么这个请求接下来phase的处理也都是在这个location里面。<br>看下面的例子</p>
+<pre><code>location /proxy3 {
+    rewrite (.*) /third;
+    set $a 35;
+    break;
+    rewrite (.*) /second;
+    set $a 76;
+    echo $a;
+}
+location /second {
+    echo &apos;second&apos;;
+    echo $a;
+}
+location /third {
+    echo &apos;third&apos;;
+    echo $a;
+}
+</code></pre><p>curl <a href="http://your.domain/proxy3" target="_blank" rel="noopener">http://your.domain/proxy3</a> </p>
+<table>
+<thead>
+<tr>
+<th>case</th>
+<th>result</th>
+<th>reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>有break</td>
+<td>输出35</td>
+</tr>
+<tr>
+<td>没有break</td>
+<td>输出second 76</td>
+<td>因为4条指令顺序执行，rewrite (.*) /second是最后一条rewrite指令，生效。set $a 76生效。因此在POST-REWRITE阶段转到location /second</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2-if"><a href="#2-if" class="headerlink" title="2. if"></a>2. if</h4><pre><code>Syntax: if (condition) {...}
+Default: ---
+Context: server, location
+</code></pre><p>指定的condition参数被判断。如果为true，在if里面的模块指令被执行，请求进入到if指令里面的配置。在if指令里面的配置继承于上一层的配置。<br>condition可以是下面几种情况：</p>
+<pre><code>1. 一个变量名; 如果变量是空字符串或0，则false
+2. 使用= !=运算符比较
+3. 使用~(区分大小写) ~*(不区分大小写) 正则表达式包含capture，可以使用$1...$9来使用捕获的值。!~ !~*也可以使用.如果正则表达式包含} ;的话，整个正则表达式要放在单引号或双引号里面。
+4. 检查文件是否存在 -f !-f
+5. 检查目录是否存在 -d !-d
+6. 检查文件，目录，软链是否存在 -e !-e
+7. 检查是否可执行文件 -x !-x
+</code></pre><p>举例：</p>
+<pre><code>if ($http_user_agent ~ MSIE) {
+       rewrite ^(.*)$ /msie/$1 break;
+}
+
+if ($http_cookie ~* &quot;id=([^;]+)(?:;|$)&quot;) {
+    set $id $1;
+}
+
+if ($request_method = POST) {
+    return 405;
+}
+
+if ($slow) {
+    limit_rate 10k;
+}
+
+if ($invalid_referer) {
+    return 403;
+}
+</code></pre><h4 id="3-return"><a href="#3-return" class="headerlink" title="3. return"></a>3. return</h4><pre><code>Syntax: return code [text];
+        return code URL;
+        return URL;
+</code></pre><p> 停止处理，并将code返回给客户端。非标准code444 关闭连接并且不发送响应头。<br> 从版本0.8.42开始，可以指定一个URL（对于301，302，303和307）或者响应体（其他code）。一个响应体和重定向的URL可以包含变量。<br> 另外，URL可以指定为单个参数，这样就是302临时跳转。这样一个参数需要以http://, https://, $scheme开头。</p>
+<h4 id="4-rewrite"><a href="#4-rewrite" class="headerlink" title="4. rewrite"></a>4. rewrite</h4><pre><code>Syntax: rewrite regex replacement [flag];
+Default: ---
+Context: server, location, if
+</code></pre><p>如果指定的正则表达式匹配了一个请求的URI，URI被指定的replacement改变。</p>
+<p>配置文件中多个rewrite指令时，按照出现顺序依次执行，只执行最后一个。可以使用[flags]终止指令的处理。</p>
+<p>如果replacement以<code>http:// https://</code> 开头，那么处理将会停止，并重定向返回给客户端。</p>
+<p>可选参数flag，可以是下面几个中的某一个:</p>
+<pre><code>last:
+    停止处理ngx_http_rewrite_module模块的指令集，然后使用改变后的URI去查找新的location。
+    【注释】即遇到last以后，执行阶段从rewrite阶段回到了find-config阶段。
+break:
+    停止处理ngx_http_rewrite_module模块的指令集。
+    【注释】遇到break以后，执行阶段从rewrite阶段转到下一个阶段。如果是server-rewrite则转到find-config, 如果是rewrite则转到post-rewrite。
+redirect:
+    返回一个302临时跳转。当replacement不是以http://, https://开头的时候使用
+permanent:
+    返回一个301永久跳转。
+</code></pre><p>last其实就相当于一个新的url，对nginx进行了一次请求，需要走一遍大多数的处理过程，最重要的是会做一次find config，提供了一个可以转到其他location的配置中处理的机会，</p>
+<p>而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理。</p>
+<h4 id="5-rewrite-log"><a href="#5-rewrite-log" class="headerlink" title="5. rewrite_log"></a>5. rewrite_log</h4><pre><code>Syntax: rewrite_log on | off;
+Default: rewrite_log off;
+Context: http,server,location,if
+</code></pre><p>开启或关闭<code>ngx_http_rewrite_module</code>模块指令处理结果到error_log文件，日志级别notice.</p>
+<h2 id="三-例子"><a href="#三-例子" class="headerlink" title="三. 例子"></a>三. 例子</h2><ol>
+<li><p>echo $a被if继承。因此输出45</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     if ($a = 35) {
+         set $a 45;
+     }
+}
+</code></pre></li>
+<li><p>echo $a被if继承，但if指令里面有echo指令，根据配置的基本规则，if里面的echo指令有效。因此输出43 【todo】配置的基本原则是毛线？？？</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     set $b 43;
+     if ($a = 35) {
+         set $a 45;
+         echo $b;
+     }
+}
+</code></pre></li>
+<li><p>由于if处于rewrite阶段，执行if以后依然处于rewrite阶段，因此if{}后面的模块指令依然执行。<br>因此输出67;</p>
+<pre><code>location /proxy3 {
+     echo $a;
+     set $a 35;
+     if ($a = 35) {
+         set $a 45;
+     }
+     set $a 67;
+}
+</code></pre></li>
+<li><p>演示rewrite</p>
+<pre><code>location /proxy3 {
+    #rewrite (.*) http://your.domain/third;
+    rewrite (.*) /third;
+    set $a 67;
+    echo $a;
+}
+set $a 99;
+location /third {
+    echo $a;
+}
+</code></pre><p>如果rewrite后面是/third 则输出67<br>如果是http:// 则输出99。<br>解释：<br>set $a 99 发生在server-rewrite阶段<br>之后在find-config阶段，找到location /proxy3<br>在location /proxy3里面 如果是<code>rewrite http://...</code>那么直接跳转。类似 rewrite (.<em>) /third redirect;<br>如果是rewrite (.</em>) /third呢 则还会继续执行接下来的rewrite阶段的指令，set $a 67将会被执行。然后在post-rewrite阶段调转到location /third</p>
+</li>
+<li><p>rewrite中带有flag</p>
+<pre><code>location /proxy3 {
+      set $a 35;
+      if ($a = 35) {
+          set $a 73;
+          rewrite (.*) /main break;
+      }
+      rewrite (.*) /second;
+      set $a 76;
+      echo &apos;proxy3&apos;;
+      echo $uri;
+      echo $a;
+  }
+  location /main {
+      echo &apos;main&apos;;
+      echo $a;
+  }
+  location /second {
+      echo &apos;second&apos;;
+      echo $a;
+  }
+</code></pre><p> 如果是<code>rewrite (.*) main break</code> 。 则输出proxy3 /main 73</p>
+<p> 如果是<code>rewrite (.*) main; break;</code>，则输出proxy3 /main 73<br> 原因是而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理；</p>
+<p> 如果是<code>rewrite (.*) main last</code>，则输出main 35</p>
+<p> 如果是<code>rewrite (.*) main</code> 不加break,last, 则rewrite (.*) /second; set $a 76执行 输出 second 76</p>
+</li>
+</ol>
+<ol start="6">
+<li><p>多个rewrite只有最后一个起作用</p>
+<pre><code>location /proxy3 {
+    rewrite (.*) /third;
+    set $a 35;
+    if ($a = 35) {
+        rewrite (.*) /main;
+    }
+    rewrite (.*) /second; 
+    set $a 76;
+    echo $a;
+}
+</code></pre></li>
+</ol>
+<h2 id="四-几点事实："><a href="#四-几点事实：" class="headerlink" title="四. 几点事实："></a>四. 几点事实：</h2><ol>
+<li>rewrite 指令被称为 action directives. 下一层级的location不会从上一级中继承。</li>
+<li>server 作用域中的 rewrite 模块指令也不会向下传递到 location 作 用域，但是这些指令会在 SERVER_REWRITE 阶段 (先于 REWRITE 阶段) 被执行.</li>
+<li>rewrite 模块提供的指令的执行顺序和其在配置文件中的定义顺序一致</li>
+<li><p>if 指令在nginx内部创建了一个无名location，if条件为真时，nginx使用这个无名location作用域的配置处理当前请求。 </p>
+</li>
+<li><p>rewrite模块<br>rewrite 模块是一个 phase handler， 其初始化函数 <code>ngx_http_rewrite_init</code> 在 SERVER REWRITE 和 REWRITE 阶段 注册了相同的处理函数<code>ngx_http_rewrite_handler</code>。其中，SERVER REWRITE 阶段 的处理函数用于执行 server 作用域中的 rewrite 模块指令，而 REWRITE 阶 段的处理函数用于执行 location 和 if 作用域的 rewrite 模块指令。</p>
+</li>
+<li><p>POST REWRITE 是 Nginx 内部定义的阶段，通过检查请求 uri 是否被 rewrite 模块修改 (r-&gt;uri_changed)，判断是否需要使用修改后的 uri 重新开始 FIND CONFIG 以重新匹配合适的 location。比如在 location 中有配置如 rewrite … last; 且 rewrite 成功和请求 uri 匹配成功时。</p>
+</li>
+</ol>
+<ol start="7">
+<li>指令执行顺序</li>
+</ol>
+<p>nginx大部分模块提供的配置指令的生效顺序和其在配置文件中的顺序并没有什么关系。但有些是有关系的，比如</p>
+<pre><code>1. http core模块中使用正则表达式的location。跟顺序有关
+2. rewrite模块中提供的if，break，return，rewrite指令
+</code></pre><h2 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五. 参考文章"></a>五. 参考文章</h2><p><a href="http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/" target="_blank" rel="noopener">http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/</a><br><a href="http://nginx.org/en/docs/http/ngx_http_rewrite_module.html" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_rewrite_module.html</a><br><a href="https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/" target="_blank" rel="noopener">https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/</a><br><a href="http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/" target="_blank" rel="noopener">http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/</a><br><a href="http://blog.csdn.net/brainkick/article/details/7475770" target="_blank" rel="noopener">http://blog.csdn.net/brainkick/article/details/7475770</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="ckw1wtyl40041utnuov1bt634" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/05/08/nginx模块执行顺序/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          nginx模块执行顺序
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/05/04/nginx-location匹配/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">nginx-location匹配</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

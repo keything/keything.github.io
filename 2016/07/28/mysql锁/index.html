@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>chapter6:mysql锁 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="6.1 什么是锁锁机制用于管理对共享资源的并发访问 MyISAM引擎的锁是表锁。 InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性 6.2 lock与latch一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。 l">
+<meta name="keywords" content="mysql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="chapter6:mysql锁">
+<meta property="og:url" content="http://keything.github.io/2016/07/28/mysql锁/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="6.1 什么是锁锁机制用于管理对共享资源的并发访问 MyISAM引擎的锁是表锁。 InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性 6.2 lock与latch一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。 l">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-16T09:45:21.262Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="chapter6:mysql锁">
+<meta name="twitter:description" content="6.1 什么是锁锁机制用于管理对共享资源的并发访问 MyISAM引擎的锁是表锁。 InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性 6.2 lock与latch一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。 l">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-mysql锁" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/28/mysql锁/" class="article-date">
+  <time datetime="2016-07-28T00:52:01.000Z" itemprop="datePublished">2016-07-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      chapter6:mysql锁
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="6-1-什么是锁"><a href="#6-1-什么是锁" class="headerlink" title="6.1 什么是锁"></a>6.1 什么是锁</h2><p>锁机制用于管理对共享资源的并发访问</p>
+<p>MyISAM引擎的锁是表锁。</p>
+<p>InnoDB提供一致性的非锁定读、行级锁支持。行级锁没有相关额外开销，并可以同时得到并发性和一致性</p>
+<h2 id="6-2-lock与latch"><a href="#6-2-lock与latch" class="headerlink" title="6.2 lock与latch"></a>6.2 lock与latch</h2><p>一般我们提到的是lock。lock的对象是事务，用来锁定的是数据库中的对象，如表，页，行。并且一般lock的对象只在事务commit和rollback后进行释放（不同隔离级别有所不同）。</p>
+<p>latch的目的是用来保证并发线程操作临界资源的正确性，并且没有死锁检测的机制。</p>
+<h2 id="6-3-InnoDB存储引擎中的锁"><a href="#6-3-InnoDB存储引擎中的锁" class="headerlink" title="6.3 InnoDB存储引擎中的锁"></a>6.3 InnoDB存储引擎中的锁</h2><h3 id="6-3-1-锁的类型"><a href="#6-3-1-锁的类型" class="headerlink" title="6.3.1 锁的类型"></a>6.3.1 锁的类型</h3><p>InnoDB实现了如下两种标准的行级锁：</p>
+<pre><code>1. 共享锁（S Lock）允许事务读一行数据
+2. 排他锁（X Lock）允许事务删除或更新一行数据
+</code></pre><p>InnoDB支持意向锁，其意向锁即为表级别的锁。</p>
+<h3 id="6-3-2-一致性非锁定读-consistent-nonlocking-read"><a href="#6-3-2-一致性非锁定读-consistent-nonlocking-read" class="headerlink" title="6.3.2 一致性非锁定读 consistent nonlocking read"></a>6.3.2 一致性非锁定读 consistent nonlocking read</h3><p>一致性非锁定读指InnoDB存储引擎通过行多版本控制的方式来读取当前执行时间数据库中行的数据。如果读取的行正在执行DELETE或UPDATE操作，这时读取操作不会因此等待行上锁的释放，而是会读取行的一个快照数据。</p>
+<p>快照数据是指该行的之前版本的数据，该实现是通过undo段来完成，undo段是用来在事务中回滚数据因此没有额外的开销。</p>
+<p>在不同事务隔离级别下，读取方式的不同，并不是在每个事务隔离级别下都是采用非锁定的一致性读。此外，即使都是使用非锁定的一致性读，但是对于快照数据的定义也不相同。</p>
+<p>在事务隔离级别READ COMMITTED和REPEATABLE READ下，InnoDB存储引擎使用非锁定的一致性读，但是快照数据定义不相同。在REPEATABLE READ隔离级别下，非一致性锁定读总是读取事务开始时的行数据版本。在READ COMMITTED下，总是读取被锁定行的最新一份快照数据。</p>
+<h3 id="6-3-3-锁定读-locking-reads"><a href="#6-3-3-锁定读-locking-reads" class="headerlink" title="6.3.3 锁定读 locking reads"></a>6.3.3 锁定读 <a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-reads.html" target="_blank" rel="noopener">locking reads</a></h3><p>在某些情况下用户需要显式对数据库读取操作进行加锁以保障数据逻辑的一致性。即使对于SELECT的只读操作，也要支持加锁语句。</p>
+<p>支持两种一致性的锁定读（locking read)操作：</p>
+<pre><code>SELECT .. FOR UPDATE
+SELECT .. LOCK IN SHARE MODE
+</code></pre><h2 id="6-4-锁的算法"><a href="#6-4-锁的算法" class="headerlink" title="6.4 锁的算法"></a>6.4 锁的算法</h2><h3 id="6-4-1-行锁的3种算法"><a href="#6-4-1-行锁的3种算法" class="headerlink" title="6.4.1 行锁的3种算法"></a>6.4.1 行锁的3种算法</h3><p>InnoDB有3种行锁算法，其分别是：</p>
+<pre><code>Record Lock：单个行记录上的锁
+Gap Lock：间隙锁，锁定一个范围，但不包含记录本身
+Next-Key Lock: Gap Lock + Record Lock 锁定一个范围并且锁定记录本身。
+</code></pre><p>在默认隔离级别REPEATABLE READ下，使用的是Next-Key Lock。对于查询的索引含有唯一属性时，InnoDB会将Next-KeyLock进行优化，降级为RecordLock，即仅锁住索引本身，而不是范围。</p>
+<p>而对于辅助索引，其加上Next-KeyLock InnoDB存储引擎还会辅助索引下一个键值加上gapLock，即会锁住这个辅助索引附近的两个范围。</p>
+<h3 id="6-4-2-解决幻象问题"><a href="#6-4-2-解决幻象问题" class="headerlink" title="6.4.2 解决幻象问题"></a>6.4.2 解决幻象问题</h3><p>幻象是指在同一个事务下，连续执行两次同样的SQL语句可能导致不同的结果，第二次SQL可能会返回之前不存在的行。</p>
+<p>在REPEATABLE READ下采用Next-key Lock加锁</p>
+<p>在READ COMMITTED下 只是采用RecordLock。</p>
+<h4 id="通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。"><a href="#通过InnoDB存储引擎的Next-Key-Locking-机制在应用层面实现唯一性检查。" class="headerlink" title="通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。"></a>通过InnoDB存储引擎的Next-Key Locking 机制在应用层面实现唯一性检查。</h4><p>一个场景：想查询一下某个id是否存在，如果不存在则插入，如果存在则不插入。两种做法：外部加锁或者通过数据库。</p>
+<p>数据库方式：</p>
+<pre><code>select * from table where col = xx LOCK IN SHARE MODE;
+if not found any row:
+    # unique for insert value 需要是唯一索引，不然也存在多条插入的情况
+    INSERT INTO table VALUES (...);
+</code></pre><h2 id="6-5-锁问题"><a href="#6-5-锁问题" class="headerlink" title="6.5 锁问题"></a>6.5 <a href="http://keything.github.io/2016/01/09/mysql-%E9%94%81%E7%9A%84%E9%97%AE%E9%A2%98/">锁问题</a></h2><h3 id="6-5-1-脏读"><a href="#6-5-1-脏读" class="headerlink" title="6.5.1 脏读"></a>6.5.1 脏读</h3><p>脏读：指的是在不同事务下，当前事务可以读到另外事务未提交的数据</p>
+<h3 id="6-5-2-不可重复读"><a href="#6-5-2-不可重复读" class="headerlink" title="6.5.2 不可重复读"></a>6.5.2 不可重复读</h3><p>不可重复读：指的是在一个事务内两次读到的数据不一样，多了或者少了数据。</p>
+<h3 id="6-5-3-丢失更新"><a href="#6-5-3-丢失更新" class="headerlink" title="6.5.3 丢失更新"></a>6.5.3 丢失更新</h3><p>丢失更新：简单来说，就是一个事务的更新操作会被另一个事务的更新操作所覆盖，从而导致数据的不一致。<br>解决方法：让事务在这种情况下的操作变成串行化。比如使用select … FOR UPDATE.</p>
+<h3 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h3><p>多版本技术：一个行记录可能有不止一个快照数据，称之为行多版本技术。</p>
+<p>由此带来的并发控制，称之为多版本并发控制 multi version concurrency controll mvcc。</p>
+<h2 id="6-6-参考文章"><a href="#6-6-参考文章" class="headerlink" title="6.6 参考文章"></a>6.6 参考文章</h2><ol>
+<li><a href="http://dev.mysql.com/doc/refman/5.7/en/innodb-locking-transaction-model.html" target="_blank" rel="noopener">15.5 InnoDBlocking and Transaction Model</a></li>
+<li>姜承尧 InnoDB存储引擎第二版 6.锁</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="ckw1wtyl2003wutnutgfmbds2" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/08/10/RedisCluster总结/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          RedisCluster总结
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/07/16/Redis与Memcache作为缓存时的比较/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Redis与memcache作为缓存时的比较</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

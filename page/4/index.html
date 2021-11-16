@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="Keything的日志">
+<meta property="og:url" content="http://keything.github.io/page/4/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:locale" content="default">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Keything的日志">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-es-install-ik" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/07/31/es-install-ik/" class="article-date">
+  <time datetime="2017-07-31T05:14:11.000Z" itemprop="datePublished">2017-07-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/07/31/es-install-ik/">es_install_ik</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在这篇文章中描述了elasticsearch按照ik分词的步骤。<br><a href="https://github.com/medcl/elasticsearch-analysis-ik" target="_blank" rel="noopener">https://github.com/medcl/elasticsearch-analysis-ik</a></p>
+<p>注意：</p>
+<ol>
+<li>es版本需要与ik分词器的版本对应；我使用的是es-2.4.5和ik-1.10.5版本</li>
+<li>测试用例使用也是网址中的说明</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/07/31/es-install-ik/" data-id="ckw1wtyjz001mutnu55e11ny5" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-cpp异常处理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/05/28/cpp异常处理/" class="article-date">
+  <time datetime="2017-05-28T08:52:56.000Z" itemprop="datePublished">2017-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/05/28/cpp异常处理/">cpp异常处理</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在C++语言中，异常处理包括：</p>
+<ul>
+<li><p>throw表达式（throw expression），异常检测部分使用throw表达式来表示它遇到了无法处理的问题；我们说throw引发了异常</p>
+</li>
+<li><p>try语句块（try block），异常处理部分使用try语句块处理异常。try语句块以关键字try开始，并以catch 子句结束；</p>
+</li>
+<li><p>一套异常类（exception class），用于在throw表达式和相关的catch子句之间传递异常的具体信息；</p>
+</li>
+</ul>
+<p>标准异常</p>
+<p>C++标准定义了一组类，用于报告标准库函数遇到的问题。这些异常类也可以在用户编写的程序中使用；分别定义在4个头文件中：</p>
+<ul>
+<li>exception头文件定义了最通用的异常类 exception。它只报告异常的发生，不提供任何额外的信息；</li>
+<li><p>stdexcept头文件定义了几种常见的异常类</p>
+<ul>
+<li>exception 最常见的问题</li>
+<li>runtime_error 只有在运行时才能检测中的问题</li>
+<li>range_error 运行时错误，生成的结果超出了有意义的值域范围</li>
+<li>…</li>
+</ul>
+</li>
+<li><p>new 头文件定义了bad_alloc异常类型，将在12.1.2节介绍</p>
+</li>
+<li>type_info头文件中定义了bad_cast异常类型；将在19.2节介绍</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/05/28/cpp异常处理/" data-id="ckw1wtyk3001uutnuq3he6mtg" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-cpp-class-copy-vector" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/05/13/cpp-class-copy-vector/" class="article-date">
+  <time datetime="2017-05-13T01:22:17.000Z" itemprop="datePublished">2017-05-13</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/05/13/cpp-class-copy-vector/">cpp_class_copy_vector</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>C++类中vector成员变量的拷贝</p>
+<p>问题描述：</p>
+<p>在使用过程中，遇到指针的问题；简要概括为：初始化中的指针和使用的指针不同；</p>
+<pre><code>#include &lt;iostream&gt;
+#include &lt;boost/format.hpp&gt;
+#include &lt;vector&gt;
+
+class A {
+    typedef struct {
+        std::vector&lt;std::string&gt; vec_;
+    } PhaseVecAndIter;
+public:
+    PhaseVecAndIter getPhaseVec() {
+        return pv_;
+    }
+    void init() {
+        std::vector&lt;std::string&gt; vec;
+        vec.push_back(&quot;string1&quot;);
+        vec.push_back(&quot;string2&quot;);
+        pv_.vec_ = vec;
+        std::cout &lt;&lt; &quot;init vector pointer:&quot;&lt;&lt;&amp;(*(pv_.vec_.begin())) &lt;&lt; std::endl;
+    }
+private:
+    PhaseVecAndIter pv_;
+};
+class B {
+public:
+    void setA(boost::shared_ptr&lt;A&gt; a) {
+        a_ = a;
+    }
+    boost::shared_ptr&lt;A&gt; getA() {
+        return a_;
+    }
+private:
+    boost::shared_ptr&lt;A&gt; a_;
+};
+int main()
+{
+    boost::shared_ptr&lt;A&gt; a(new A());
+    a-&gt;init();
+    std::cout &lt;&lt; &quot;1:vector pointer:&quot;&lt;&lt;&amp;(*(a-&gt;getPhaseVec().vec_.begin())) &lt;&lt; std::endl;
+
+    B* b = new B();
+    b-&gt;setA(a);
+
+    boost::shared_ptr&lt;A&gt; c = b-&gt;getA();
+    std::cout &lt;&lt; &quot;2:vector pointer:&quot;&lt;&lt;&amp;(*(c-&gt;getPhaseVec().vec_.begin())) &lt;&lt; std::endl;
+}
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="ckw1wtyjx001hutnuumgu0703" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-composer概述" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/05/02/composer概述/" class="article-date">
+  <time datetime="2017-05-02T07:16:50.000Z" itemprop="datePublished">2017-05-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/05/02/composer概述/">composer概述</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>#Composer 概述</p>
+<h2 id="composer介绍"><a href="#composer介绍" class="headerlink" title="composer介绍"></a>composer介绍</h2><ol>
+<li>composer是php中的依赖管理器。通过composer声明项目所依赖的库，并通过composer安装依赖的库。</li>
+<li><p>依赖的声明</p>
+<p> 在项目中使用composer，需要使用一个composer.json文件。该文件是Json格式。</p>
+<p> 一个重要的key是require，告诉composer该项目依赖哪些package。</p>
+<p> 举例：</p>
+<pre><code>{
+    &quot;require&quot;: {
+        &quot;monolog/monolog&quot;: &quot;1.2.*&quot;
+    }
+}
+</code></pre></li>
+<li><p>系统需要</p>
+<p> composer需要PHP5.3.2以上的PHP版本。</p>
+</li>
+<li><p>如何使用composer</p>
+<ol>
+<li><p>在根目录创建一个composer.json文件。可以通过人工创建，也可以通过命令创建</p>
+<pre><code>composer init
+</code></pre></li>
+<li><p>使用composer install进行依赖库的安装</p>
+<pre><code>composer install
+</code></pre></li>
+</ol>
+</li>
+<li><p>自动加载Autoloading</p>
+<p> 执行composer install以后，composer不仅会下载库，还会生成一个autoload文件，可以自动加载composer下载的库中的所有的类。为了使用它， 可以在代码中加入</p>
+<pre><code>require __DIR__ . &apos;/vender/autoload.php&apos;;
+</code></pre></li>
+</ol>
+<h2 id="基本用法"><a href="#基本用法" class="headerlink" title="基本用法"></a>基本用法</h2><p><a href="https://getcomposer.org/doc/01-basic-usage.md" target="_blank" rel="noopener">https://getcomposer.org/doc/01-basic-usage.md</a></p>
+<ol>
+<li><p>安装</p>
+<p> 使用composer.json文件进行项目的安装。这个文件描述了项目的依赖关系和可能包含的其他元信息。</p>
+</li>
+</ol>
+<pre><code>举例：
+
+    {
+        &quot;require&quot;: {
+            &quot;monolog/monolog&quot;: &quot;1.2.*&quot;
+        }
+    }
+
+关于版本号的详细信息可以到该网址中进行查看。
+</code></pre><ol start="2">
+<li><p>依赖安装</p>
+<pre><code>composer install
+</code></pre></li>
+<li><p>composer.lock 锁文件</p>
+<p> 安装完依赖后，composer会将已经安装的准确的版本列表写入composer.lock文件。<br> 需要将composer.lock and composer.json文件一起进行版本控制。</p>
+<p> 如果没有composer.lock文件可能会造成库的版本不一致。</p>
+<p> 更新</p>
+<pre><code>composer update
+</code></pre><p> 更新某个依赖</p>
+<pre><code>composer update monolog/monolog [...]
+</code></pre></li>
+<li><p>Packagist</p>
+<p>packagist是一个主要的Composer仓库。一个composer库是一个基本的package源：一个可以获取package的地方。</p>
+</li>
+<li><p>自动加载 Autoloading</p>
+<p> Composer生成一个vendor/autoload.php。</p>
+<pre><code>require &apos;vendor/autoload.php&apos;;
+</code></pre><p> 你还可以添加自己的代码到autoloader，通过在composer.json中添加autoload字段。如下：</p>
+<pre><code>{
+    &quot;autoload&quot;: {
+        &quot;psr-4&quot;: {&quot;Acme\\&quot;: &quot;src/&quot;}
+    }
+}
+</code></pre><p> Composer将会为Acme命名空间注册一个PSR-4的autoloader。</p>
+<h3 id="这儿还需要详细阅读文档"><a href="#这儿还需要详细阅读文档" class="headerlink" title="这儿还需要详细阅读文档"></a>这儿还需要详细阅读文档</h3></li>
+</ol>
+<h2 id="Libraries-库"><a href="#Libraries-库" class="headerlink" title="Libraries 库"></a>Libraries 库</h2><p><a href="https://getcomposer.org/doc/02-libraries.md" target="_blank" rel="noopener">https://getcomposer.org/doc/02-libraries.md</a></p>
+<ol>
+<li>该章目的：使你自己的库可以通过Composer进行安装</li>
+<li><p>每个项目都是package</p>
+<p> 只要你有一个 composer.json 文件在目录中，那么整个目录就是一个包。当你添加一个 require 到项目中，你就是在创建一个依赖于其它库的包。你的项目和库之间唯一的区别是，你的项目是一个没有名字的包。</p>
+</li>
+<li><p>平台软件包</p>
+<p> Composer 将那些已经安装在系统上，但并不是由 Composer 安装的包视为一个虚拟的平台软件包。这包括PHP本身，PHP扩展和一些系统库。</p>
+<ol>
+<li>php 表示用户的 PHP 版本要求，你可以对其做出限制。例如 &gt;=5.4.0。如果需要64位版本的 PHP，你可以使用 php-64bit 进行限制</li>
+<li>hhvm </li>
+<li>ext-<name> 可以帮你指定需要的 PHP 扩展（包括核心扩展）</name></li>
+<li>lib-<name> 允许对 PHP 库的版本进行限制。<br>以下是可供使用的名称：curl、iconv、icu、libxml、openssl、pcre、uuid、xsl</name></li>
+</ol>
+</li>
+</ol>
+<h2 id="命令行"><a href="#命令行" class="headerlink" title="命令行"></a>命令行</h2><p><a href="https://getcomposer.org/doc/03-cli.md" target="_blank" rel="noopener">https://getcomposer.org/doc/03-cli.md</a></p>
+<h2 id="composer-json的策略"><a href="#composer-json的策略" class="headerlink" title="composer.json的策略"></a>composer.json的策略</h2><p><a href="https://getcomposer.org/doc/04-schema.md" target="_blank" rel="noopener">https://getcomposer.org/doc/04-schema.md</a></p>
+<p>该章解释了在composer.json中用到的所有可选字段。<br><a href="https://getcomposer.org/doc/04-schema.md" target="_blank" rel="noopener">https://getcomposer.org/doc/04-schema.md</a></p>
+<ol>
+<li><p>如何更改composer的repository</p>
+<p> 其实就是添加其中的repositories字段</p>
+<pre><code>{
+    &quot;name&quot;: &quot;tmp/test&quot;,
+    &quot;description&quot;: &quot;hello&quot;,
+    &quot;require&quot;: {
+        &quot;monolog/monolog&quot;: &quot;^1.13&quot;
+    },
+    &quot;authors&quot;: [
+        {
+            &quot;name&quot;: &quot;yankai&quot;,
+            &quot;email&quot;: &quot;yankai0219@126.com&quot;
+        }
+    ],
+    &quot;repositories&quot;: [
+        {
+            &quot;packagist&quot;: false
+        },
+        {
+            &quot;type&quot;: &quot;composer&quot;,
+            &quot;url&quot;: &quot;http://packagist.phpcomposer.com&quot;
+        }
+    ]
+
+}
+</code></pre></li>
+</ol>
+<h2 id="Repositories-仓库"><a href="#Repositories-仓库" class="headerlink" title="Repositories 仓库"></a>Repositories 仓库</h2><p><a href="https://getcomposer.org/doc/05-repositories.md" target="_blank" rel="noopener">https://getcomposer.org/doc/05-repositories.md</a></p>
+<p>该章解释package和repository的概念，哪些repository是可选的，以及他们如何工作。</p>
+<ol>
+<li>package</li>
+</ol>
+<h2 id="社区"><a href="#社区" class="headerlink" title="社区"></a>社区</h2><p><a href="https://getcomposer.org/doc/06-community.md" target="_blank" rel="noopener">https://getcomposer.org/doc/06-community.md</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="ckw1wtyjy001kutnurpg6xw3d" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/composer/">composer</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-C-编译错误汇总" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/04/04/C-编译错误汇总/" class="article-date">
+  <time datetime="2017-04-04T08:38:24.000Z" itemprop="datePublished">2017-04-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/04/04/C-编译错误汇总/">C++编译错误汇总</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>出现 undefined reference to <code>typeinfo for xxxx</code></li>
+</ol>
+<p>在定义抽象函数的时候 virtual函数的定义有问题。</p>
+<p>You must either provide a definition for virtual functions in your base class or declare them pure：</p>
+<pre><code>class Accel {
+public:
+    virtual void initialize(void) = 0;        //either pure virtual
+    virtual void measure(void) = 0; 
+    virtual void calibrate(void) {};          //or implementation 
+    virtual const int getFlightData(byte) {};
+};
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="ckw1wtyj20008utnub0z7d9tk" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-自动化测试" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/31/自动化测试/" class="article-date">
+  <time datetime="2017-03-31T15:14:55.000Z" itemprop="datePublished">2017-03-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/03/31/自动化测试/">自动化测试</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="自动化测试"><a href="#自动化测试" class="headerlink" title="自动化测试"></a>自动化测试</h2><h3 id="目的"><a href="#目的" class="headerlink" title="目的"></a>目的</h3><p>在频繁迭代中，通过自动化测试可以减少代码bug，保证代码能够按照预期跑通。自动化测试一开始是帮你找bug，后续的角色是进行安全检查。</p>
+<p>自动化测试需要包括哪些内容呢？我觉得需要包含单元测试、集成测试、接口测试。</p>
+<h3 id="简要概括单元测试、集成测试、接口测试"><a href="#简要概括单元测试、集成测试、接口测试" class="headerlink" title="简要概括单元测试、集成测试、接口测试"></a>简要概括单元测试、集成测试、接口测试</h3><ul>
+<li>单元测试：抛开所有外部依赖，验证单个函数的功能是否符合预期。</li>
+<li>集成测试：在单元测试的基础上，测试多个函数组合起来是否按照预期。</li>
+<li>接口测试：通过单元测试和集成测试验证了小功能，还需要通过接口测试验证整个链路是否按照预期执行。</li>
+</ul>
+<h2 id="自动化测试之单元测试"><a href="#自动化测试之单元测试" class="headerlink" title="自动化测试之单元测试"></a>自动化测试之单元测试</h2><h3 id="1-单元测试的FIRST准则"><a href="#1-单元测试的FIRST准则" class="headerlink" title="1. 单元测试的FIRST准则"></a>1. 单元测试的FIRST准则</h3><ul>
+<li>Fast：测试不能每跑一次都要耗费大量的时间。</li>
+<li>Independent： 测试与测试之间不应该存在依赖关系。</li>
+<li>Repeatable： 测试应该在任何环境下都能运行，不论是生产环境、测试环境，或者是在家里的笔记本电脑上。</li>
+<li>Self-Validating 测试的结果应该是显而易见的，不应该是靠人去查看它的输出才能判断测试的成功与失败，即使用断言来判断实际是否满足预期。</li>
+<li>Timely： 测试需要在正式代码之前就写好。</li>
+</ul>
+<h3 id="2-单元测试的一些其他要求"><a href="#2-单元测试的一些其他要求" class="headerlink" title="2. 单元测试的一些其他要求"></a>2. 单元测试的一些其他要求</h3><ul>
+<li>单元测试Case就是文档，因为说明了输入和输出</li>
+<li>每个case只测试单一函数的单一行为</li>
+<li>测试用例的名称要清晰表明测试目的，如TestCreateOrder_Failed_Pid_NotExist </li>
+<li>在编写正式代码之前，必须写出其相对应的单元测试；<br>这就是说一定要先写出一个单元测试（因为还没有编写正式代码，所以它肯定会失败），再编写正式代码。</li>
+<li>只要一个单元测试失败了，就不要再编写任何更多的单元测试了；<br>而是要去编写相应的的可以使之通过的正是代码，编译失败也算；</li>
+<li>只要正式代码可以使单元测试通过，就不要再编写更多的正式代码了；<br>正式代码需要满足的唯一目标就是通过单元测试，只要通过单元测试，就表示我们此部分的代码已经写完了。</li>
+</ul>
+<h3 id="3-单元测试的三段式"><a href="#3-单元测试的三段式" class="headerlink" title="3. 单元测试的三段式"></a>3. 单元测试的三段式</h3><p>单元测试的三段式：</p>
+<ul>
+<li>准备测试数据。</li>
+<li>对测试数据进行操作。</li>
+<li>进行判定。</li>
+</ul>
+<h3 id="3-单元测试的三大模块"><a href="#3-单元测试的三大模块" class="headerlink" title="3. 单元测试的三大模块"></a>3. 单元测试的三大模块</h3><ul>
+<li>驱动模块：相当于所测模块的主程序。它接收测试数据，把这些测试数据传送给被测模块，最后再输出实测结果。</li>
+<li>桩模块。由被测模块调用，用以代替由被测单元所调用的模块的功能，返回适当的数据或进行适当的操作使被测单元能继续运行下去，同时还要进行一定的数据处理，如打印入口和返回等，以便检验被测模块与其下级模块的接口</li>
+<li>被测系统 SUT （System Under Test）</li>
+</ul>
+<h3 id="4-测试替身-Test-Double"><a href="#4-测试替身-Test-Double" class="headerlink" title="4. 测试替身 Test Double"></a>4. 测试替身 Test Double</h3><p>前面提到了测试替身。</p>
+<p>替身、依赖注入<br>+参数传入<br>+构造函数<br>+set函数</p>
+<p>设计决定一切</p>
+<p>测试替身有很多种：</p>
+<ol>
+<li>mock是测试替身的一种，复杂的一种</li>
+<li>一般用mock来指定一个测试替身</li>
+<li>为什么用mock object</li>
+<li>返回一个数据</li>
+<li>返回一个true/false 状态，可以使用一个测试替身</li>
+<li>使用mock？是否按照预定顺序，是否执行？</li>
+</ol>
+<p>测试与实现的顺序：<br>先写测试在写实现</p>
+<h2 id="持续集成"><a href="#持续集成" class="headerlink" title="持续集成"></a>持续集成</h2><h3 id="1-持续集成Continuous-integration"><a href="#1-持续集成Continuous-integration" class="headerlink" title="1. 持续集成Continuous integration"></a>1. 持续集成Continuous integration</h3><ul>
+<li>定义：频繁地（一天多次）将代码集成到主干。它的核心措施是，代码集成到主干之前，必须通过自动化测试。只要有一个测试用例失败，就不能集成</li>
+</ul>
+<h3 id="2-持续集成的整个过程分为几步："><a href="#2-持续集成的整个过程分为几步：" class="headerlink" title="2. 持续集成的整个过程分为几步："></a>2. 持续集成的整个过程分为几步：</h3><ul>
+<li>代码提交</li>
+<li>代码测试：代码仓库对commit操作配置钩子（hook），只要提交代码或者合并进主干，就会跑自动化测试。</li>
+<li>构建：</li>
+<li>第二轮测试：进行全面测试，包含单元测试、集成测试、全链路接口测试。以自动化为主，少数无法自动化的测试用例需要人工跑</li>
+<li>部署</li>
+<li>回滚</li>
+</ul>
+<p>参考：</p>
+<p><a href="https://codeship.com/continuous-integration-essentials" target="_blank" rel="noopener">https://codeship.com/continuous-integration-essentials</a></p>
+<p><a href="http://codecloud.net/10516.html" target="_blank" rel="noopener">http://codecloud.net/10516.html</a><br><a href="http://www.uml.org.cn/test/201107085.asp" target="_blank" rel="noopener">http://www.uml.org.cn/test/201107085.asp</a><br><a href="http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd" target="_blank" rel="noopener">http://butunclebob.com/ArticleS.UncleBob.TheThreeRulesOfTdd</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckw1wtylv005nutnujnrx94zm" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-spark-learn" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/31/spark-learn/" class="article-date">
+  <time datetime="2017-03-31T15:07:37.000Z" itemprop="datePublished">2017-03-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/03/31/spark-learn/">spark_learn</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="RDD介绍"><a href="#RDD介绍" class="headerlink" title="RDD介绍"></a>RDD介绍</h2><p>在Spark集群背后，有一个非常重要的分布式数据架构，即弹性分布式数据集（resilient distributed dataset, RDD)，它是逻辑集中的实体，在集群中的多台机器上进行数据分区。通过多台机器上不同RDD分区的控制，就能够减少机器之间的数据重排（data shuffling）。Spark提供了<code>partitionBy</code>运算符，能够通过集群中多台机器对原始RDD进行数据再分配来创建一个新的RDD。</p>
+<p>RDD是Spark的核心数据结构，通过RDD的依赖关系形成Spark的调度顺序。通过对RDD的操作形成整个Spark程序。</p>
+<p>###一、 RDD的两种创建方式</p>
+<h4 id="1-代码中并行化一个已经存在的集合-Parallelized-Collections"><a href="#1-代码中并行化一个已经存在的集合-Parallelized-Collections" class="headerlink" title="1. 代码中并行化一个已经存在的集合(Parallelized Collections)"></a>1. 代码中并行化一个已经存在的集合(Parallelized Collections)</h4><pre><code>从已经存在集合中创建
+
+    data = [1, 2, 3, 4, 5]
+    distData = sc.parallelize(data)
+
+
+集合并行化（parallel collections）的一个重要参数是：集合切分的分区数。Spark会为集群中每个分区运行一个任务。一般是集群中每个CPU有2-4个分区。通常，Spark会根据集群情况自动设置分区的数量。当然，你也可以手工输入一个数量，作为parallelize的第二个参数（如 `sc.parallelize(data, 10)`)
+一旦创建以后，数据就可以并行处理了。
+</code></pre><h4 id="2-从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源"><a href="#2-从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源" class="headerlink" title="2. 从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源"></a>2. 从外部存储系统中创建。如共享文件系统，HDFS，HBASE，HIVE或其他提供Hadoop输入格式的数据来源</h4><p>可以使用SparkContext’s textFile方法创建文本文件RDDs。这个方法使用文件的URL（或者机器的本地文件, hdfs:://, s3n://等等），并作为行的集合进行读取。<br>从Hadoop获取的方式：</p>
+<pre><code>sc.textFile(&quot;your_hdfs_path&quot;)
+</code></pre><p>从Hive中获取：</p>
+<pre><code>import org.apache.spark.sql.SQLContext
+val hc = new org.apache.spark.sql.hive.HiveContext(sc)
+val df = hc.sql(&quot;show databases&quot;)
+df.show
+</code></pre><p>####使用spark读取文件的注意事项：<br>如果使用本地文件系统，If using a path on the local filesystem, the file must also be accessible at the same path on worker nodes. Either copy the file to all workers or use a network-mounted shared file system.</p>
+<p>所有spark的基于文件的输入方法，包含<code>textFile</code>，支持目录、压缩文件、wildcards等。例如，可以使用<code>textFile(&quot;/my/directory&quot;)</code>, <code>textFile(&quot;/my/directory/*.txt&quot;)</code>, <code>textFile(&quot;/my/directory/*.gz&quot;)</code>.</p>
+<p><code>textFile</code>方法可以有第二个参数用于控制分区的个数。默认spark会为每一个文件block创建一个分区（hdfs中默认block是64MB），但是你可以传递更大的分区数。注意，分区数不能少于block数量。</p>
+<p>除了<code>textFile</code>， spark的python api还支持许多其他格式：</p>
+<ul>
+<li><code>SparkContext.wholeTextFiles</code>,</li>
+<li><code>RDD.saveAsPickleFile</code>, <code>SparkContext.pickleFil</code></li>
+<li>SequenceFile and Hadoop Input/Output Formats</li>
+</ul>
+<p>###二、 RDD的操作<br>RDDs支持两种类型的操作：transformations（从已经存在的Rdd创建一个新的数据集合）和 actions（对数据集合运算后返回一个值）。例如：<code>map</code>是一个传入每个数据集合的元素并返回一个新的RDD的transformations。另一方面，<code>reduce</code>是一个action：使用一个函数对RDD中所有元素进行聚合，并返回一个最后结果。</p>
+<p>在Spark中所有的transformations都是惰性的，并不会马上计算。它只是记录了在base dataset上应用了哪些transformations。只有在有actions的时候才会真的计算。这样的设计使得spark的运行更加高效。</p>
+<p>默认，每次进行actions的时候，已经转换过的RDD还需要重新计算。当然，你可以使用<code>persist(or cache)</code>方法进行持久化。</p>
+<ol>
+<li>分类</li>
+</ol>
+<pre><code>+ Transformation和Action两个维度
++ 在Transformation维度会细分为：Value数据类型和Key-value对数据类型。Value类型封装在RDD类中直接使用，Key-Value对数据类型封装在PairRDDFunctions类中，用户需要引入`import org.apache.spark.SparkContext._`才能够使用。
+</code></pre><h3 id="三、RDD的Value型Transformation操作详细说明"><a href="#三、RDD的Value型Transformation操作详细说明" class="headerlink" title="三、RDD的Value型Transformation操作详细说明"></a>三、RDD的Value型Transformation操作详细说明</h3><h4 id="输入分区与输出分区是一对一型"><a href="#输入分区与输出分区是一对一型" class="headerlink" title="输入分区与输出分区是一对一型"></a>输入分区与输出分区是一对一型</h4><ol>
+<li><p>map</p>
+<p> 将函数应用于Rdd的每个元素，并返回结果作为一个新的RDD。<br> Applies a transformation function on each item of the RDD and returns the result as a new RDD.</p>
+</li>
+</ol>
+<pre><code>举例：
+
+
+    &gt;&gt;&gt; data = [&quot;hello&quot;, &quot;world12&quot;, &quot;nihao&quot;]
+    &gt;&gt;&gt; rdd = sc.parallelize(data)
+    &gt;&gt;&gt; maprdd = rdd.map(lambda x: len(x))
+    &gt;&gt;&gt; maprdd.collect()
+        [5, 7, 5]
+    &gt;&gt;&gt; total=maprdd.reduce(lambda a,b:a+b)
+
+    &gt;&gt;&gt; print total
+        17
+</code></pre><p>   实例2：</p>
+<pre><code>&gt;&gt;&gt; m = sc.parallelize([&quot;dog&quot;, &quot;tiger&quot;, &quot;lion&quot;])
+&gt;&gt;&gt; n = m.map(lambda x: (x, 1))
+&gt;&gt;&gt; n.collect()
+[(&apos;dog&apos;, 1), (&apos;tiger&apos;, 1), (&apos;lion&apos;, 1)]
+</code></pre><ol start="2">
+<li><p>flatMap</p>
+<p> 与map类似，但是允许在映射中释放多个元素。</p>
+<p> 举例：</p>
+<pre><code>&gt;&gt;&gt; data = [&quot;hello&quot;, &quot;world12&quot;, &quot;nihao&quot;]
+&gt;&gt;&gt; rdd.map(lambda x: (x,x)).collect()
+    [(&apos;hello&apos;, &apos;hello&apos;), (&apos;world12&apos;, &apos;world12&apos;), (&apos;nihao&apos;, &apos;nihao&apos;)]
+&gt;&gt;&gt; rdd.flatMap(lambda x: (x,x)).collect()
+    [&apos;hello&apos;, &apos;hello&apos;, &apos;world12&apos;, &apos;world12&apos;, &apos;nihao&apos;, &apos;nihao&apos;]
+</code></pre></li>
+<li><p>mapPartitions</p>
+</li>
+<li>glom</li>
+</ol>
+<h4 id="输入分区与输出分区多对一型"><a href="#输入分区与输出分区多对一型" class="headerlink" title="输入分区与输出分区多对一型"></a>输入分区与输出分区多对一型</h4><ol>
+<li><p>union</p>
+<p> 执行标准集合操作：A union B。并不进行去重操作，保存所有元素。如果想去重，可以使用distince()。</p>
+<pre><code>&gt;&gt;&gt; datamm = sc.parallelize([1,2,3,4,5]).union(sc.parallelize([4,5,6,7,8]))
+&gt;&gt;&gt; datamm.collect()
+    [1, 2, 3, 4, 5, 4, 5, 6, 7, 8]
+</code></pre></li>
+<li><p>cartesian</p>
+<p> 对两个RDD内所有元素进行笛卡尔积操作。<br> Computes the cartesian product between two RDDs </p>
+</li>
+</ol>
+<h4 id="输入分区与输出分区多对多"><a href="#输入分区与输出分区多对多" class="headerlink" title="输入分区与输出分区多对多"></a>输入分区与输出分区多对多</h4><ol>
+<li><p>groupBy：将元素按照函数生成相应的key，数据就转换为key-value格式，之后将key相同的元素分为一组。</p>
+<pre><code>&gt;&gt;&gt; m = sc.parallelize([&quot;tiger&quot;, &quot;mmmmm&quot;, &quot;nnn&quot;, &quot;hhh&quot;])
+&gt;&gt;&gt; n = m.groupBy(len)
+&gt;&gt;&gt; n.collect()
+[(5, &lt;pyspark.resultiterable.ResultIterable object at 0x106acbed0&gt;), (3, &lt;pyspark.resultiterable.ResultIterable object at 0x106acbb50&gt;)]
+&gt;&gt;&gt; def tra(k_records):
+...     k = k_records[0]
+...     print &quot;k=&quot;,k
+...     records = k_records[1]
+...     for record in records:
+...         print &quot;record:&quot;, record
+...
+&gt;&gt;&gt; o = n.map(tra)
+&gt;&gt;&gt; o.collect()
+k= 3
+record: nnn
+record: hhh
+k= 5
+record: tiger
+record: mmmmm
+[None, None]
+</code></pre></li>
+</ol>
+<h4 id="输出分区为输入分区子类型"><a href="#输出分区为输入分区子类型" class="headerlink" title="输出分区为输入分区子类型"></a>输出分区为输入分区子类型</h4><ol>
+<li><p>filter: 对元素进行过滤，对每个元素应用f函数，返回值为true的元素保留；反之，过滤。</p>
+<pre><code>&gt;&gt;&gt; def tigerFilter(x):
+...     if x == &quot;tiger&quot;:
+...             return 0
+...     else:
+...             return 1
+...
+&gt;&gt;&gt; m = sc.parallelize([&quot;tiger&quot;, &quot;mmmmm&quot;, &quot;nnn&quot;, &quot;hhh&quot;])
+&gt;&gt;&gt; m.filter(tigerFilter).collect()
+[&apos;mmmmm&apos;, &apos;nnn&apos;, &apos;hhh&apos;]
+</code></pre></li>
+<li>distinct：将RDD中的元素进行去重操作。</li>
+<li>subtract:相当于进行集合的差操作。         </li>
+<li>sample</li>
+<li>cache</li>
+</ol>
+<h3 id="Key-Value型Transformation算子"><a href="#Key-Value型Transformation算子" class="headerlink" title="Key-Value型Transformation算子"></a>Key-Value型Transformation算子</h3><ol>
+<li>mapValues:针对(key, value)中的value进行操作，而不对key进行处理</li>
+<li><p>对单个RDD或两个RDD聚集</p>
+<ul>
+<li>combineByKey</li>
+<li>reduceByKey</li>
+<li>partitionBy</li>
+</ul>
+</li>
+<li><p>连接</p>
+<ul>
+<li>join</li>
+<li>leftOutJoin</li>
+</ul>
+</li>
+</ol>
+<h2 id="Action算子"><a href="#Action算子" class="headerlink" title="Action算子"></a>Action算子</h2><ol>
+<li>无输出 foreach</li>
+<li><p>HDFS</p>
+<ul>
+<li>saveAsTextFile</li>
+<li>saveAsObjectFile</li>
+</ul>
+</li>
+<li><p>Scala集合和数据类型</p>
+<ul>
+<li>collect</li>
+<li>collectAsMap</li>
+<li>lookup</li>
+<li>reduceByKeyLocally</li>
+<li>count</li>
+<li>top</li>
+<li>reduce</li>
+<li>fold</li>
+<li>aggregate</li>
+<li></li>
+</ul>
+</li>
+</ol>
+<h4 id="working-with-key-value-Pairs"><a href="#working-with-key-value-Pairs" class="headerlink" title="working with key-value Pairs"></a>working with key-value Pairs</h4><p>有一些特别的操作只能应用于k/v对。最常见的是分布式重排操作（distributed shuffle)，如通过key进行grouping, aggregating。</p>
+<h2 id="Spark学习"><a href="#Spark学习" class="headerlink" title="Spark学习"></a>Spark学习</h2><h2 id="spark函数学习"><a href="#spark函数学习" class="headerlink" title="spark函数学习"></a>spark函数学习</h2><ol>
+<li><p>spark函数讲解 aggregate</p>
+<ul>
+<li><a href="https://www.iteblog.com/archives/1268" target="_blank" rel="noopener">https://www.iteblog.com/archives/1268</a></li>
+<li><a href="http://lib.csdn.net/article/scala/34642==" target="_blank" rel="noopener">http://lib.csdn.net/article/scala/34642==</a></li>
+</ul>
+</li>
+<li><p>所有spark函数讲解</p>
+<ul>
+<li><a href="http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html" target="_blank" rel="noopener">http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html</a></li>
+</ul>
+</li>
+</ol>
+<h3 id="Spark数据输入"><a href="#Spark数据输入" class="headerlink" title="Spark数据输入"></a>Spark数据输入</h3><ol>
+<li><p>从HDFS读取日志文件</p>
+<p> var file = sc.textFile(“hdfs://xxx”)</p>
+</li>
+</ol>
+<h3 id="Spark中数据处理"><a href="#Spark中数据处理" class="headerlink" title="Spark中数据处理"></a>Spark中数据处理</h3><ol>
+<li><p>过滤</p>
+<p> var errors = file.filter(line =&gt; line.contains(“error”)</p>
+</li>
+</ol>
+<p>aggregate函数</p>
+<p><a href="http://lib.csdn.net/article/scala/34642" target="_blank" rel="noopener">理解Spark RDD中的aggregate函数</a><br><a href="http://homepage.cs.latrobe.edu.au/zhe/ZhenHeSparkRDDAPIExamples.html" target="_blank" rel="noopener">learn</a></p>
+<p>groupBy函数</p>
+<p>combineByKey函数<br>countByKey函数<br>reduce<br>reduceByKey<br>sortBy<br>sortByKey</p>
+<p>S</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="ckw1wtylh004outnuk8ww04nl" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-thrift-demo" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/16/thrift-demo/" class="article-date">
+  <time datetime="2017-01-16T02:54:18.000Z" itemprop="datePublished">2017-01-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/01/16/thrift-demo/">thrift-demo</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="ckw1wtyll004yutnu84gkgj2n" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-thrift-install" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/16/thrift-install/" class="article-date">
+  <time datetime="2017-01-16T02:37:45.000Z" itemprop="datePublished">2017-01-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/01/16/thrift-install/">thrift install</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="Centos6-5上安装Apache-Thrift"><a href="#Centos6-5上安装Apache-Thrift" class="headerlink" title="Centos6.5上安装Apache Thrift"></a>Centos6.5上安装Apache Thrift</h2><ol>
+<li>按照<a href="http://thrift.apache.org/docs/install/centos" target="_blank" rel="noopener">Building Apache Thrift on CentOS6.5</a>操作</li>
+<li>可能还需要安装libevent</li>
+<li><p>最后安装thrift的时候，我是下载了thrift-0.9.3.tar.gz </p>
+<p> wget <a href="http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz" target="_blank" rel="noopener">http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz</a><br> tar zxvf thrift-0.9.3.tar.gz<br> cd thrift-0.9.3<br> ./configure<br> make<br> sudo make install</p>
+</li>
+<li><p>如果出现”error while loading shared libraries: libthrift-0.9.3.so” 错误的原因和解决办法</p>
+<p> sudo ldconfig</p>
+</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="ckw1wtyln0053utnuk3ksgh1r" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-log4cplus介绍" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/01/02/log4cplus介绍/" class="article-date">
+  <time datetime="2017-01-02T14:57:32.000Z" itemprop="datePublished">2017-01-02</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/01/02/log4cplus介绍/">log4cplus介绍</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>最近在看C++，比较难懂的一个c++的库是log4cplus，一直没有找到合适的文档。元旦看了一下老大写的基于log4cplus的库，方才对log4cplus有了一个直观的印象。</p>
+<p>首先说一下我的几个困惑：</p>
+<ol>
+<li><p>版本问题，目前<a href="https://sourceforge.net/p/log4cplus/wiki/Home/" target="_blank" rel="noopener">官方wiki</a>, <a href="https://github.com/log4cplus/log4cplus/blob/master/docs/examples.md" target="_blank" rel="noopener">例子</a> 介绍的是版本2.0。而我们在使用多是1.2版本。 </p>
+</li>
+<li><p>代码问题。在搜到的博客中，经常见到的是自己定义append,layout等等，代码非常长。老大写的代码只有很少的代码。<br>经过查证，log4cplus有两种方式，一种是代码中写appender,layout,一种是通过配置。</p>
+</li>
+</ol>
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>有关log4cplus的配置有一篇不错的文章。 <a href="http://blog.csdn.net/fksec/article/details/41546189" target="_blank" rel="noopener">log4cplus介绍</a></p>
+<p>log4cplus的组成：</p>
+<ul>
+<li><ol>
+<li>logger： 一个应用程序可以使用多个logger，logger是我们打印log的句柄</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>appender：一个logger可以拥有多个appender，appender决定了log的输出方向</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>filter：一个appender可以有多个filter，在配置文件中设置过滤条件</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>layout：支持多种layout，一个appender一个layout</li>
+</ol>
+</li>
+</ul>
+<h2 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h2><p>demo.cpp </p>
+<pre><code>// demo.cpp
+#include &lt;log4cplus/logger.h&gt;
+#include &lt;log4cplus/configurator.h&gt;
+#include &lt;log4cplus/helpers/loglog.h&gt;
+#include &lt;log4cplus/helpers/stringhelper.h&gt;
+#include &lt;log4cplus/helpers/sleep.h&gt;
+#include &lt;log4cplus/loggingmacros.h&gt;
+#include &lt;iostream&gt;
+
+using namespace log4cplus;
+using namespace log4cplus::helpers;
+
+
+Logger log_1 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_1&quot;));
+Logger log_2 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_2&quot;));
+Logger log_3 =  Logger::getInstance(LOG4CPLUS_TEXT(&quot;test.log_3&quot;));
+
+
+void
+printMsgs(Logger&amp; logger)
+{
+    LOG4CPLUS_TRACE_METHOD(logger, LOG4CPLUS_TEXT(&quot;printMsgs()&quot;));
+    //LOG4CPLUS_DEBUG(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_INFO(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_WARN(logger, &quot;printMsgs()&quot;);
+    //LOG4CPLUS_ERROR(logger, &quot;printMsgs()&quot;);
+    LOG4CPLUS_ERROR_FMT(logger, &quot;printMsgs(%s)&quot;, &quot;helloworld&quot;);
+}
+
+
+
+int
+main()
+{
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Entering main()...&quot;) &lt;&lt; std::endl;
+    log4cplus::initialize();
+    LogLog::getLogLog()-&gt;setInternalDebugging(true);
+    Logger root = Logger::getRoot();
+    try 
+    {
+        ConfigureAndWatchThread configureThread(
+            LOG4CPLUS_TEXT(&quot;log4cplus.properties&quot;), 5 * 1000);
+
+        LOG4CPLUS_WARN(root, &quot;Testing....&quot;);
+
+        for(int i=0; i&lt;4; ++i) {
+            //printMsgs(log_1);
+            printMsgs(log_2);
+            //printMsgs(log_3);
+            log4cplus::helpers::sleep(1);
+        }
+    }
+    catch(...) {
+        std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exception...&quot;) &lt;&lt; std::endl;
+        LOG4CPLUS_FATAL(root, &quot;Exception occured...&quot;);
+    }
+
+    std::cout&lt;&lt; LOG4CPLUS_TEXT(&quot;Exiting main()...&quot;) &lt;&lt; std::endl;
+    return 0;
+}
+</code></pre><p>配置文件</p>
+<pre><code>log4cplus.rootLogger= WARN, M
+log4cplus.logger.test.log_1=WARN
+log4cplus.logger.test.log_2=WARN
+log4cplus.logger.test.log_3=WARN
+
+log4cplus.appender.TT=log4cplus::ConsoleAppender
+log4cplus.appender.TT.layout=log4cplus::PatternLayout
+log4cplus.appender.TT.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+
+log4cplus.appender.M=log4cplus::DailyRollingFileAppender
+log4cplus.appender.M.Schedule=MINUTELY
+log4cplus.appender.M.filters.1.LogLevelToMatch=DEBUG
+log4cplus.appender.M.filters.1.AcceptOnMatch=TRUE
+log4cplus.appender.M.filters.2=log4cplus::spi::DenyAllFilter
+log4cplus.appender.M.File=output.log
+#log4cplus.appender.M.MaxFileSize=5MB
+log4cplus.appender.M.MaxBackupIndex=1
+log4cplus.appender.M.layout=log4cplus::PatternLayout
+log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c{2} %%%x%% - %m [%l]%n
+</code></pre><p>编译</p>
+<pre><code>g++ -llog4cplus -lpthread -o test log4cplus.demo.cpp
+</code></pre><h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.csdn.net/cchd0001/article/details/49928421" target="_blank" rel="noopener">log4cplus学习速记</a><br><a href="http://blog.csdn.net/skyztttt/article/details/51492935" target="_blank" rel="noopener">log4cplush学习</a></p>
+<p>安装</p>
+<p> ./configure –enable-static –prefix=/Users/keything/log4cplus_static CXXFLAGS=”-std=c++0x”</p>
+<p>因为如果需要log4cplus支持C++11，必须在g++编译的时候需要加选项“-std=c++0x”。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckw1wtykq0038utnu8l28jsgm" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/page/3/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><a class="page-number" href="/page/6/">6</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><a class="extend next" rel="next" href="/page/5/">Next &raquo;</a>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/16/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
