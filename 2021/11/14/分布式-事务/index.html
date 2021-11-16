@@ -7,25 +7,25 @@
   
   <title>分布式-事务 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+  <meta name="description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务? 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作">
 <meta name="keywords" content="分布式">
 <meta property="og:type" content="article">
 <meta property="og:title" content="分布式-事务">
 <meta property="og:url" content="http://keything.github.io/2021/11/14/分布式-事务/index.html">
 <meta property="og:site_name" content="Keything的日志">
-<meta property="og:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+<meta property="og:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务? 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作">
 <meta property="og:locale" content="default">
 <meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/dirty-write.png">
-<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/dirty%20read.jpeg">
-<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/lost%20update.jpeg">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/dirty%20read.jpeg">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/lost%20update.jpeg">
 <meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/cursor-lost-update.png">
 <meta property="og:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/write-skew1.png">
-<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/isolation%20types.jpeg">
-<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/分布式-事务/isolation%20levels%20and%20their%20relationship.jpeg">
-<meta property="og:updated_time" content="2021-11-16T09:45:21.268Z">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/isolation%20types.jpeg">
+<meta property="og:image" content="http://keything.github.io/2021/11/14/分布式-事务/isolation%20levels%20and%20their%20relationship.jpeg">
+<meta property="og:updated_time" content="2021-11-16T09:49:40.286Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="分布式-事务">
-<meta name="twitter:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作单">
+<meta name="twitter:description" content="本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。 在总结之前，提问几个问题：  什么是事务? 为什么引入事务 事务中最核心的问题是什么？ 事务中隔离级别有哪些级别，级别划分依据是什么？ 隔离级别解决了哪些问题，哪些没有解决 如何实现这些隔离级别  一、事务什么是事务在应用程序中，将一组数据库的读写组成一个逻辑操作">
 <meta name="twitter:image" content="https://blog.acolyer.org/wp-content/uploads/2016/02/dirty-write.png">
   
     <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
@@ -98,7 +98,7 @@
         <p>本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。</p>
 <p>在总结之前，提问几个问题：</p>
 <ol>
-<li>什么是事务</li>
+<li>什么是事务?</li>
 <li>为什么引入事务</li>
 <li>事务中最核心的问题是什么？</li>
 <li>事务中隔离级别有哪些级别，级别划分依据是什么？</li>
@@ -173,7 +173,7 @@
 </li>
 <li>举例：<ul>
 <li>序列化：H1: r1[x=50]w1[x=10]r2[x=10]r2[y=50]c2 r1[y=50]w1[y=90]c1</li>
-<li>如下图所示 t2中 x+y=60，其中x=10是脏读，<img src="分布式-事务/dirty read.jpeg" alt=""></li>
+<li>如下图所示 t2中 x+y=60，其中x=10是脏读，<img src="//keything.github.io/2021/11/14/分布式-事务/dirty read.jpeg" alt=""></li>
 </ul>
 </li>
 </ol>
@@ -207,7 +207,7 @@
 <li>问题的解决办法：snapshot isolation，多版本</li>
 <li>举例：<ul>
 <li>序列化是 H4: r1[x=100]r2[x=100]w2[x=120 c2 w1 [x=130] c1</li>
-<li>预期是从100经过+20，+30，最后取值是150；实际是130。如图所示 <img src="分布式-事务/lost update.jpeg" alt=""></li>
+<li>预期是从100经过+20，+30，最后取值是150；实际是130。如图所示 <img src="//keything.github.io/2021/11/14/分布式-事务/lost update.jpeg" alt=""></li>
 </ul>
 </li>
 </ol>
@@ -233,8 +233,8 @@
 </ol>
 <p><img src="https://blog.acolyer.org/wp-content/uploads/2016/02/write-skew1.png" alt=""></p>
 <h3 id="2-4-隔离级别"><a href="#2-4-隔离级别" class="headerlink" title="2.4 隔离级别"></a>2.4 隔离级别</h3><p>可以通过刻画他们禁止的异常情况来刻画隔离级别</p>
-<p><img src="分布式-事务/isolation types.jpeg" alt=""></p>
-<p>他们之间的关系如下图所示 <img src="分布式-事务/isolation levels and their relationship.jpeg" alt=""></p>
+<p><img src="//keything.github.io/2021/11/14/分布式-事务/isolation types.jpeg" alt=""></p>
+<p>他们之间的关系如下图所示 <img src="//keything.github.io/2021/11/14/分布式-事务/isolation levels and their relationship.jpeg" alt=""></p>
 <p>我们可以通过他们允许的非序列化历史来比较隔离级别：</p>
 <ul>
 <li>L1 is weaker than L2 if L1 permits non-serializable histories that L2 does not, and every non-serializable history under L2 is also a non-serializable history under L1. We write L1 &lt;&lt; L2.</li>
@@ -271,7 +271,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1wtylq0058utnu0lfypdrt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1wzlfv0057phnu7q94qqwc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>

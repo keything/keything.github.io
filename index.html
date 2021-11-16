@@ -97,7 +97,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/hello-world/" data-id="ckw1wtyki002nutnufe6y7e3s" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/hello-world/" data-id="ckw1wzleu002tphnumt0knpj5" class="article-share-link">Share</a>
       
       
     </footer>
@@ -183,7 +183,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/elasticsearch路由规则学习/" data-id="ckw1wtyk60020utnu8ldnyt19" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/elasticsearch路由规则学习/" data-id="ckw1wzlef001tphnugypfk3tp" class="article-share-link">Share</a>
       
       
     </footer>
@@ -209,7 +209,7 @@ curl -XPUT -H&quot;Content-Type: application/json&quot; &quot;localhost:9200/_cl
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/Spark-DataSource-Hive Tables/" data-id="ckw1wtyhs0000utnu6raoktlf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/Spark-DataSource-Hive Tables/" data-id="ckw1wzlct0000phnu06i7vc61" class="article-share-link">Share</a>
       
       
     </footer>
@@ -357,7 +357,7 @@ teenagersDF.map(teenager =&gt; teenager.getValuesMap[Any](List(&quot;name&quot;,
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/Starting Point- SparkSession/" data-id="ckw1wtyjs0018utnu4y3wom2g" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/Starting Point- SparkSession/" data-id="ckw1wzle60012phnuj9dr601r" class="article-share-link">Share</a>
       
       
     </footer>
@@ -730,7 +730,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/RedisCluster详细说明[翻译]/" data-id="ckw1wtyni0076utnurjunijdh" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/RedisCluster详细说明[翻译]/" data-id="ckw1wzlh40078phnump94o9tb" class="article-share-link">Share</a>
       
       
     </footer>
@@ -765,7 +765,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
         <p>本文是《数据密集型应用系统设计》（英文：Designing Data-Intensive Applications) 第7章学习总结。</p>
 <p>在总结之前，提问几个问题：</p>
 <ol>
-<li>什么是事务</li>
+<li>什么是事务?</li>
 <li>为什么引入事务</li>
 <li>事务中最核心的问题是什么？</li>
 <li>事务中隔离级别有哪些级别，级别划分依据是什么？</li>
@@ -840,7 +840,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
 </li>
 <li>举例：<ul>
 <li>序列化：H1: r1[x=50]w1[x=10]r2[x=10]r2[y=50]c2 r1[y=50]w1[y=90]c1</li>
-<li>如下图所示 t2中 x+y=60，其中x=10是脏读，<img src="分布式-事务/dirty read.jpeg" alt=""></li>
+<li>如下图所示 t2中 x+y=60，其中x=10是脏读，<img src="//keything.github.io/2021/11/14/分布式-事务/dirty read.jpeg" alt=""></li>
 </ul>
 </li>
 </ol>
@@ -874,7 +874,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
 <li>问题的解决办法：snapshot isolation，多版本</li>
 <li>举例：<ul>
 <li>序列化是 H4: r1[x=100]r2[x=100]w2[x=120 c2 w1 [x=130] c1</li>
-<li>预期是从100经过+20，+30，最后取值是150；实际是130。如图所示 <img src="分布式-事务/lost update.jpeg" alt=""></li>
+<li>预期是从100经过+20，+30，最后取值是150；实际是130。如图所示 <img src="//keything.github.io/2021/11/14/分布式-事务/lost update.jpeg" alt=""></li>
 </ul>
 </li>
 </ol>
@@ -900,8 +900,8 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
 </ol>
 <p><img src="https://blog.acolyer.org/wp-content/uploads/2016/02/write-skew1.png" alt=""></p>
 <h3 id="2-4-隔离级别"><a href="#2-4-隔离级别" class="headerlink" title="2.4 隔离级别"></a>2.4 隔离级别</h3><p>可以通过刻画他们禁止的异常情况来刻画隔离级别</p>
-<p><img src="分布式-事务/isolation types.jpeg" alt=""></p>
-<p>他们之间的关系如下图所示 <img src="分布式-事务/isolation levels and their relationship.jpeg" alt=""></p>
+<p><img src="//keything.github.io/2021/11/14/分布式-事务/isolation types.jpeg" alt=""></p>
+<p>他们之间的关系如下图所示 <img src="//keything.github.io/2021/11/14/分布式-事务/isolation levels and their relationship.jpeg" alt=""></p>
 <p>我们可以通过他们允许的非序列化历史来比较隔离级别：</p>
 <ul>
 <li>L1 is weaker than L2 if L1 permits non-serializable histories that L2 does not, and every non-serializable history under L2 is also a non-serializable history under L1. We write L1 &lt;&lt; L2.</li>
@@ -938,7 +938,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1wtylq0058utnu0lfypdrt" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1wzlfv0057phnu7q94qqwc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
@@ -997,7 +997,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="ckw1wtykg002jutnu494lua4v" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="ckw1wzleq002kphnu06b23ses" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -1243,7 +1243,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="ckw1wtylg004lutnum77q2j1h" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="ckw1wzlfn004lphnum6uq0jtg" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -1325,7 +1325,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="ckw1wtykc002butnuje75gwqz" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="ckw1wzlen002cphnupal5o2xn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -1365,7 +1365,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="ckw1wtyka0027utnu0cbkyubu" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="ckw1wzlem0029phnu8iivv7a4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
