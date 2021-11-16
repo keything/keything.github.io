@@ -62,398 +62,6 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-memcache常见问题" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcache常见问题/" class="article-date">
-  <time datetime="2016-04-17T07:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcache常见问题/">4. Memcached常见问题</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="关于Mc的零散的问题"><a href="#关于Mc的零散的问题" class="headerlink" title="关于Mc的零散的问题"></a>关于Mc的零散的问题</h2><ol>
-<li><p>如何实现cas的<br> 很简单，全局维持一个64位的静态变量</p>
-<pre><code>uint64_t get_cas_id(void) {
-   static uint64_t cas_id = 0;
-   return ++cas_id;
-}
-</code></pre></li>
-<li><p>Mc启动时-m指定的最大内存maxMem</p>
-<ol>
-<li>并不是一启动，就开始分配内存，而是在需要的时候才进行内存分配</li>
-<li>所指定的最大内存并不是其最大限制，也就是说mc所分配的内存大于maxMem</li>
-</ol>
-</li>
-<li><p>一开始大量使用某一大小A的chunk，占据大量的内存，那么当大量使用某一个大小B的chunk时，就会导致B chunk所使用的内存很小，极有可能只有一个slab（默认1m）的内存。那么数据就会不断被覆盖，从而导致mc存储的内容频繁失效。</p>
-</li>
-<li>分配给大小A的内存，不可以给其他大小的chunk使用。这也导致了上面3的问题</li>
-<li>memcached对item的过期时间有什么限制？<br> item对象的过期时间最长可以达到30天。memcached把传入的过期时间（时间段）解释成时间点后，一旦到了这个时间点，memcached就把item置为失效状态，这是一个简单但obscure的机制</li>
-<li><p>memcached最大能存储多大的单个item？</p>
-<p> memcached能存储最大1MB的单个item。如果需要被缓存的数据大于1MB，可以考虑在客户端压缩或拆分到多个key中。</p>
-</li>
-<li><p>使用不同的客户端库，可以访问到memcached中相同的数据吗？</p>
-<p> 从技术上说，是可以的。但是可能会遇到下面三个问题：</p>
-<p> 1）不同的库采用不同的方式序列化数据</p>
-<p> 举个例子，perl的Cache::Memcached使用Storable来序列化结构复杂的数据（比如hash references, objects等）。其他语言的客户端库很可能不能读取这种格式的数据。如果您要存储复杂的数据并且想被多种客户端库读取，那么您应该以简单的string格式来存储，并且这种格式可以被JSON、XML等外部库解析。</p>
-<p> 2）从某个客户端来的数据被压缩了，从另一个客户端来的却没被压缩。</p>
-<p> 3）各个客户端库可能使用不同的哈希算法（阶段一哈希）。在连接到多个memcached服务器端的情况下，客户端库根据自身实现的哈希算法把key映射到某台memcached上。正是因为不同的客户端库使用不同的哈希算法，所以被Perl客户端库映射到memcached A的key，可能又会被Python客户端库映射到memcached B，等等。Perl客户端库还允许为每台memcached指定不同的权重（weight），这也是导致这个问题的一个因素</p>
-</li>
-</ol>
-<h2 id="博客中常见问题"><a href="#博客中常见问题" class="headerlink" title="博客中常见问题"></a>博客中常见问题</h2><p><a href="http://huoding.com/2012/12/30/205" target="_blank" rel="noopener">http://huoding.com/2012/12/30/205</a></p>
-<ol>
-<li>Cache失效后的拥堵问题<ol>
-<li>首先，我们可以主动更新Cache。前端程序里不涉及重建Cache的职责，所有相关逻辑都由后端独立的程序（比如CRON脚本）来完成，但此方法并不适应所有的需求。</li>
-<li>好在我们还有Gearman这根救命稻草。当需要更新Cache的时候，我们不再直接查询数据库，而是把任务抛给Gearman来处理，当并发量比较大的时候，Gearman内部的优化可以保证相同的请求只查询一次后端数据库，以PHP为例，伪代码大致如下：</li>
-</ol>
-</li>
-</ol>
-<pre><code>    &lt;?php
-
-    function query()
-    {
-        $data = $cache-&gt;get($key);
-
-        if ($cache-&gt;getResultCode() == Memcached::RES_NOTFOUND) {
-            $data = $gearman-&gt;do($function, $workload, $unique);
-            $cache-&gt;set($key, $data, $expiration);
-        }
-
-        return $data;
-    }
-
-    ?&gt;
-
-说明：如果多个并发请求的$unique参数一样，那么实际上Gearman只会请求一次。
-</code></pre><ol start="2">
-<li><p>Multiget的无底洞问题</p>
-<p> Facebook在Memcached的实际应用中，发现了Multiget无底洞问题，具体表现为：出于效率的考虑，很多Memcached应用都已Multiget操作为主，随着访问量的增加，系统负载捉襟见肘，遇到此类问题，直觉通常都是通过增加服务器来提升系统性能，但是在实际操作中却发现问题并不简单，新加的服务器好像被扔到了无底洞里一样毫无效果。</p>
-</li>
-<li><p>客户端的Hash算法<br><a href="http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients" target="_blank" rel="noopener">http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients</a></p>
-</li>
-</ol>
-<p>##适合Mc的业务场景</p>
-<p>1）如果网站包含了访问量很大的动态网页，因而数据库的负载将会很高。由于大部分数据库请求都是读操作，那么memcached可以显著地减小数据库负载。</p>
-<p>2）如果数据库服务器的负载比较低但CPU使用率很高，这时可以缓存计算好的结果（ computed objects ）和渲染后的网页模板（enderred templates）。</p>
-<p>3）利用memcached可以缓存session数据、临时数据以减少对他们的数据库写操作。</p>
-<p>4）缓存一些很小但是被频繁访问的文件。</p>
-<p>5）缓存Web ‘services’（非IBM宣扬的Web Services）或RSS feeds的结果.。</p>
-<h2 id="不适合Mc的业务场景"><a href="#不适合Mc的业务场景" class="headerlink" title="不适合Mc的业务场景"></a>不适合Mc的业务场景</h2><p>1）缓存对象的大小大于1MB</p>
-<p>  Memcached本身就不是为了处理庞大的多媒体（large media）和巨大的二进制块（streaming huge blobs）而设计的。</p>
-<p>2）key的长度大于250字符</p>
-<p>3）虚拟主机不让运行memcached服务</p>
-<p>  如果应用本身托管在低端的虚拟私有服务器上，像vmware, xen这类虚拟化技术并不适合运行memcached。Memcached需要接管和控制大块的内存，如果memcached管理的内存被OS或 hypervisor交换出去，memcached的性能将大打折扣。</p>
-<p>4）应用运行在不安全的环境中</p>
-<p>   Memcached 未提供任何安全策略，仅仅通过telnet就可以访问到memcached。如果应用运行在共享的系统上，需要着重考虑安全问题。</p>
-<p>5）业务本身需要的是持久化数据或者说需要的应该是database的读数据</p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://blog.mimvp.com/2015/01/memcache-cache-bulk-delete-scheme/" target="_blank" rel="noopener">http://blog.mimvp.com/2015/01/memcache-cache-bulk-delete-scheme/</a> mc的telnet操作 查看<br>客户端的一致性hash <a href="http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients" target="_blank" rel="noopener">http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients</a><br>火丁的mc <a href="http://huoding.com/2012/12/30/205" target="_blank" rel="noopener">http://huoding.com/2012/12/30/205</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="ckw1wzlf7003nphnuskz8i0ll" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcached详细解释" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcached详细解释/" class="article-date">
-  <time datetime="2016-04-17T06:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcached详细解释/">3. Memcached详细解释</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="流程概述"><a href="#流程概述" class="headerlink" title="流程概述"></a>流程概述</h2><ol>
-<li>数据存储：保存数据A到mc时，需要先分配空间Item给数据A。</li>
-<li>数据查找：对于获取数据，通过Hash表进行查找。</li>
-<li>数据过期：通过LRU队列进行过期处理</li>
-</ol>
-<h2 id="数据存储"><a href="#数据存储" class="headerlink" title="数据存储"></a>数据存储</h2><p>为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。</p>
-<p>Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个slab链表所分配的内存大小不同。</p>
-<p>我们在启动的时候就还会看到这个</p>
-<pre><code>memcached -p 11211 -m 44m -vv -f1.25
-slab class   1: chunk size        96 perslab   10922
-slab class   2: chunk size       120 perslab    8738
-....
-slab class  12: chunk size      1184 perslab     885
-.... 
-slab class  41: chunk size    771184 perslab       1
-slab class  42: chunk size   1048576 perslab       1
-</code></pre><p>如何分配</p>
-<ol>
-<li><p>在do_item_alloc中获取item</p>
-<ol>
-<li>首先根据LRU队列，选择过期的item，返回该item，使用该item</li>
-<li>如果都没有过期，那么分配新的slab。实际上就是分配新的page，然后根据chunk size进行内存切割。选择一个item，返回该item。【注意】即使启动参数-m 44M限定的最大内存使用完毕，如果某一个slabclass没有slab，那么依然可以分配一个page，就会出现内存大于44m的情况。在do_slabs_newslab函数中</li>
-<li><p>如果都没有过期，并且不能够分配新的slab，那么就会强行霸占没有过期的item。返回该item</p>
-<p>有一篇大牛的文章（2009年）中提到了相同的问题。 <a href="http://timyang.net/data/Memcached-lru-evictions/" target="_blank" rel="noopener">http://timyang.net/data/Memcached-lru-evictions/</a> </p>
-</li>
-</ol>
-</li>
-<li><p>场景：<br> 我以下面的方式启动</p>
-<pre><code>memcached -p 11211 -m 44m -vv -f1.25
-</code></pre></li>
-</ol>
-<p>下面的方式写入数据</p>
-<pre><code>for (i = 0; i &lt; 10922 * 44m; i++)
-{
-    set( i, &apos;1&apos;, 0); // 写入长度为1，0代表过期时间
-}
-</code></pre><p>这样的话44m空间全部用完。当我们再次写入长度为1000的，将会写入到 slab class 12中。但是我们知道44m空间，已经用完，但实际上我们发现slab class 12可以写入。这儿刚好验证了【注意】中的内容</p>
-<p>##LRU队列：</p>
-<p>上面讲述了如何分配item，那么分配以后的item如何进行管理和查找呢，就需要LRU队列和Hash表。LRU队列管理Item，LRU队列是一个双向链表，个数与subclass的个数相同。同一个subclass的所有item都归同一个LRU队列管理。</p>
-<p>在item.c中</p>
-<pre><code>static item *heads[LARGEST_ID];
-static item *tails[LARGEST_ID];
-static crawler crawlers[LARGEST_ID];
-static itemstats_t itemstats[LARGEST_ID];
-static unsigned int sizes[LARGEST_ID];
-</code></pre><p>通过LRU队列的操作，可以更清楚明白LRU队列的作用：</p>
-<ol>
-<li>插入：插入到LRU队列的头部</li>
-<li>更新：在LRU队列中，排的越靠后就认为越少被使用的item，那么其被淘汰的概率就越大，所以新的item（访问时间新）要排在不那么新的item前面，所以插入在头部是必须的。<br>do_item_update就是先把item从LRU队列中删除，再插入LRU队列，更新time字段（time表示最后访问时间）</li>
-</ol>
-<h2 id="Hash表"><a href="#Hash表" class="headerlink" title="Hash表"></a>Hash表</h2><ol>
-<li>当item分配并赋值以后，需要注册到LRU队列和Hash表中。注册到Hash表以后，将方便我们进行查询。利用item的数据部分（data字段）和键长（nkey字段）进行hash。Hash表的结构是常见的拉链结构。</li>
-<li>Hash表的扩展<br> Hash表的长度并不是不变的。当Hash表中的Item数量达到了Hash表长度的1.5倍时，那么就会扩展哈希表的长度，然后重新进行Hash<br> 由于这一步耗时，是通过专门的线程 迁移线程进行的。</li>
-<li>Hash表与Item的关系<br> Item在分配以后，会通过do_item_link do_\item_unlink将Item注册到Hash表和LRU队列中</li>
-</ol>
-<h2 id="过期失效处理"><a href="#过期失效处理" class="headerlink" title="过期失效处理"></a>过期失效处理</h2><ol>
-<li><p>一个item在两种情况下会过期失效</p>
-<pre><code>item的expire时间戳到了
-用户使用flush_all将全部item变成过期失效
-</code></pre></li>
-<li><p>懒惰删除<br> 只有在进行get时，才会进行判断，然后进行删除</p>
-</li>
-</ol>
-<h2 id="重要原则："><a href="#重要原则：" class="headerlink" title="重要原则："></a>重要原则：</h2><ol>
-<li>按照预定大小，将分配的slab分割成特定长度的块</li>
-<li>分配给某个slab的内存不能给其他slab使用。已经分配出去的slab不会被回收或者重新分配，因为这种原理，也就出现了【注意】里面所描述的情况</li>
-<li>item里面不仅仅存放缓存对象的value，还包括key，expire，time，flag等详细信息。其中time表示最后一次访问时间，expire表示过期时间。</li>
-</ol>
-<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><p>场景1：<br>    一开始大量长度为1kb，全部占用，之后存储大量10kb，只有一个slab，那么10kb大量访问，那么就会出现没到过期时间，数据全部失效。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="ckw1wzlf2003gphnuwz4sc9g4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcache启动及telnet命令" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcache启动及telnet命令/" class="article-date">
-  <time datetime="2016-04-17T05:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcache启动及telnet命令/">2. Memcache启动及Telnet命令</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="1-Memcached启动选项"><a href="#1-Memcached启动选项" class="headerlink" title="1. Memcached启动选项"></a>1. Memcached启动选项</h2><ol>
-<li>“p:”   小写p，memcached监听的tcp端口。默认端口为11211, 该选项的参数赋值给settings.port</li>
-<li>“m:”  小写m。memcached能够使用的最大内存值，默认是64MB。参数单位为MB。该参数赋值给settings.maxbytes</li>
-<li>“v”    小写v。输出memcached运行时的一些信息。-v -vv -vvv输出的信息依次增加。该选项会增加settings.verbose的值</li>
-<li>“d”    以守护进程的形式运行memcached</li>
-<li>“f:”    item的扩容因子。默认值为1.25。该选项的参数值可以是小数但必须大于1.0。该选项参数将赋值给settings.factor</li>
-<li>“n:”   设置最小的item能存储多少字节的数据。该选项参数赋值给settings.chunk_size.</li>
-<li>“C:”  大写C。memcached默认是使用CAS的，本选项是禁用CAS。本选项会将settings.use_cas赋值为false</li>
-<li>“B:”  memcached支持文本协议和二进制协议。该选项的参数用于指定使用的协议。默认情况下是根据客户端的命令而自动判断(也叫协商)，参数只能取auto、binary、ascii这三个字符串值。将参数将赋值给settings.binding_protocol</li>
-<li>“I:”   大写i。slab分配器中，每一个页的大小。这个选项的参数是一个数值表示页的大小。默认单位是B也可以在数值后面带K或者M(大小写都行)，表示KB和MB。页的大小小于1KB或者大于128MB都是不允许的。不推荐使用该选项。本选项参数会赋值给settings.item_size_max</li>
-<li>“P:”  大写P。指定pid文件。存放当前mc进程的pid</li>
-<li>“t:”    该选项的参数用于指定worker线程的个数，不建议超过64个。如果不设置该选项默认有4个线程。该参数会赋值给settings.num_threads</li>
-<li>“c:”   小写c。最多允许多少个客户端同时在线(这个值不等价于listen函数的第二个参数)，该选项和后面的b选项有所不同。 默认值为1024个。该选项参数赋值给settings.maxconns。</li>
-<li>“u:”  小写u。当以root用户启动memcached的时候需要指定memcached的所属用户，其他用户启动memcached不需要此选项</li>
-</ol>
-<p>举例</p>
-<pre><code>memcached -d -p 11211 -P /var/run/memcached.pid -c 4096 -t 4 -m 1024 -u root -v
-</code></pre><h2 id="2-一些高级telnet命令"><a href="#2-一些高级telnet命令" class="headerlink" title="2. 一些高级telnet命令"></a>2. 一些高级telnet命令</h2><p>stats slabs<br>查看 memcache的slab class的状态，能够知道数据分布的范围，每个slab有多少页</p>
-<p>stats cachedump 1 0<br>第三个字段是slab的标识<br>第四个字段表示拉取的该slab下的数据，第四个字段0表示不受限制（但实际上只会拉取1M的数据， 并不会全拉）</p>
-<h2 id="3-基础Memcached命令"><a href="#3-基础Memcached命令" class="headerlink" title="3. 基础Memcached命令"></a>3. 基础Memcached命令</h2><p>Memcached 有 4 种类型的命令:</p>
-<pre><code>1. 存储命令(set/add /replace/append/prepend)
-指示服务器储存一些由键值标识的 数据。客户端发送一行命令,后面跟着数据区块;然后,客户端等待接收服务器回传 的命令行,指示成功与否。
-2. 读取命令(get/bget/gets)指示服务器返回与所给键值相符合的数据(一个请求中右 一个或多个键值)。客户端发送一行命令,包括所有请求的键值;服务器每找到一项内容,都会发送回客户端一行关于这项内容的信息,紧跟着是对应的数据区块;直到服务器以一行“END”回应命令结束。
-3. 状态命令(stat)被用于查询服务器的运行状态和其他内部数据。 
-4. 其他命令,如 flush_all,version,quit 等。
-
-
-COMMAND    DESCRIPTION    EXAMPLE
-get    Reads a value    get mykey
-set    Set a key unconditionally    set mykey 0 60 5
-add    Add a new key    add newkey 0 60 5
-replace    Overwrite existing key    replace key 0 60 5
-append    Append data to existing key    append key 0 60 15
-prepend    Prepend data to existing key    prepend key 0 60 15
-incr    Increments numerical key value by given number    incr mykey 2
-decr    Decrements numerical key value by given number    decr mykey 5
-delete    Deletes an existing key    delete mykey
-flush_all    Invalidate specific items immediately    flush_all
-Invalidate all items in n seconds    flush_all 900
-stats    Prints general statistics    stats
-Prints memory statistics    stats slabs
-Prints memory statistics    stats malloc
-Print higher level allocation statistics    stats items
-stats detail
-stats sizes
-Resets statistics    stats reset
-version    Prints server version.    version
-verbosity    Increases log level    verbosity
-quit    Terminate telnet session    quit
-</code></pre><h3 id="stats命令详解"><a href="#stats命令详解" class="headerlink" title="stats命令详解"></a>stats命令详解</h3><pre><code>pid    memcache服务器的进程ID
-uptime    服务器已经运行的秒数
-time    服务器当前的unix时间戳
-version    memcache版本
-pointer_size    当前操作系统的指针大小（32位系统一般是32bit）
-rusage_user    进程的累计用户时间
-rusage_system    进程的累计系统时间
-curr_items    服务器当前存储的items数量
-total_items    从服务器启动以后存储的items总数量
-bytes    当前服务器存储items占用的字节数
-curr_connections    当前打开着的连接数
-total_connections    从服务器启动以后曾经打开过的连接数
-connection_structures    服务器分配的连接构造数
-cmd_get    get命令（获取）总请求次数
-cmd_set    set命令（保存）总请求次数
-get_hits    总命中次数
-get_misses    总未命中次数
-evictions    为获取空闲内存而删除的items数（分配给memcache的空间用满后需要删除旧的items来得到空间分配给新的items）
-bytes_read    总读取字节数（请求字节数）
-bytes_written    总发送字节数（结果字节数）
-limit_maxbytes    分配给memcache的内存大小（字节）
-threads    当前线程数
-</code></pre><p>参考文章<br><a href="http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/" target="_blank" rel="noopener">http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="ckw1wzlf4003kphnuk8os0mnv" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcache概述" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcache概述/" class="article-date">
-  <time datetime="2016-04-17T04:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcache概述/">1. memcache概述</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ol>
-<li>memcached的特征<br> memcached 作为高速运行的分布式缓存服务器,具有以下的特点。<ol>
-<li>协议简单</li>
-<li>基于 libevent 的事件处理 </li>
-<li>内置内存存储方式</li>
-<li>memcached 不互相通信的分布式<br>mc是分布式缓存服务器，完全取决于客户端的实现</li>
-</ol>
-</li>
-</ol>
-<h2 id="Memcache的内存分配"><a href="#Memcache的内存分配" class="headerlink" title="Memcache的内存分配"></a>Memcache的内存分配</h2><ol>
-<li>基本概念<ol>
-<li>Page<br>分配给Slab的内存空间,默认是 1MB。<br>分配给Slab之后根据slab的大小切分成chunk。</li>
-<li>Chunk 用于缓存记录的内存空间。 </li>
-<li>Slab Class：特定大小的Chunk数组</li>
-</ol>
-</li>
-<li>保存<br> memcached 根据收到的数据的大小,选择最适合数据大小的 slab。 memcached 中保存着 slab 内空闲 chunk 的列表,根据该列表选择 chunk, 然后 将数据缓存于其中。</li>
-<li><p>调优<br> 使用Growth Factor进行调优，默认是1.25</p>
-</li>
-<li><p>小结</p>
-<p> 将固定大小的内存（page）分割成各种尺寸的块（chunk）<br> 把尺寸相同的块分组，叫做slab classes</p>
-</li>
-</ol>
-<h2 id="Memcache的过期"><a href="#Memcache的过期" class="headerlink" title="Memcache的过期"></a>Memcache的过期</h2><p> memcached不会释放已分配的内存。记录超时后,客户端就无法再 看见该记录(invisible,透明), 其存储空间即可重复使用。<br> Lazy Expiration<br> memcached 内部不会监视记录是否过期,而是在 get 时查看记录的时间戳,检查 记录是否过期。 这种技术被称为 lazy(惰性)expiration。因此,memcached 不会在过期监视上耗费 CPU 时间。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="ckw1wzlf6003lphnu7mkduugy" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
     <article id="post-gitflow工作流" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/03/15/gitflow工作流/" class="article-date">
@@ -525,7 +133,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw1wzlek0025phnu6zss1er9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw1x5qb500203mnudnufok87" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -584,7 +192,7 @@ threads    当前线程数
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckw1wzlft0050phnusxss98z2" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckw1x5qc5004n3mnuikqjrsb4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -636,7 +244,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckw1wzlft0052phnumdflw4z7" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckw1x5qc9004x3mnu117wtigo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -957,7 +565,7 @@ set @@tx_isolation=&apos;read-committed&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw1wzlf7003pphnu4bnm2b21" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw1x5qbr003l3mnunbifby0o" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -1019,7 +627,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckw1wzleh001yphnujuqqjcn2" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckw1x5qb1001q3mnujk9uk3me" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -1079,10 +687,491 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckw1wzlf1003bphnuv4jlpd9a" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckw1x5qbl00373mnuy2t9pv84" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-mac安装hbase" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/03/mac安装hbase/" class="article-date">
+  <time datetime="2016-01-03T05:20:01.000Z" itemprop="datePublished">2016-01-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/01/03/mac安装hbase/">Mac 安装Hbase环境</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-安装"><a href="#1-安装" class="headerlink" title="1. 安装"></a>1. 安装</h2><ol>
+<li>安装brew</li>
+<li><p>安装Hbase</p>
+<pre><code>brew install hbase 
+</code></pre></li>
+</ol>
+<h2 id="2-说明"><a href="#2-说明" class="headerlink" title="2. 说明"></a>2. 说明</h2><p>Hbase运行模式分为单机、伪分布式、全分布式三种。我尝试使用单机，但由于zookeeper的原因没有搭建成功，目前使用伪分布式的方式运行。<br>在Hbase中<a href="http://hbase.apache.org/book.html#zookeeper" target="_blank" rel="noopener">http://hbase.apache.org/book.html#zookeeper</a> 介绍了Hbase和Zookeeper的关系。</p>
+<h2 id="3-配置修改"><a href="#3-配置修改" class="headerlink" title="3. 配置修改"></a>3. 配置修改</h2><ol>
+<li><p>修改hbase-env.sh<br> 将</p>
+<pre><code>#export HBASE_MANAGES_ZK=true
+</code></pre><p> 修改为 </p>
+<pre><code>export HBASE_MANAGES_ZK=false
+</code></pre></li>
+<li><p>修改hbase-site.xml<br>其中hbase.rootdir的value必须跟hadoop中core-site.xml中fs.default.name相同。如果不同，则会引起ERROR: <code>Can&#39;t get master address from ZooKeeper; znode data == null</code></p>
+<pre><code>&lt;configuration&gt;
+  &lt;property&gt;
+   &lt;name&gt;hbase.rootdir&lt;/name&gt;
+   &lt;value&gt;hdfs://localhost:9000/hbase&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+   &lt;name&gt;hbase.cluster.distributed&lt;/name&gt;
+   &lt;value&gt;true&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+</code></pre></li>
+</ol>
+<h2 id="3-启动并运行例子"><a href="#3-启动并运行例子" class="headerlink" title="3. 启动并运行例子"></a>3. 启动并运行例子</h2><ol>
+<li><p>依次执行下面三个命令<br>start-hbase.sh<br>可以通过jps查看是否正确运行</p>
+<p> 13489 Jps<br> 9633 QuorumPeerMain<br> 13315 HMaster<br> 6597 DataNode<br> 6838 ResourceManager<br> 6935 NodeManager<br> 6505 NameNode<br> 13419 HRegionServer<br> 6715 SecondaryNameNode</p>
+</li>
+</ol>
+<p>如果没有QuorumPeerMain 要去看hbase-env.sh中是否设置正确</p>
+<ol start="2">
+<li><p>运行一个例子<br>创建一个名为 test 的表，这个表只有一个 列族 为 cf。可以列出所有的表来检查创建情况，然后插入些值。</p>
+<p> hbase(main):003:0&gt; create ‘test’, ‘cf’<br> 0 row(s) in 1.2200 seconds<br> hbase(main):003:0&gt; list ‘test’<br> test<br> 1 row(s) in 0.0550 seconds<br> hbase(main):004:0&gt; put ‘test’, ‘row1’, ‘cf:a’, ‘value1’<br> 0 row(s) in 0.0560 seconds<br> hbase(main):005:0&gt; put ‘test’, ‘row2’, ‘cf:b’, ‘value2’<br> 0 row(s) in 0.0370 seconds<br> hbase(main):006:0&gt; put ‘test’, ‘row3’, ‘cf:c’, ‘value3’<br> 0 row(s) in 0.0450 seconds<br>以上我们分别插入了3行。第一个行key为row1, 列为 cf:a， 值是 value1。HBase中的列是由 列族前缀和列的名字组成的，以冒号间隔。例如这一行的列名就是a.</p>
+</li>
+</ol>
+<p>检查插入情况.</p>
+<p>Scan这个表，操作如下</p>
+<pre><code>hbase(main):007:0&gt; scan &apos;test&apos;
+ROW        COLUMN+CELL
+row1       column=cf:a, timestamp=1288380727188, value=value1
+row2       column=cf:b, timestamp=1288380738440, value=value2
+row3       column=cf:c, timestamp=1288380747365, value=value3
+3 row(s) in 0.0590 seconds
+</code></pre><p>Get一行，操作如下</p>
+<pre><code>hbase(main):008:0&gt; get &apos;test&apos;, &apos;row1&apos;
+COLUMN      CELL
+cf:a        timestamp=1288380727188, value=value1
+1 row(s) in 0.0400 seconds
+</code></pre><p>disable 再 drop 这张表，可以清除你刚刚的操作</p>
+<pre><code>hbase(main):012:0&gt; disable &apos;test&apos;
+0 row(s) in 1.0930 seconds
+hbase(main):013:0&gt; drop &apos;test&apos;
+0 row(s) in 0.0770 seconds 
+</code></pre><p>关闭shell</p>
+<p>hbase(main):014:0&gt; exit</p>
+<p>参考文章</p>
+<ol>
+<li><a href="http://abloz.com/hbase/book.html#quickstart" target="_blank" rel="noopener">http://abloz.com/hbase/book.html#quickstart</a></li>
+<li><a href="http://www.jianshu.com/p/510e1d599123" target="_blank" rel="noopener">http://www.jianshu.com/p/510e1d599123</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="ckw1x5qbk00333mnuterspw0q" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-mac安装hadoop" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/03/mac安装hadoop/" class="article-date">
+  <time datetime="2016-01-03T05:02:01.000Z" itemprop="datePublished">2016-01-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/01/03/mac安装hadoop/">mac安装hadoop</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-安装"><a href="#1-安装" class="headerlink" title="1. 安装"></a>1. 安装</h2><ol>
+<li>安装brew</li>
+<li>本地进行无密码授权</li>
+<li><p>安装hadoop</p>
+<p> brew install hadoop<br> brew 默认将hadoop安装在/usr/local/Cellar/hadoop/2.7.1目录下。<br> 配置文件在/usr/local/Cellar/hadoop/2.7.1/libexec/etc/hadoop</p>
+</li>
+</ol>
+<h2 id="2-配置修改"><a href="#2-配置修改" class="headerlink" title="2. 配置修改"></a>2. 配置修改</h2><ol>
+<li><p>修改hadoop-env.sh</p>
+<pre><code>export HADOOP_OPTS=&quot;$HADOOP_OPTS -Djava.net.preferIPv4Stack=true&quot;
+</code></pre><p> 修改为</p>
+<pre><code>export HADOOP_OPTS=&quot;$HADOOP_OPTS -Djava.net.preferIPv4Stack=true -Djava.security.krb5.realm= -Djava.security.krb5.kdc=&quot;
+</code></pre></li>
+</ol>
+<ol start="2">
+<li><p>修改core-site.xml</p>
+<p> 在configuration配置项内加入多个propery。</p>
+<pre><code>&lt;configuration&gt;
+    &lt;property&gt;     
+        &lt;name&gt;hadoop.tmp.dir&lt;/name&gt;     
+        &lt;value&gt;/usr/local/Cellar/hadoop/hdfs/tmp&lt;/value&gt;     
+        &lt;description&gt;A base for other temporary directories.&lt;/description&gt;   
+    &lt;/property&gt;   
+    &lt;property&gt;     
+        &lt;name&gt;fs.default.name&lt;/name&gt;     
+        &lt;value&gt;hdfs://localhost:9000&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;
+</code></pre></li>
+<li><p>编辑mapred-site.xml. 默认没有，将mapred-site.xml.templete重命名为mapred-site.xml<br>添加下面的属性</p>
+<pre><code>&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;mapred.job.tracker&lt;/name&gt;
+        &lt;value&gt;localhost:9010&lt;/value&gt;   
+    &lt;/property&gt; 
+&lt;/configuration&gt;
+</code></pre></li>
+<li><p>编辑hdfs-site.xml<br>变量dfs.replication指定了每个HDFS数据库的复制次数。 通常为3, 由于我们只有一台主机和一个伪分布式模式的DataNode，将此值修改为1。</p>
+<pre><code>&lt;configuration&gt;
+    &lt;property&gt;
+        &lt;name&gt;dfs.replication&lt;/name&gt;
+        &lt;value&gt;1&lt;/value&gt;
+    &lt;/property&gt;
+    &lt;property&gt;
+        &lt;name&gt;dfs.datanode.max.xcievers&lt;/name&gt;
+        &lt;value&gt;4096&lt;/value&gt;
+    &lt;/property&gt;
+&lt;/configuration&gt;
+</code></pre></li>
+</ol>
+<h2 id="3-启动并运行例子"><a href="#3-启动并运行例子" class="headerlink" title="3. 启动并运行例子"></a>3. 启动并运行例子</h2><ol>
+<li><p>依次执行下面三个命令</p>
+<pre><code>hadoop namenode -format
+start-dfs.sh
+start-yarn.sh
+</code></pre></li>
+</ol>
+<p>可以通过jps查看是否正确运行</p>
+<pre><code>6597 DataNode
+6838 ResourceManager
+6935 NodeManager
+6505 NameNode
+10427 Main
+6715 SecondaryNameNode
+</code></pre><p>如果发现没有DataNode那么就需要到core-site.xml中找到hadoop.tmp.dir删除该目录下内容再重启。<br>如果发现NameNode没有，那么你的datanode没有指定namenode的host。默认就去找localhost。然而你namenode不是localhost。你可以去报错那台机器上看9000端口是否有，是不是 namenode，或者9000端口被占用，所以namenode报错！</p>
+<ol start="2">
+<li>运行一个例子<br><code>hadoop jar /usr/local/Cellar/hadoop/2.7.1/libexec/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.7.1.jar pi 2 5</code><br>得到的结果<br> File Input Format Counters<br> Bytes Read=236<br> File Output Format Counters<br> Bytes Written=97<br> Job Finished in 1.636 seconds<br> Estimated value of Pi is 3.60000000000000000000</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="ckw1x5qbj00313mnuq7ycvdls" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-git基本操作" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/12/20/git基本操作/" class="article-date">
+  <time datetime="2015-12-20T05:02:01.000Z" itemprop="datePublished">2015-12-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2015/12/20/git基本操作/">git基本操作</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-初始化"><a href="#0-初始化" class="headerlink" title="0. 初始化"></a>0. 初始化</h2><pre><code>git init --bare 创建一个仓库
+
+git clone user@host:/path/repo.git
+</code></pre><h2 id="1-Git-用户配置"><a href="#1-Git-用户配置" class="headerlink" title="1. Git 用户配置"></a>1. Git 用户配置</h2><pre><code>1. 用户和邮箱
+
+        git config --global user.name &quot;Example Surname&quot;
+        git config --global user.email &quot;your.email@gmail.com&quot;
+
+2. 设置提交的分支
+
+    simple只是将当前激活态的提交
+    matching则是全部提交
+    建议使用simple
+
+        git config --global push.default simple 
+
+3. 设置高亮
+
+
+        git config --global color.ui true 
+        git config --global color.status auto 
+        git config --global color.branch auto
+
+4. 默认的编辑器
+
+        git config --global core.editor vim
+        git config --global merge.tool vimdiff
+        git config --global alias.d &apos;difftool -y&apos;
+
+
+        git config --global alias.staged &apos;diff --cached&apos;
+        git config --global alias.st &apos;status&apos;
+5. 设置git status时显示中文
+
+    git config --global core.quotepath false
+</code></pre><h2 id="2-设置忽略文件"><a href="#2-设置忽略文件" class="headerlink" title="2. 设置忽略文件"></a>2. 设置忽略文件</h2><pre><code>.gitignore
+</code></pre><h2 id="3-基本操作"><a href="#3-基本操作" class="headerlink" title="3. 基本操作"></a>3. 基本操作</h2><pre><code>add rm commit branch push pull log status
+</code></pre><h2 id="4-恢复文件"><a href="#4-恢复文件" class="headerlink" title="4. 恢复文件"></a>4. 恢复文件</h2><pre><code>从stage阶段恢复一个文件
+
+    git reset HEAD xxx_file_
+
+从modify恢复一个文件
+
+    git checkout -- xxx_file
+
+
+    git commit -m &apos;message&apos;
+    git commit --amend -m &quot;new message&quot;
+</code></pre><h2 id="5-从仓库中删除一个文件"><a href="#5-从仓库中删除一个文件" class="headerlink" title="5. 从仓库中删除一个文件"></a>5. 从仓库中删除一个文件</h2><pre><code>git rm -r --cached xxxfile
+git rm xxfile 二者区别
+</code></pre><h2 id="6-远程操作"><a href="#6-远程操作" class="headerlink" title="6. 远程操作"></a>6. 远程操作</h2><pre><code>Git remote add xxx_name yyy_url
+git remote rm xxx_name
+Git push repo_name xxx_branch
+</code></pre><h2 id="7-分支操作"><a href="#7-分支操作" class="headerlink" title="7. 分支操作"></a>7. 分支操作</h2><pre><code>Git branch
+git checkout -b xx_branch
+git branch -a // 包含远程分支
+</code></pre><h2 id="8-分支之间的区别"><a href="#8-分支之间的区别" class="headerlink" title="8. 分支之间的区别"></a>8. 分支之间的区别</h2><pre><code>Git diff master your_branch
+</code></pre><h2 id="9-标签-tag"><a href="#9-标签-tag" class="headerlink" title="9. 标签 tag"></a>9. 标签 tag</h2><pre><code>Git tag
+git tag 1.7.1 // 创建轻量的tag
+git show 1.7.1
+
+git tag 1.6.1 -m &quot;release 1.6.1&quot;
+git checkout &lt;tag_name&gt;
+git push origin [tag_name]
+git push origin tag &lt;tag_name&gt;
+git tag -d &lt;tag_name&gt;
+git push origin :refs/tags/1.6.1
+</code></pre><h2 id="10-储藏"><a href="#10-储藏" class="headerlink" title="10. 储藏"></a>10. 储藏</h2><pre><code>Git stash
+git stash pop
+git stash
+git stash list
+git stash apply stash@{0}
+git stash drop stash@{0}
+git stash clear
+</code></pre><h2 id="11-通过git-reset-移动HEAD指针"><a href="#11-通过git-reset-移动HEAD指针" class="headerlink" title="11. 通过git reset 移动HEAD指针"></a>11. 通过git reset 移动HEAD指针</h2><pre><code>git reset --mixed HEAD~2
+
+git reflog
+
+git reset --soft HEAD~2
+
+git reset --hard HEAD~2
+</code></pre><h2 id="12-恢复丢失的提交"><a href="#12-恢复丢失的提交" class="headerlink" title="12. 恢复丢失的提交"></a>12. 恢复丢失的提交</h2><pre><code>git reflog: is a mechanism to record the movements of the HEAD pointer and the branches
+</code></pre><h2 id="13-远程分支删除"><a href="#13-远程分支删除" class="headerlink" title="13. 远程分支删除"></a>13. 远程分支删除</h2><pre><code>remote and local tracking branches
+ git branch -r // list all remote branches
+
+ git branch -d -r origin/[remote_branch] // delete remote branch from origin
+
+ git branch origin :branch_name
+ git push origin --delete branch_name
+</code></pre><h2 id="14-解决冲突"><a href="#14-解决冲突" class="headerlink" title="14. 解决冲突"></a>14. 解决冲突</h2><pre><code>git mergetool
+
+    &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD Change in the first repository 
+    ======= Change in the second repository 
+    &gt;&gt;&gt;&gt;&gt;&gt;&gt; b29196692f5ebfd10d8a9ca1911c8b08127c85f8
+</code></pre><h2 id="15-git-log"><a href="#15-git-log" class="headerlink" title="15. git log"></a>15. git log</h2><pre><code>git log --since=1.days --graph --pretty=format:&quot;%cn %d--&gt;%s&quot;
+</code></pre><h2 id="16-git-archive"><a href="#16-git-archive" class="headerlink" title="16. git archive"></a>16. git archive</h2><pre><code>git archive &lt;COMMIT_ID&gt; &gt; destFile.tar.gz
+将提交id为COMMIT_ID的版本提取出来，以tar.gz的格式将其保存到destFile.tar.gz中
+
+其中COMMIT_ID可以替换为分支名，就是将当前分支的最新版本提取出来保存到目标文件
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="ckw1x5qb800283mnuu76d26nv" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Kafka-学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/11/28/Kafka-学习笔记/" class="article-date">
+  <time datetime="2015-11-28T09:02:01.000Z" itemprop="datePublished">2015-11-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2015/11/28/Kafka-学习笔记/">Kafka-学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-Kafka基本概念"><a href="#1-Kafka基本概念" class="headerlink" title="1. Kafka基本概念"></a>1. Kafka基本概念</h2><ol>
+<li>话题topic: 特定类型的消息流，话题是消息的分类名。物理上不同topic的消息分开存储，逻辑上一个Topic消息可以保存在一个或多个broker上，但用户只需要指定指定消息的topic即可生产或消费数据而不必关系数据存于何处</li>
+<li>生产者producer：能够发布消息到话题的任何对象</li>
+<li>kafka集群：已经发布的消息保存的服务器</li>
+<li>代理broker：kafka集群中的服务器</li>
+<li>分片partition：Partition：topic物理上的分组，一个topic可以分为多个partition，每个partition是一个有序的队列</li>
+<li>消费组 consumer group：每个consumer属于一个特定的Consumer Group，可以为每个Consumer指定group name，如果不指定，则属于默认的group。每一个consumer实例都属于一个consumer group，每一条消息只会被同一个consumer group里的一个consumer实例消费。每条消息可以被多个consumer group消费</li>
+<li>segment：partition物理上由多个segment组成</li>
+<li>offset：每个partition都由一系列有序的、不可变的消息组成，这些消息被连续的追加到partition中。partition中的每个消息都有一个连续的序列号叫做offset,用于partition唯一标识一条消息</li>
+</ol>
+<h2 id="2-Topic，Partition，Segment，Offset"><a href="#2-Topic，Partition，Segment，Offset" class="headerlink" title="2. Topic，Partition，Segment，Offset"></a>2. Topic，Partition，Segment，Offset</h2><h3 id="topic和Partition关系"><a href="#topic和Partition关系" class="headerlink" title="topic和Partition关系"></a>topic和Partition关系</h3><ol>
+<li>topic在逻辑上可以认为是一个queue，每条消息都必须指定它的topic</li>
+<li>为了使Kafka吞吐率可以线性提高，物理上把Topic分成一个或多个Partition，每个Partition在物理上对应一个文件夹，该文件夹下存储这个Partition的所有消息和索引文件。</li>
+</ol>
+<h3 id="Partition的存储分布"><a href="#Partition的存储分布" class="headerlink" title="Partition的存储分布"></a>Partition的存储分布</h3><ol>
+<li>参考<a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a> </li>
+<li>目录：在config/server.properties的log.dirs中。同一个topic下有多个不同partition，每个partition是一个目录，目录命名是topic名称+有序序号。</li>
+<li>Partition中文件存储方式<ol>
+<li>每个partition相当于一个巨型文件被平均分配到多个大小相同的segment段数据文件中。但每个段segmentfile的消息数量不一定相等。</li>
+<li>每个partition只需要支持顺序读写就行了，segment文件生命周期由服务端配置参数决定。</li>
+</ol>
+</li>
+<li><p>Partition中segment文件存储结构</p>
+<ol>
+<li>segment file组成：由两大部分组成，分别为index file和data file。这两个文件一一对应，后缀.index和.log，分别表示segment索引文件、数据文件</li>
+<li>segment命名规则:partion全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值。这种命名很重要，有助于通过offset查找message。</li>
+<li>一个片段segment的index和data file的对应关系，索引中存储大量元数据，数据文件存储大量消息，索引文件中元数据指向对应数据文件中message的物理偏移地址。</li>
+</ol>
+</li>
+<li><p>Segment数据文件组成</p>
+<ol>
+<li>segment data file由许多message组成</li>
+</ol>
+</li>
+<li>如何在Partition中通过offset查找message<ol>
+<li>通过二分查找offset，找到该offset所在的segment文件</li>
+<li>在所找到的segment文件中，顺序到在index文件中的元数据物理位置和log文件中物理偏移地址。</li>
+<li>segment index file采取稀疏索引存储方式，它减少索引文件大小，通过mmap可以直接内存操作，稀疏索引为数据文件的每个对应message设置一个元数据指针,它比稠密索引节省了更多的存储空间，但查找起来需要消耗更多的时间</li>
+</ol>
+</li>
+<li>Partition的好处<ol>
+<li>实现并发：传统的队列，为了保证数据的有序性，只能锁定一个队列。而kafka由于采用Partition的方式，则可以实现并发。</li>
+<li>实现并发的设计：将一个topic中的所有分片partition分配给一个consumer group中的消费者们。这样的话，每个分片就可以被consumer group中的准确的某个消费者消费。</li>
+<li>注意：确保一个consumer group中消费者的个数不要多于分片的个数</li>
+<li>kafka的有序性只能保证某个分片内的有序，不能保证分片之间的有效性。如果要想保证所有数据的有序，那么可以只有一个分片。</li>
+</ol>
+</li>
+</ol>
+<p>摘录来自: kafka.apache.org. “Apache Kafka”。 iBooks. </p>
+<h2 id="3-生产者-Producer"><a href="#3-生产者-Producer" class="headerlink" title="3. 生产者 Producer"></a>3. 生产者 Producer</h2><h3 id="1-负载均衡"><a href="#1-负载均衡" class="headerlink" title="1. 负载均衡"></a>1. 负载均衡</h3><ol>
+<li>由producer客户端决定消息被路由到哪个partition。producer将会和Topic下所有partition leader保持socket连接;消息由producer直接通过socket发送到broker,中间不会经过任何”路由层”.路由策略比如random, key-hash。</li>
+</ol>
+<h3 id="2-异步发送"><a href="#2-异步发送" class="headerlink" title="2. 异步发送"></a>2. 异步发送</h3><p>将多条消息暂且在客户端buffer起来，并将他们批量的发送到broker，小数据IO太多，会拖慢整体的网络延迟，批量延迟发送事实上提升了网络效率。不过这也有一定的隐患，比如说当producer失效时，那些尚未发送的消息将会丢失</p>
+<h3 id="3-消息传送保证机制"><a href="#3-消息传送保证机制" class="headerlink" title="3. 消息传送保证机制"></a>3. 消息传送保证机制</h3><p>有几种方式：<br>    1) at most once: 最多一次,这个和JMS中”非持久化”消息类似.发送一次,无论成败,将不会重发.<br>    2) at least once: 消息至少发送一次,如果消息未能接受成功,可能会重发,直到接收成功.<br>    3) exactly once: 消息只会发送一次</p>
+<h2 id="4-消费者-Consumer"><a href="#4-消费者-Consumer" class="headerlink" title="4. 消费者 Consumer"></a>4. 消费者 Consumer</h2><ol>
+<li>通常来讲，消息有两种模式：a.队列 b.发布订阅。队列的话，一条消息只能被一个消费者消费。发布订阅的话，消息被所有消费者消费。如果所有consumer实例属于一个consumer group，则实现队列。如果每个consumer group只有一个consumer实例，则实现发布订阅。</li>
+<li>consumer端向broker发送”fetch”请求,并告知其获取消息的offset;此后consumer将会获得一定条数的消息;consumer端也可以重置offset来重新消费消息.</li>
+<li>Consumer与Consumer Group<ol>
+<li>每个consumer实例都属于一个consumer group。每个消息只能被同一个consumer group里的一个consumer实例消费，但不同consumer group可以同时消费同一条消息</li>
+</ol>
+</li>
+</ol>
+<h2 id="5-系统级别"><a href="#5-系统级别" class="headerlink" title="5. 系统级别"></a>5. 系统级别</h2><h3 id="1-kafka的broker是无状态的"><a href="#1-kafka的broker是无状态的" class="headerlink" title="1. kafka的broker是无状态的"></a>1. kafka的broker是无状态的</h3><ol>
+<li>kafka代理是无状态的，意味着消费者必须维护已消费的状态信息。<ol>
+<li>从代理broker删除消息很棘手，因为代理不知道消费者是否已经使用了该消息。kafka使用一个简单的基于时间的SLA应用于保留策略。当消息在代理中超过一定时间以后，将会自动删除。</li>
+<li>好处是：消费者可以故意倒回到老的偏移量再次消费数据。</li>
+</ol>
+</li>
+</ol>
+<h3 id="2-broker数据删除"><a href="#2-broker数据删除" class="headerlink" title="2. broker数据删除"></a>2. broker数据删除</h3><ol>
+<li>不管消息被消费与否，kafka集群会保留所有消息。由于磁盘限制，kafka提供两种策略删除旧数据：一种基于时间，一种基于partition文件大小。可以通过config/server.properties配置</li>
+</ol>
+<h3 id="3-ZooKeeper与Kafka"><a href="#3-ZooKeeper与Kafka" class="headerlink" title="3. ZooKeeper与Kafka"></a>3. ZooKeeper与Kafka</h3><ol>
+<li>zookeeper的关注问题：<ol>
+<li>所有分布式系统的一个常见问题是：如何在任一时间点确定哪些服务器活着并且在工作中</li>
+<li>面对网络失败，带宽限制，可变延迟连接，安全问题，跨多个数据中心时可能发生错误时，如何可靠做这些事情</li>
+</ol>
+</li>
+</ol>
+<h3 id="4-Kafka设计目标"><a href="#4-Kafka设计目标" class="headerlink" title="4. Kafka设计目标"></a>4. Kafka设计目标</h3><ol>
+<li>以时间复杂度O(1)的方式提供消息持久化能力</li>
+<li>高吞吐率</li>
+<li>支持Kafka Server间的消息分区，及分布式消费，同时保证每个Partition内的消息顺序传输</li>
+<li>同时保持离线数据处理和实时数据处理。</li>
+<li>支持在线水平扩展</li>
+</ol>
+<h3 id="5-为何使用消息系统"><a href="#5-为何使用消息系统" class="headerlink" title="5. 为何使用消息系统"></a>5. 为何使用消息系统</h3><ol>
+<li>解耦</li>
+<li>扩展性</li>
+<li>灵活性&amp;峰值处理能力</li>
+<li>顺序保证</li>
+<li>异步通信</li>
+<li>demo</li>
+</ol>
+<p>参考文章：</p>
+<ol>
+<li><a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a></li>
+<li><a href="http://my.oschina.net/frankwu/blog/305010" target="_blank" rel="noopener">http://my.oschina.net/frankwu/blog/305010</a></li>
+<li><a href="http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral" target="_blank" rel="noopener">http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="ckw1x5qag000d3mnuqys2e07e" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
 
     </footer>
   </div>
@@ -1109,7 +1198,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/">Redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
     </div>
   </div>
 
@@ -1119,7 +1208,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1141,23 +1230,23 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       <ul>
         
           <li>
-            <a href="/2021/11/16/hello-world/">Hello World</a>
-          </li>
-        
-          <li>
-            <a href="/2021/11/16/elasticsearch路由规则学习/">(no title)</a>
-          </li>
-        
-          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
           <li>
-            <a href="/2021/11/16/Starting Point- SparkSession/">(no title)</a>
+            <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
           </li>
         
           <li>
-            <a href="/2021/11/16/RedisCluster详细说明[翻译]/">(no title)</a>
+            <a href="/2019/04/29/golang继承/">golang继承</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
+          </li>
+        
+          <li>
+            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>
