@@ -62,92 +62,6 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-cpp-class-copy-vector" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/05/13/cpp-class-copy-vector/" class="article-date">
-  <time datetime="2017-05-13T01:22:17.000Z" itemprop="datePublished">2017-05-13</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/05/13/cpp-class-copy-vector/">cpp_class_copy_vector</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>C++类中vector成员变量的拷贝</p>
-<p>问题描述：</p>
-<p>在使用过程中，遇到指针的问题；简要概括为：初始化中的指针和使用的指针不同；</p>
-<pre><code>#include &lt;iostream&gt;
-#include &lt;boost/format.hpp&gt;
-#include &lt;vector&gt;
-
-class A {
-    typedef struct {
-        std::vector&lt;std::string&gt; vec_;
-    } PhaseVecAndIter;
-public:
-    PhaseVecAndIter getPhaseVec() {
-        return pv_;
-    }
-    void init() {
-        std::vector&lt;std::string&gt; vec;
-        vec.push_back(&quot;string1&quot;);
-        vec.push_back(&quot;string2&quot;);
-        pv_.vec_ = vec;
-        std::cout &lt;&lt; &quot;init vector pointer:&quot;&lt;&lt;&amp;(*(pv_.vec_.begin())) &lt;&lt; std::endl;
-    }
-private:
-    PhaseVecAndIter pv_;
-};
-class B {
-public:
-    void setA(boost::shared_ptr&lt;A&gt; a) {
-        a_ = a;
-    }
-    boost::shared_ptr&lt;A&gt; getA() {
-        return a_;
-    }
-private:
-    boost::shared_ptr&lt;A&gt; a_;
-};
-int main()
-{
-    boost::shared_ptr&lt;A&gt; a(new A());
-    a-&gt;init();
-    std::cout &lt;&lt; &quot;1:vector pointer:&quot;&lt;&lt;&amp;(*(a-&gt;getPhaseVec().vec_.begin())) &lt;&lt; std::endl;
-
-    B* b = new B();
-    b-&gt;setA(a);
-
-    boost::shared_ptr&lt;A&gt; c = b-&gt;getA();
-    std::cout &lt;&lt; &quot;2:vector pointer:&quot;&lt;&lt;&amp;(*(c-&gt;getPhaseVec().vec_.begin())) &lt;&lt; std::endl;
-}
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="ckw5yql4e001gp8nu4hfu67v8" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
     <article id="post-composer概述" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2017/05/02/composer概述/" class="article-date">
@@ -300,7 +214,7 @@ int main()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="ckw5yql4f001ip8nuxvjurwuf" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="ckw5yufkm001ktznuv6j04eww" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/composer/">composer</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -350,7 +264,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="ckw5yql3q0006p8nuqulop3yb" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="ckw5yufk0000btznunmlh1h7z" class="article-share-link">Share</a>
       
       
     </footer>
@@ -446,7 +360,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckw5yql65005ep8nurlzc89fd" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckw5yufma005ptznu0rc0jxdj" class="article-share-link">Share</a>
       
       
     </footer>
@@ -673,7 +587,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="ckw5yql5r004hp8numn365s5u" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="ckw5yuflw004qtznunjey5q4b" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -711,7 +625,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="ckw5yql5w004rp8nuu2gj5zfy" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="ckw5yuflz004xtznu6k063he5" class="article-share-link">Share</a>
       
       
     </footer>
@@ -757,7 +671,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="ckw5yql5x004up8nuh3fzbd44" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="ckw5yuflz0050tznue6wtf2rs" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -910,7 +824,7 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckw5yql520033p8nu9f0ufqcg" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckw5yuflb003btznuh18v4ofa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -1025,7 +939,7 @@ df.show
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="ckw5yql530035p8nuduthvh05" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="ckw5yufla0038tznuhns2eb4a" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -1164,7 +1078,242 @@ string = readString()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="ckw5yql4b0019p8nueocx86qx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="ckw5yufki001btznuim9766tp" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Thrift：可扩展的跨语言的服务实现" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/11/12/Thrift：可扩展的跨语言的服务实现/" class="article-date">
+  <time datetime="2016-11-12T08:26:52.000Z" itemprop="datePublished">2016-11-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/11/12/Thrift：可扩展的跨语言的服务实现/">Thrift：可扩展的跨语言的服务实现[论文翻译]</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>本文翻译<a href="http://thrift.apache.org/static/files/thrift-20070401.pdf" target="_blank" rel="noopener">Thrift: Scalable Cross-Language Services Implementation</a></p>
+<p>有一些地方没有翻译到，就纯纯的用英文直接读咯.</p>
+<h2 id="概要"><a href="#概要" class="headerlink" title="概要"></a>概要</h2><p>Thrift是什么呢？Thrift由Facebook开发；Thrift是一个软件库，一个代码生成工具的集合；通过这些工具可以加快高效可扩展的后端服务的开发和实现。Thrift的主要目标是：实现跨语言的高效可靠的通信。实现方式：将各个语言中需要的定制化抽象为一个通用的库。这个库是由各个语言实现的一个库。 特别地，Thrift允许开发者以一个中立语言（language-neutral)文件定义数据类型和服务接口，并且生成构建RPC客户端和服务器端的所需的所有必要的代码。 </p>
+<p>这篇论文详细介绍了Thrift中的动机和设计思想。 这并不是作为一个研究，而是详细阐述了我们做了什么以及为什么这么做。 </p>
+<h2 id="1-说明"><a href="#1-说明" class="headerlink" title="1. 说明"></a>1. 说明</h2><p>一句话，单纯的LAMP框架不能够满足Facebook的需求，Facebook的文化就是选择最好的工具和实现来达到最好的性能。那么带来的问题就是需要在各个语言之间建立一个透明和高性能的桥。我们发现大多数可选系统要么限制太多，要么有性能问题。</p>
+<p>我们的实现方案：将一个中立语言软件栈与一个代码生成引擎进行组装。<br>中立语言软件栈可以由许多编程语言实现。<br>代码生成引擎可以可以将简单接口和数据定义语言转换为客户端和服务端调用的远程库。</p>
+<p>在一个动态系统上选择一个静态代码生成，允许我们可以创建有效的代码；这些代码不需要进行实时的类型检查。对于开发者而言，可以在一个简短的文件中定义复杂服务所需要的数据类型和接口。</p>
+<p>令人惊讶的是竟然一个健壮的开源的解决方案，因此我们将Thrift的实现进行了开源。</p>
+<p>评估了网络环境下，跨语言交互的挑战后，我们明确了一些关键组件：</p>
+<ul>
+<li>types：必须有一个通用的类型系统；跨语言的时候，应用开发者不需要使用自定义的thrift数据类型或者写自己的序列化代码。也就是说，一个C++程序员能够透明的将一个STL map转换为python的字字典。不需要程序员写应用层以下的代码。 </li>
+<li>transport。每个语言都需要一个通用的双向数据传输的接口。服务开发者（service developer）不需要关心特定传输是如何实现的。相同的应用代码可以跑在不同的传输上，比如TCP流，内存中数据，或者硬盘上的文件。</li>
+<li>protocol：数据类型必须有某种使用传输层的方式来编解码自己。当然，应用开发者不需要关心协议这一层的实现。对于应用层代码而言，使用XML或二进制协议都是一样的。所有要确定的就是，必须以始终一样的确定的协议进行传输</li>
+<li>versioning。对于健壮的服务，所包含的数据类型必须提供一个版本化自己的机制。特别的，能够在不破坏服务的情况下增加或删除对象(或者函数列表)中的字段。Section 5 details Thrift’s versioning system.</li>
+<li>Processors：最后，我们生成能够处理数据流的代码来完成远程进程调用。Section 6 details the generated code and TProcessor paradigm。</li>
+<li>Section 7 discusses implementation details, and Section 8 describes our conclusions.</li>
+</ul>
+<h2 id="2-Types"><a href="#2-Types" class="headerlink" title="2. Types"></a>2. Types</h2><p>Thrift类型系统是为了：不管使用什么编程语言，都使用完全原生的类型进行开发。设计上，Thrift类型系统不会引入任何特别的动态类型或者wrapper objects。并且，不需要开发者写任何对象序列化或传输的代码。Thrift IDL（Interface Definition Language）文件以最简单的方式告诉代码生成工具，如何安全的跨语言的传输对象。</p>
+<h3 id="2-1-base-types"><a href="#2-1-base-types" class="headerlink" title="2.1 base types"></a>2.1 base types</h3><p>类型系统依赖一些基础类型。考虑支持哪些类型时，我们目标是在所有编程语言中都可用的数据类型。<br>在Thrift中支持的基础类型是</p>
+<ul>
+<li>bool</li>
+<li>byte</li>
+<li>i16: a 16-bit signed integer</li>
+<li>i32: a 32-bit signed integer</li>
+<li>i64: a 64-bit signed integer</li>
+<li>double: a 64-bit floating point </li>
+<li>string: 一个不知道编码的文本或者二进制文件。</li>
+</ul>
+<p>特别注意的是unsigned integer类型的缺失。因为在很多语言中这个类型不能明确的转换为基础类型。并且，在一些语言如python中，应用开发者会给整形变量赋值一个负值。从设计的角度来说，我们发现unsigned integers在算术运算中很少用，实际中大都用作key或者标识符。这种情况下，sign就无关紧要了。signed integers同样可以做，并且可以在需要的时候安全的转换为unsigned。</p>
+<h3 id="2-2-structs"><a href="#2-2-structs" class="headerlink" title="2.2 structs"></a>2.2 structs</h3><p>一个Thrift的struct定义了一个对象，可以在不同语言中使用。本质上，结构体等同于面向对象语言的类。定义Thrfit结构体的基本语法类似C的结构体定义。字段可能会用一个整形来进行注释，并且有一个默认值。如果忽略的话，会有一个默认值；不过强烈建议有取值，这对于稍后的版本有很大用处。 </p>
+<h3 id="2-3-Containers"><a href="#2-3-Containers" class="headerlink" title="2.3 Containers"></a>2.3 Containers</h3><p>Thrift中的container可以映射到很多语言中的container。可以用C++模板的样式进行标记。有三种可选的类型：</p>
+<ul>
+<li>list<type>:元素的有序列表。直接转换为STL vector，Java ArrayList, 或JS的native array</type></li>
+<li>set<type>:元素的无序集合。转为了STL set， Java HashSet，python的set，或PHP中的字典</type></li>
+<li>map&lt;type1, type2&gt;:key到value的映射。转为STL map，Java HashMap，PHP的关联数组</li>
+</ul>
+<p>当提供默认值时，类型的映射并不是固定的。Container中的元素可以是任何有效的Thrift类型，包含其他结构体的containers。</p>
+<pre><code>struct Example {
+    1:i32 number = 10,
+    2:i64 bigNumber,
+    3:double decimals,
+    4:string name=&quot;thrifty&quot;
+}
+</code></pre><p>在目标语言中，每个定义都会生成两种方法的类型，read和write，用于执行序列化和使用Thrift TProtocol对象传输。</p>
+<h3 id="2-4-Exception"><a href="#2-4-Exception" class="headerlink" title="2.4 Exception"></a>2.4 Exception</h3><p>异常在语法和功能上等同于结构体，除了使用exception关键字而不是使用struct关键字。<br>生成的对象继承自某个异常基类。目的是：用一种应用层开发者熟悉的代码风格。 </p>
+<h3 id="2-5-Services"><a href="#2-5-Services" class="headerlink" title="2.5 Services"></a>2.5 Services</h3><p>使用Thrift类型定义服务service。在语义上，service的定义等同于接口的定义（或者一个纯虚抽象类）。Thrift编译器生成实现这些接口的全部功能的client和server stubs。service定义如下：</p>
+<pre><code>service &lt;name&gt; {
+    &lt;returntype&gt; &lt;name&gt;(&lt;arguments&gt;)
+        [throw (&lt;exceptions&gt;)]
+}
+</code></pre><p>一个例子：</p>
+<pre><code>service StringCache {
+    void set(1:i32 key 2:string value),
+    string get(1:i32 key) throws (1:KeyNotFound knf),
+    void delete(1:i32 key)
+}
+</code></pre><p>注意到void是函数返回的有效类型，当然也可以返回其他已经定义的thrift类型。另外，<code>async</code>关键字可以加到void函数上，其生成的代码不需要等待服务器的响应。对于一个纯净的void函数，只有完成服务器端的操作以后才会给客户端返回响应。使用async方法调用个，客户端只保证传输层的请求成功。<br>也需要注意到参数列表和异常列表也可以实现为thrift structs。在notation和行为上，三种的构造是相同的。 </p>
+<h2 id="3-Transport"><a href="#3-Transport" class="headerlink" title="3. Transport"></a>3. Transport</h2><p>生成的代码使用传输层加速数据传输</p>
+<h3 id="3-1-接口"><a href="#3-1-接口" class="headerlink" title="3.1 接口"></a>3.1 接口</h3><p>在Thrift设计中一个关键的设计选择是：从代码生成层中解耦传输层。Though Thrift is typically used on top of the TCP/IP stack with streaming sockets as the base layer of communication, there was no compelling reason to build that constraint into the system。与真实的I/O操作相比，抽象I/O层带来的性能损耗是无关紧要的。</p>
+<p>根本上，生成的Thrift代码只需要知道如何读取和写入数据。数据的起始是无关紧要的；它可能是一个socket，一个共享内存的片段，或者本地磁盘的一个文件。Thrift传输接口支持下面的方法：</p>
+<ul>
+<li>open： 打开传输</li>
+<li>close：关闭传输</li>
+<li>isOpen：标识传输是否打开</li>
+<li>read：读取</li>
+<li>write：写入</li>
+<li>flush：</li>
+</ul>
+<p>有一些接口没有列出来，这些接口用于批量读取 and optionally signaling the comple- tion of a read or write operation from the generated code.</p>
+<p>除了上面的TTransport接口，还有一个TServerTransport接口用于接收或创建原始的transport objects。其接口如下：</p>
+<ul>
+<li>open</li>
+<li>listen</li>
+<li>accept</li>
+<li>close</li>
+</ul>
+<h3 id="3-2-实现"><a href="#3-2-实现" class="headerlink" title="3.2 实现"></a>3.2 实现</h3><p>在任何语言中很容易实现传输层接口。如果需要的话，开发者可以实现新的传输层机制。 </p>
+<h4 id="3-2-1-TSocket"><a href="#3-2-1-TSocket" class="headerlink" title="3.2.1 TSocket"></a>3.2.1 TSocket</h4><p>在所有目标语言中，实现TSocket类。提供了一个TCP/IP stream socket的通用的简单的接口。</p>
+<h4 id="3-2-2-TFileTransport"><a href="#3-2-2-TFileTransport" class="headerlink" title="3.2.2 TFileTransport"></a>3.2.2 TFileTransport</h4><p>TFileTransport是硬盘文件数据流的抽象。可以将到来的thrift请求写入到硬盘文件中。硬盘数据可以从日志中重放，用于post-process或reproduction 或者过去事件的同步。</p>
+<h4 id="3-2-3-Utilities"><a href="#3-2-3-Utilities" class="headerlink" title="3.2.3 Utilities"></a>3.2.3 Utilities</h4><p>The Transport interface is designed to support easy extension us- ing common OOP techniques, such as composition. Some sim- ple utilites include the TBufferedTransport, which buffers the writes and reads on an underlying transport, the TFramedTransport, which transmits data with frame size headers for chunking op- timization or nonblocking operation, and the TMemoryBuffer, which allows reading and writing directly from the heap or stack memory owned by the process</p>
+<h2 id="4-Protocol"><a href="#4-Protocol" class="headerlink" title="4. Protocol"></a>4. Protocol</h2><p>Thrift中的第二个重要的抽象是：数据结构和传输层表示的分离。 当传输数据时，Thrift加强了（enforce）一种消息结构，但是对于正在用的协议编码是不可知的。也就是，不需要关心数据是编码为XML，还是ASCII，还是二进制；只要数据支持固定的操作集合就行。</p>
+<h3 id="4-1-接口"><a href="#4-1-接口" class="headerlink" title="4.1 接口"></a>4.1 接口</h3><p>Thrift的Protocol接口很直接。根本上它支持两件事：1. 双向的顺序消息 2. base type，containers，structs的编码。</p>
+<pre><code>writeMessageBegin(name, type, seq)
+writeMessageEnd()
+writeStructBegin(name)
+writeStructEnd()
+writeFieldBegin(name, type, id)
+writeFieldEnd()
+writeFieldStop()
+writeMapBegin(ktype, vtype, size)
+writeMapEnd()
+writeListBegin(etype, size)
+writeListEnd()
+writeSetBegin(etype, size)
+writeSetEnd()
+writeBool(bool)
+writeByte(byte)
+writeI16(i16)
+writeI32(i32)
+writeI64(i64)
+writeDouble(double)
+writeString(string)
+
+name, type, seq = readMessageBegin()
+                  readMessageEnd()
+name = readStructBegin()
+       readStructEnd()
+name, type, id = readFieldBegin()
+                 readFieldEnd()
+k, v, size = readMapBegin()
+             readMapEnd()
+etype, size = readListBegin()
+              readListEnd()
+etype, size = readSetBegin()
+              readSetEnd()
+bool = readBool()
+byte = readByte()
+i16 = readI16()
+i32 = readI32()
+i64 = readI64()
+double = readDouble()
+string = readString()
+</code></pre><p>Note that every write function has exactly one read counter- part, with the exception of writeFieldStop(). This is a special method that signals the end of a struct. The procedure for reading a struct is to readFieldBegin() until the stop field is encountered, and then to readStructEnd(). The generated code relies upon this call sequence to ensure that everything written by a protocol encoder can be read by a matching protocol decoder. Further note that this set of functions is by design more robust than necessary. For example, writeStructEnd() is not strictly necessary, as the end of a struct may be implied by the stop field. This method is a convenience for verbose protocols in which it is cleaner to separate these calls (e.g. a closing  tag in XML).</p>
+<h3 id="4-2-structure"><a href="#4-2-structure" class="headerlink" title="4.2 structure"></a>4.2 structure</h3><p>Thrift structures are designed to support encoding into a streaming protocol. The implementation should never need to frame or com- pute the entire data length of a structure prior to encoding it. This is critical to performance in many scenarios. Consider a long list of relatively large strings. If the protocol interface required reading or writing a list to be an atomic operation, then the implementation would need to perform a linear pass over the entire list before en- coding any data. However, if the list can be written as iteration is performed, the corresponding read may begin in parallel, theoreti- cally offering an end-to-end speedup of (kN − C), where N is the size of the list, k the cost factor associated with serializing a sin- gle element, and C is fixed offset for the delay between data being written and becoming available to read.<br>Similarly, structs do not encode their data lengths a priori. Instead, they are encoded as a sequence of fields, with each field having a type specifier and a unique field identifier. Note that the inclusion of type specifiers allows the protocol to be safely parsed and decoded without any generated code or access to the original IDL file. Structs are terminated by a field header with a special STOP type. Because all the basic types can be read deterministically, all structs (even those containing other structs) can be read deterministically. The Thrift protocol is self-delimiting without any framing and regardless of the encoding format.<br>In situations where streaming is unnecessary or framing is advan- tageous, it can be very simply added into the transport layer, using the TFramedTransport abstraction.</p>
+<h3 id="4-3-实现"><a href="#4-3-实现" class="headerlink" title="4.3 实现"></a>4.3 实现</h3><p>Facebook has implemented and deployed a space-efficient binary protocol which is used by most backend services. Essentially, it writes all data in a flat binary format. Integer types are converted to network byte order, strings are prepended with their byte length, and all message and field headers are written using the primitive integer serialization constructs. String names for fields are omitted - when using generated code, field identifiers are sufficient.<br>We decided against some extreme storage optimizations (i.e. pack- ing small integers into ASCII or using a 7-bit continuation for- mat) for the sake of simplicity and clarity in the code. These alter- ations can easily be made if and when we encounter a performance- critical use case that demands them.</p>
+<h2 id="5-Versioning"><a href="#5-Versioning" class="headerlink" title="5. Versioning"></a>5. Versioning</h2><p>面对版本和数据定义改变，Thrift是健壮的。对于已经部署的服务，改变的阶段性健壮是必须的。系统必须支持 1. 从日志中读取旧数据 2. 接收来自过期客户端到新服务器的请求等等</p>
+<h3 id="5-1-Field-Identifiers"><a href="#5-1-Field-Identifiers" class="headerlink" title="5.1 Field Identifiers"></a>5.1 Field Identifiers</h3><p>Thrift中的版本是通过字段标识符来实现的。 最好的编程实践是清晰的制定字段标识符。 </p>
+<pre><code>struct Example {
+    1:i32 number=10,
+    2:i64 bigNumber,                        
+    3:double decimals,
+    4:string name=&quot;thrifty&quot;
+}
+</code></pre><h3 id="5-2-Isset"><a href="#5-2-Isset" class="headerlink" title="5.2 Isset"></a>5.2 Isset</h3><h3 id="5-3-Case-Analysis"><a href="#5-3-Case-Analysis" class="headerlink" title="5.3 Case Analysis"></a>5.3 Case Analysis</h3><h3 id="5-4-Protocol-Transport-Versioning"><a href="#5-4-Protocol-Transport-Versioning" class="headerlink" title="5.4 Protocol/Transport Versioning"></a>5.4 Protocol/Transport Versioning</h3><h2 id="6-RPC实现"><a href="#6-RPC实现" class="headerlink" title="6. RPC实现"></a>6. RPC实现</h2><h3 id="6-1-TProcessor"><a href="#6-1-TProcessor" class="headerlink" title="6.1 TProcessor"></a>6.1 TProcessor</h3><p>Thrift设计中最后一个核心接口是TProcessor，可能是最简单的构造了。接口如下：</p>
+<pre><code>interface TProcessor {
+    bool process(TProtocol in, TProtocol out)
+        throws TException
+}
+</code></pre><p>这儿关键的设计观点是：我们创建的复杂系统从根本上可以看做是处理输入和输出的服务。大多数情况下，确实是一个需要处理的输入和输出系统。</p>
+<h3 id="6-2-Generated-Code"><a href="#6-2-Generated-Code" class="headerlink" title="6.2 Generated Code"></a>6.2 Generated Code</h3><p>当定义一个service时，我们生成一个能够处理RPC请求的TProcessor实例。基本结构如下：</p>
+<pre><code>Service.thrift
+=&gt; Service.cpp
+interface ServiceIf
+class ServiceClient : virtual ServiceIf
+    TProtocol in
+    TProtocol out
+class ServiceProcessor : TProcessor
+    ServiceIf handler
+
+
+ServiceHandler.cpp
+    class ServiceHandler : virtual ServiceIf
+
+TServer.cpp
+    TServer(TProcessor processor,
+        TServerTransport transport,
+        TTransportFactory tfactory,
+        TProtocolFactory pfactory)
+    serve()
+</code></pre><ul>
+<li>从Thrift定义文件，我们生成虚拟服务接口。</li>
+<li>生成的客户端类实现了接口，并使用两个TProtocol实例执行I/O操作。</li>
+<li>生成的processor实现了TProcessor接口</li>
+<li>生成的代码中有所有处理RPC请求的逻辑，通过process()调用来处理。</li>
+<li>用户提供一个应用接口的实现，这与生成的源码是独立的。</li>
+</ul>
+<h3 id="6-3-TServer"><a href="#6-3-TServer" class="headerlink" title="6.3 TServer"></a>6.3 TServer</h3><p>最后，Thrift 核心库提供了一个TServer的抽象。TServer对象通常如下工作：</p>
+<ul>
+<li>使用TServerTransport生成一个TTransport</li>
+<li>使用TTransportFactory将一个基本的transport转换为合适的应用层transport（典型的是使用TBufferedTransportFactory）</li>
+<li>使用TProtocolFactory 创建一个用于TTransport的input/output协议</li>
+<li>触发TProcessor对象的process()方法</li>
+</ul>
+<p>这些层都是分开的，从而服务器代码不需要知道传输层、编码。server封装了连接处理、线程等逻辑。The only code written by the application developer lives in the definitional Thrift file and the interface implementation.</p>
+<p>设计的TProcessor接口很通用。一个TServer没有带着一个生成的TProcessor对象。Thrift允许应用开发者写任何类型的server用于处理TProtocol对象。</p>
+<h2 id="7-实现细节"><a href="#7-实现细节" class="headerlink" title="7. 实现细节"></a>7. 实现细节</h2><h3 id="7-1-Target-Language"><a href="#7-1-Target-Language" class="headerlink" title="7.1 Target Language"></a>7.1 Target Language</h3><p>Thrift目前支持五种目标语言：C++, Java, Python, Ruby 和PHP。</p>
+<h3 id="7-2-Generated-Structs"><a href="#7-2-Generated-Structs" class="headerlink" title="7.2 Generated Structs"></a>7.2 Generated Structs</h3><p>We made a conscious decision to make our generated structs as transparent as possible. All fields are publicly accessible; there are no set() and get() methods. Similarly, use of the isset object is not enforced. We do not include any FieldNotSetException construct. Developers have the option to use these fields to write more robust code, but the system is robust to the developer ignor- ing the isset construct entirely and will provide suitable default behavior in all cases.<br>This choice was motivated by the desire to ease application devel- opment. Our stated goal is not to make developers learn a rich new library in their language of choice, but rather to generate code that allow them to work with the constructs that are most familiar in each language.<br>We also made the read() and write() methods of the generated objects public so that the objects can be used outside of the con- text of RPC clients and servers. Thrift is a useful tool simply for generating objects that are easily serializable across programming languages.</p>
+<h3 id="7-3-RPC-Method-Identification"><a href="#7-3-RPC-Method-Identification" class="headerlink" title="7.3 RPC Method Identification"></a>7.3 RPC Method Identification</h3><p>在RPC中是通过发送方法名来调用方法的。 这种方法的一个问题是需要更多的带宽。</p>
+<p>在方法调用时，我们希望避免很多不必要的字符串比较。为了处理这个，我们生成字符串到函数指针的映射，因此通常情况下能够以常量时间完成方法调用。在C++中，我们使用一个相对深奥的语言构造：member function pointers。</p>
+<pre><code>std::map&lt;std::string,
+    void (ExampleServiceProcessor::*)(int32_t,
+    facebook::thrift::protocol::TProtocol*,
+    facebook::thrift::protocol::TProtocol*)&gt;
+    processMap_;
+</code></pre><p>使用这些技术，处理字符串的消耗被降到最低。</p>
+<h3 id="7-4-Servers-and-Multithreading"><a href="#7-4-Servers-and-Multithreading" class="headerlink" title="7.4 Servers and Multithreading"></a>7.4 Servers and Multithreading</h3><p>Thrift服务需要基本的多线程来处理并发请求。对于Python和Java的Thrift服务器逻辑的实现，语言自带的线程库提供了足够的支持。对于C++的实现，没有标准的多线程实时库。特别地，健壮的、轻量的、可移植的线程管理和timer类不存在。我们研究了已有的实现，有boost::thread, boost:threadpool, ACE_Thread_Manager, ACE_TImer。</p>
+<p>boost::threads：提供了多线程的轻量、健壮的实现；但是没有提供线程管理或timer实现。<br>boost::threadpool:看起来不错但还是没有达到我们的目标。我们希望尽可能的限制第三方以来。因为boost::threadpool不是一个纯净的模板库，还需要实时库，因为目前还不是官方boost的一部分。</p>
+<h3 id="7-5-Thread-Primitives"><a href="#7-5-Thread-Primitives" class="headerlink" title="7.5 Thread Primitives"></a>7.5 Thread Primitives</h3><p>在命名空间facebook::thrift::concurrency中实现了Thrift线程库，有三个组件：</p>
+<ul>
+<li>primitives</li>
+<li>thread pool manager</li>
+<li>timer manager</li>
+</ul>
+<p>正如上面提到的，我们在由于要不要在thrift中引入其他依赖。我们决定使用boost::shared_ptr，因为这对于多线程应用是很有用的，不需要link-time或runtime库，并且它编程了C++0x标准的一部分。</p>
+<p>我们实现了标准的Mutex和Condition类，和一个Monitor类。后者是一个mutex和condition变量的组合，有点类似Java Object的Monitor实现。</p>
+<p>This is also sometimes referred to as a barrier. We provide a Synchronized guard class to allow Java-like synchronized blocks. This is just a bit of syntactic sugar, but, like its Java counterpart, clearly delimits critical sec- tions of code. Unlike its Java counterpart, we still have the ability to programmatically lock, unlock, block, and signal monitors.</p>
+<p>xxxx<br>xxxx<br>xxxx</p>
+<h3 id="7-6-Thread-Runnable-and-shared-ptr"><a href="#7-6-Thread-Runnable-and-shared-ptr" class="headerlink" title="7.6 Thread, Runnable, and shared_ptr"></a>7.6 Thread, Runnable, and shared_ptr</h3><h3 id="7-7-ThreadManager"><a href="#7-7-ThreadManager" class="headerlink" title="7.7 ThreadManager"></a>7.7 ThreadManager</h3><h3 id="7-8-TimerManager"><a href="#7-8-TimerManager" class="headerlink" title="7.8 TimerManager"></a>7.8 TimerManager</h3><h3 id="7-9-Nonblocking-Operation"><a href="#7-9-Nonblocking-Operation" class="headerlink" title="7.9 Nonblocking Operation"></a>7.9 Nonblocking Operation</h3><h3 id="7-10-Compiler"><a href="#7-10-Compiler" class="headerlink" title="7.10 Compiler"></a>7.10 Compiler</h3><h3 id="7-11-TFileTransport"><a href="#7-11-TFileTransport" class="headerlink" title="7.11 TFileTransport"></a>7.11 TFileTransport</h3>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="ckw5yufkj001dtznua7ftrfmi" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -1204,7 +1353,7 @@ string = readString()
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 11.11px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1230,10 +1379,6 @@ string = readString()
           </li>
         
           <li>
-            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
-          </li>
-        
-          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -1243,6 +1388,10 @@ string = readString()
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

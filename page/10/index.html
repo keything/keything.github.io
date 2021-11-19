@@ -62,143 +62,6 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-git基本操作" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2015/12/20/git基本操作/" class="article-date">
-  <time datetime="2015-12-20T05:02:01.000Z" itemprop="datePublished">2015-12-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/12/20/git基本操作/">git基本操作</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-初始化"><a href="#0-初始化" class="headerlink" title="0. 初始化"></a>0. 初始化</h2><pre><code>git init --bare 创建一个仓库
-
-git clone user@host:/path/repo.git
-</code></pre><h2 id="1-Git-用户配置"><a href="#1-Git-用户配置" class="headerlink" title="1. Git 用户配置"></a>1. Git 用户配置</h2><pre><code>1. 用户和邮箱
-
-        git config --global user.name &quot;Example Surname&quot;
-        git config --global user.email &quot;your.email@gmail.com&quot;
-
-2. 设置提交的分支
-
-    simple只是将当前激活态的提交
-    matching则是全部提交
-    建议使用simple
-
-        git config --global push.default simple 
-
-3. 设置高亮
-
-
-        git config --global color.ui true 
-        git config --global color.status auto 
-        git config --global color.branch auto
-
-4. 默认的编辑器
-
-        git config --global core.editor vim
-        git config --global merge.tool vimdiff
-        git config --global alias.d &apos;difftool -y&apos;
-
-
-        git config --global alias.staged &apos;diff --cached&apos;
-        git config --global alias.st &apos;status&apos;
-5. 设置git status时显示中文
-
-    git config --global core.quotepath false
-</code></pre><h2 id="2-设置忽略文件"><a href="#2-设置忽略文件" class="headerlink" title="2. 设置忽略文件"></a>2. 设置忽略文件</h2><pre><code>.gitignore
-</code></pre><h2 id="3-基本操作"><a href="#3-基本操作" class="headerlink" title="3. 基本操作"></a>3. 基本操作</h2><pre><code>add rm commit branch push pull log status
-</code></pre><h2 id="4-恢复文件"><a href="#4-恢复文件" class="headerlink" title="4. 恢复文件"></a>4. 恢复文件</h2><pre><code>从stage阶段恢复一个文件
-
-    git reset HEAD xxx_file_
-
-从modify恢复一个文件
-
-    git checkout -- xxx_file
-
-
-    git commit -m &apos;message&apos;
-    git commit --amend -m &quot;new message&quot;
-</code></pre><h2 id="5-从仓库中删除一个文件"><a href="#5-从仓库中删除一个文件" class="headerlink" title="5. 从仓库中删除一个文件"></a>5. 从仓库中删除一个文件</h2><pre><code>git rm -r --cached xxxfile
-git rm xxfile 二者区别
-</code></pre><h2 id="6-远程操作"><a href="#6-远程操作" class="headerlink" title="6. 远程操作"></a>6. 远程操作</h2><pre><code>Git remote add xxx_name yyy_url
-git remote rm xxx_name
-Git push repo_name xxx_branch
-</code></pre><h2 id="7-分支操作"><a href="#7-分支操作" class="headerlink" title="7. 分支操作"></a>7. 分支操作</h2><pre><code>Git branch
-git checkout -b xx_branch
-git branch -a // 包含远程分支
-</code></pre><h2 id="8-分支之间的区别"><a href="#8-分支之间的区别" class="headerlink" title="8. 分支之间的区别"></a>8. 分支之间的区别</h2><pre><code>Git diff master your_branch
-</code></pre><h2 id="9-标签-tag"><a href="#9-标签-tag" class="headerlink" title="9. 标签 tag"></a>9. 标签 tag</h2><pre><code>Git tag
-git tag 1.7.1 // 创建轻量的tag
-git show 1.7.1
-
-git tag 1.6.1 -m &quot;release 1.6.1&quot;
-git checkout &lt;tag_name&gt;
-git push origin [tag_name]
-git push origin tag &lt;tag_name&gt;
-git tag -d &lt;tag_name&gt;
-git push origin :refs/tags/1.6.1
-</code></pre><h2 id="10-储藏"><a href="#10-储藏" class="headerlink" title="10. 储藏"></a>10. 储藏</h2><pre><code>Git stash
-git stash pop
-git stash
-git stash list
-git stash apply stash@{0}
-git stash drop stash@{0}
-git stash clear
-</code></pre><h2 id="11-通过git-reset-移动HEAD指针"><a href="#11-通过git-reset-移动HEAD指针" class="headerlink" title="11. 通过git reset 移动HEAD指针"></a>11. 通过git reset 移动HEAD指针</h2><pre><code>git reset --mixed HEAD~2
-
-git reflog
-
-git reset --soft HEAD~2
-
-git reset --hard HEAD~2
-</code></pre><h2 id="12-恢复丢失的提交"><a href="#12-恢复丢失的提交" class="headerlink" title="12. 恢复丢失的提交"></a>12. 恢复丢失的提交</h2><pre><code>git reflog: is a mechanism to record the movements of the HEAD pointer and the branches
-</code></pre><h2 id="13-远程分支删除"><a href="#13-远程分支删除" class="headerlink" title="13. 远程分支删除"></a>13. 远程分支删除</h2><pre><code>remote and local tracking branches
- git branch -r // list all remote branches
-
- git branch -d -r origin/[remote_branch] // delete remote branch from origin
-
- git branch origin :branch_name
- git push origin --delete branch_name
-</code></pre><h2 id="14-解决冲突"><a href="#14-解决冲突" class="headerlink" title="14. 解决冲突"></a>14. 解决冲突</h2><pre><code>git mergetool
-
-    &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD Change in the first repository 
-    ======= Change in the second repository 
-    &gt;&gt;&gt;&gt;&gt;&gt;&gt; b29196692f5ebfd10d8a9ca1911c8b08127c85f8
-</code></pre><h2 id="15-git-log"><a href="#15-git-log" class="headerlink" title="15. git log"></a>15. git log</h2><pre><code>git log --since=1.days --graph --pretty=format:&quot;%cn %d--&gt;%s&quot;
-</code></pre><h2 id="16-git-archive"><a href="#16-git-archive" class="headerlink" title="16. git archive"></a>16. git archive</h2><pre><code>git archive &lt;COMMIT_ID&gt; &gt; destFile.tar.gz
-将提交id为COMMIT_ID的版本提取出来，以tar.gz的格式将其保存到destFile.tar.gz中
-
-其中COMMIT_ID可以替换为分支名，就是将当前分支的最新版本提取出来保存到目标文件
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="ckw5yql4o0025p8nun0t4crhn" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
     <article id="post-Kafka-学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2015/11/28/Kafka-学习笔记/" class="article-date">
@@ -325,7 +188,7 @@ git reset --hard HEAD~2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="ckw5yql3w000ep8nuh3r5dtyp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="ckw5yufk5000gtznugmdopw9i" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -711,7 +574,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/14/RedisCluster详细说明[翻译]/" data-id="ckw5yql770075p8nu5vsltrea" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/14/RedisCluster详细说明[翻译]/" data-id="ckw5yufms0075tznuf8yy729m" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Redis/">Redis</a></li></ul>
@@ -751,7 +614,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 11.11px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -777,10 +640,6 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
           </li>
         
           <li>
-            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
-          </li>
-        
-          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -790,6 +649,10 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>
