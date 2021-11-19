@@ -62,6 +62,285 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Thrift：可扩展的跨语言的服务实现" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/11/12/Thrift：可扩展的跨语言的服务实现/" class="article-date">
+  <time datetime="2016-11-12T08:26:52.000Z" itemprop="datePublished">2016-11-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/11/12/Thrift：可扩展的跨语言的服务实现/">Thrift：可扩展的跨语言的服务实现[论文翻译]</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>本文翻译<a href="http://thrift.apache.org/static/files/thrift-20070401.pdf" target="_blank" rel="noopener">Thrift: Scalable Cross-Language Services Implementation</a></p>
+<p>有一些地方没有翻译到，就纯纯的用英文直接读咯.</p>
+<h2 id="概要"><a href="#概要" class="headerlink" title="概要"></a>概要</h2><p>Thrift是什么呢？Thrift由Facebook开发；Thrift是一个软件库，一个代码生成工具的集合；通过这些工具可以加快高效可扩展的后端服务的开发和实现。Thrift的主要目标是：实现跨语言的高效可靠的通信。实现方式：将各个语言中需要的定制化抽象为一个通用的库。这个库是由各个语言实现的一个库。 特别地，Thrift允许开发者以一个中立语言（language-neutral)文件定义数据类型和服务接口，并且生成构建RPC客户端和服务器端的所需的所有必要的代码。 </p>
+<p>这篇论文详细介绍了Thrift中的动机和设计思想。 这并不是作为一个研究，而是详细阐述了我们做了什么以及为什么这么做。 </p>
+<h2 id="1-说明"><a href="#1-说明" class="headerlink" title="1. 说明"></a>1. 说明</h2><p>一句话，单纯的LAMP框架不能够满足Facebook的需求，Facebook的文化就是选择最好的工具和实现来达到最好的性能。那么带来的问题就是需要在各个语言之间建立一个透明和高性能的桥。我们发现大多数可选系统要么限制太多，要么有性能问题。</p>
+<p>我们的实现方案：将一个中立语言软件栈与一个代码生成引擎进行组装。<br>中立语言软件栈可以由许多编程语言实现。<br>代码生成引擎可以可以将简单接口和数据定义语言转换为客户端和服务端调用的远程库。</p>
+<p>在一个动态系统上选择一个静态代码生成，允许我们可以创建有效的代码；这些代码不需要进行实时的类型检查。对于开发者而言，可以在一个简短的文件中定义复杂服务所需要的数据类型和接口。</p>
+<p>令人惊讶的是竟然一个健壮的开源的解决方案，因此我们将Thrift的实现进行了开源。</p>
+<p>评估了网络环境下，跨语言交互的挑战后，我们明确了一些关键组件：</p>
+<ul>
+<li>types：必须有一个通用的类型系统；跨语言的时候，应用开发者不需要使用自定义的thrift数据类型或者写自己的序列化代码。也就是说，一个C++程序员能够透明的将一个STL map转换为python的字字典。不需要程序员写应用层以下的代码。 </li>
+<li>transport。每个语言都需要一个通用的双向数据传输的接口。服务开发者（service developer）不需要关心特定传输是如何实现的。相同的应用代码可以跑在不同的传输上，比如TCP流，内存中数据，或者硬盘上的文件。</li>
+<li>protocol：数据类型必须有某种使用传输层的方式来编解码自己。当然，应用开发者不需要关心协议这一层的实现。对于应用层代码而言，使用XML或二进制协议都是一样的。所有要确定的就是，必须以始终一样的确定的协议进行传输</li>
+<li>versioning。对于健壮的服务，所包含的数据类型必须提供一个版本化自己的机制。特别的，能够在不破坏服务的情况下增加或删除对象(或者函数列表)中的字段。Section 5 details Thrift’s versioning system.</li>
+<li>Processors：最后，我们生成能够处理数据流的代码来完成远程进程调用。Section 6 details the generated code and TProcessor paradigm。</li>
+<li>Section 7 discusses implementation details, and Section 8 describes our conclusions.</li>
+</ul>
+<h2 id="2-Types"><a href="#2-Types" class="headerlink" title="2. Types"></a>2. Types</h2><p>Thrift类型系统是为了：不管使用什么编程语言，都使用完全原生的类型进行开发。设计上，Thrift类型系统不会引入任何特别的动态类型或者wrapper objects。并且，不需要开发者写任何对象序列化或传输的代码。Thrift IDL（Interface Definition Language）文件以最简单的方式告诉代码生成工具，如何安全的跨语言的传输对象。</p>
+<h3 id="2-1-base-types"><a href="#2-1-base-types" class="headerlink" title="2.1 base types"></a>2.1 base types</h3><p>类型系统依赖一些基础类型。考虑支持哪些类型时，我们目标是在所有编程语言中都可用的数据类型。<br>在Thrift中支持的基础类型是</p>
+<ul>
+<li>bool</li>
+<li>byte</li>
+<li>i16: a 16-bit signed integer</li>
+<li>i32: a 32-bit signed integer</li>
+<li>i64: a 64-bit signed integer</li>
+<li>double: a 64-bit floating point </li>
+<li>string: 一个不知道编码的文本或者二进制文件。</li>
+</ul>
+<p>特别注意的是unsigned integer类型的缺失。因为在很多语言中这个类型不能明确的转换为基础类型。并且，在一些语言如python中，应用开发者会给整形变量赋值一个负值。从设计的角度来说，我们发现unsigned integers在算术运算中很少用，实际中大都用作key或者标识符。这种情况下，sign就无关紧要了。signed integers同样可以做，并且可以在需要的时候安全的转换为unsigned。</p>
+<h3 id="2-2-structs"><a href="#2-2-structs" class="headerlink" title="2.2 structs"></a>2.2 structs</h3><p>一个Thrift的struct定义了一个对象，可以在不同语言中使用。本质上，结构体等同于面向对象语言的类。定义Thrfit结构体的基本语法类似C的结构体定义。字段可能会用一个整形来进行注释，并且有一个默认值。如果忽略的话，会有一个默认值；不过强烈建议有取值，这对于稍后的版本有很大用处。 </p>
+<h3 id="2-3-Containers"><a href="#2-3-Containers" class="headerlink" title="2.3 Containers"></a>2.3 Containers</h3><p>Thrift中的container可以映射到很多语言中的container。可以用C++模板的样式进行标记。有三种可选的类型：</p>
+<ul>
+<li>list<type>:元素的有序列表。直接转换为STL vector，Java ArrayList, 或JS的native array</type></li>
+<li>set<type>:元素的无序集合。转为了STL set， Java HashSet，python的set，或PHP中的字典</type></li>
+<li>map&lt;type1, type2&gt;:key到value的映射。转为STL map，Java HashMap，PHP的关联数组</li>
+</ul>
+<p>当提供默认值时，类型的映射并不是固定的。Container中的元素可以是任何有效的Thrift类型，包含其他结构体的containers。</p>
+<pre><code>struct Example {
+    1:i32 number = 10,
+    2:i64 bigNumber,
+    3:double decimals,
+    4:string name=&quot;thrifty&quot;
+}
+</code></pre><p>在目标语言中，每个定义都会生成两种方法的类型，read和write，用于执行序列化和使用Thrift TProtocol对象传输。</p>
+<h3 id="2-4-Exception"><a href="#2-4-Exception" class="headerlink" title="2.4 Exception"></a>2.4 Exception</h3><p>异常在语法和功能上等同于结构体，除了使用exception关键字而不是使用struct关键字。<br>生成的对象继承自某个异常基类。目的是：用一种应用层开发者熟悉的代码风格。 </p>
+<h3 id="2-5-Services"><a href="#2-5-Services" class="headerlink" title="2.5 Services"></a>2.5 Services</h3><p>使用Thrift类型定义服务service。在语义上，service的定义等同于接口的定义（或者一个纯虚抽象类）。Thrift编译器生成实现这些接口的全部功能的client和server stubs。service定义如下：</p>
+<pre><code>service &lt;name&gt; {
+    &lt;returntype&gt; &lt;name&gt;(&lt;arguments&gt;)
+        [throw (&lt;exceptions&gt;)]
+}
+</code></pre><p>一个例子：</p>
+<pre><code>service StringCache {
+    void set(1:i32 key 2:string value),
+    string get(1:i32 key) throws (1:KeyNotFound knf),
+    void delete(1:i32 key)
+}
+</code></pre><p>注意到void是函数返回的有效类型，当然也可以返回其他已经定义的thrift类型。另外，<code>async</code>关键字可以加到void函数上，其生成的代码不需要等待服务器的响应。对于一个纯净的void函数，只有完成服务器端的操作以后才会给客户端返回响应。使用async方法调用个，客户端只保证传输层的请求成功。<br>也需要注意到参数列表和异常列表也可以实现为thrift structs。在notation和行为上，三种的构造是相同的。 </p>
+<h2 id="3-Transport"><a href="#3-Transport" class="headerlink" title="3. Transport"></a>3. Transport</h2><p>生成的代码使用传输层加速数据传输</p>
+<h3 id="3-1-接口"><a href="#3-1-接口" class="headerlink" title="3.1 接口"></a>3.1 接口</h3><p>在Thrift设计中一个关键的设计选择是：从代码生成层中解耦传输层。Though Thrift is typically used on top of the TCP/IP stack with streaming sockets as the base layer of communication, there was no compelling reason to build that constraint into the system。与真实的I/O操作相比，抽象I/O层带来的性能损耗是无关紧要的。</p>
+<p>根本上，生成的Thrift代码只需要知道如何读取和写入数据。数据的起始是无关紧要的；它可能是一个socket，一个共享内存的片段，或者本地磁盘的一个文件。Thrift传输接口支持下面的方法：</p>
+<ul>
+<li>open： 打开传输</li>
+<li>close：关闭传输</li>
+<li>isOpen：标识传输是否打开</li>
+<li>read：读取</li>
+<li>write：写入</li>
+<li>flush：</li>
+</ul>
+<p>有一些接口没有列出来，这些接口用于批量读取 and optionally signaling the comple- tion of a read or write operation from the generated code.</p>
+<p>除了上面的TTransport接口，还有一个TServerTransport接口用于接收或创建原始的transport objects。其接口如下：</p>
+<ul>
+<li>open</li>
+<li>listen</li>
+<li>accept</li>
+<li>close</li>
+</ul>
+<h3 id="3-2-实现"><a href="#3-2-实现" class="headerlink" title="3.2 实现"></a>3.2 实现</h3><p>在任何语言中很容易实现传输层接口。如果需要的话，开发者可以实现新的传输层机制。 </p>
+<h4 id="3-2-1-TSocket"><a href="#3-2-1-TSocket" class="headerlink" title="3.2.1 TSocket"></a>3.2.1 TSocket</h4><p>在所有目标语言中，实现TSocket类。提供了一个TCP/IP stream socket的通用的简单的接口。</p>
+<h4 id="3-2-2-TFileTransport"><a href="#3-2-2-TFileTransport" class="headerlink" title="3.2.2 TFileTransport"></a>3.2.2 TFileTransport</h4><p>TFileTransport是硬盘文件数据流的抽象。可以将到来的thrift请求写入到硬盘文件中。硬盘数据可以从日志中重放，用于post-process或reproduction 或者过去事件的同步。</p>
+<h4 id="3-2-3-Utilities"><a href="#3-2-3-Utilities" class="headerlink" title="3.2.3 Utilities"></a>3.2.3 Utilities</h4><p>The Transport interface is designed to support easy extension us- ing common OOP techniques, such as composition. Some sim- ple utilites include the TBufferedTransport, which buffers the writes and reads on an underlying transport, the TFramedTransport, which transmits data with frame size headers for chunking op- timization or nonblocking operation, and the TMemoryBuffer, which allows reading and writing directly from the heap or stack memory owned by the process</p>
+<h2 id="4-Protocol"><a href="#4-Protocol" class="headerlink" title="4. Protocol"></a>4. Protocol</h2><p>Thrift中的第二个重要的抽象是：数据结构和传输层表示的分离。 当传输数据时，Thrift加强了（enforce）一种消息结构，但是对于正在用的协议编码是不可知的。也就是，不需要关心数据是编码为XML，还是ASCII，还是二进制；只要数据支持固定的操作集合就行。</p>
+<h3 id="4-1-接口"><a href="#4-1-接口" class="headerlink" title="4.1 接口"></a>4.1 接口</h3><p>Thrift的Protocol接口很直接。根本上它支持两件事：1. 双向的顺序消息 2. base type，containers，structs的编码。</p>
+<pre><code>writeMessageBegin(name, type, seq)
+writeMessageEnd()
+writeStructBegin(name)
+writeStructEnd()
+writeFieldBegin(name, type, id)
+writeFieldEnd()
+writeFieldStop()
+writeMapBegin(ktype, vtype, size)
+writeMapEnd()
+writeListBegin(etype, size)
+writeListEnd()
+writeSetBegin(etype, size)
+writeSetEnd()
+writeBool(bool)
+writeByte(byte)
+writeI16(i16)
+writeI32(i32)
+writeI64(i64)
+writeDouble(double)
+writeString(string)
+
+name, type, seq = readMessageBegin()
+                  readMessageEnd()
+name = readStructBegin()
+       readStructEnd()
+name, type, id = readFieldBegin()
+                 readFieldEnd()
+k, v, size = readMapBegin()
+             readMapEnd()
+etype, size = readListBegin()
+              readListEnd()
+etype, size = readSetBegin()
+              readSetEnd()
+bool = readBool()
+byte = readByte()
+i16 = readI16()
+i32 = readI32()
+i64 = readI64()
+double = readDouble()
+string = readString()
+</code></pre><p>Note that every write function has exactly one read counter- part, with the exception of writeFieldStop(). This is a special method that signals the end of a struct. The procedure for reading a struct is to readFieldBegin() until the stop field is encountered, and then to readStructEnd(). The generated code relies upon this call sequence to ensure that everything written by a protocol encoder can be read by a matching protocol decoder. Further note that this set of functions is by design more robust than necessary. For example, writeStructEnd() is not strictly necessary, as the end of a struct may be implied by the stop field. This method is a convenience for verbose protocols in which it is cleaner to separate these calls (e.g. a closing  tag in XML).</p>
+<h3 id="4-2-structure"><a href="#4-2-structure" class="headerlink" title="4.2 structure"></a>4.2 structure</h3><p>Thrift structures are designed to support encoding into a streaming protocol. The implementation should never need to frame or com- pute the entire data length of a structure prior to encoding it. This is critical to performance in many scenarios. Consider a long list of relatively large strings. If the protocol interface required reading or writing a list to be an atomic operation, then the implementation would need to perform a linear pass over the entire list before en- coding any data. However, if the list can be written as iteration is performed, the corresponding read may begin in parallel, theoreti- cally offering an end-to-end speedup of (kN − C), where N is the size of the list, k the cost factor associated with serializing a sin- gle element, and C is fixed offset for the delay between data being written and becoming available to read.<br>Similarly, structs do not encode their data lengths a priori. Instead, they are encoded as a sequence of fields, with each field having a type specifier and a unique field identifier. Note that the inclusion of type specifiers allows the protocol to be safely parsed and decoded without any generated code or access to the original IDL file. Structs are terminated by a field header with a special STOP type. Because all the basic types can be read deterministically, all structs (even those containing other structs) can be read deterministically. The Thrift protocol is self-delimiting without any framing and regardless of the encoding format.<br>In situations where streaming is unnecessary or framing is advan- tageous, it can be very simply added into the transport layer, using the TFramedTransport abstraction.</p>
+<h3 id="4-3-实现"><a href="#4-3-实现" class="headerlink" title="4.3 实现"></a>4.3 实现</h3><p>Facebook has implemented and deployed a space-efficient binary protocol which is used by most backend services. Essentially, it writes all data in a flat binary format. Integer types are converted to network byte order, strings are prepended with their byte length, and all message and field headers are written using the primitive integer serialization constructs. String names for fields are omitted - when using generated code, field identifiers are sufficient.<br>We decided against some extreme storage optimizations (i.e. pack- ing small integers into ASCII or using a 7-bit continuation for- mat) for the sake of simplicity and clarity in the code. These alter- ations can easily be made if and when we encounter a performance- critical use case that demands them.</p>
+<h2 id="5-Versioning"><a href="#5-Versioning" class="headerlink" title="5. Versioning"></a>5. Versioning</h2><p>面对版本和数据定义改变，Thrift是健壮的。对于已经部署的服务，改变的阶段性健壮是必须的。系统必须支持 1. 从日志中读取旧数据 2. 接收来自过期客户端到新服务器的请求等等</p>
+<h3 id="5-1-Field-Identifiers"><a href="#5-1-Field-Identifiers" class="headerlink" title="5.1 Field Identifiers"></a>5.1 Field Identifiers</h3><p>Thrift中的版本是通过字段标识符来实现的。 最好的编程实践是清晰的制定字段标识符。 </p>
+<pre><code>struct Example {
+    1:i32 number=10,
+    2:i64 bigNumber,                        
+    3:double decimals,
+    4:string name=&quot;thrifty&quot;
+}
+</code></pre><h3 id="5-2-Isset"><a href="#5-2-Isset" class="headerlink" title="5.2 Isset"></a>5.2 Isset</h3><h3 id="5-3-Case-Analysis"><a href="#5-3-Case-Analysis" class="headerlink" title="5.3 Case Analysis"></a>5.3 Case Analysis</h3><h3 id="5-4-Protocol-Transport-Versioning"><a href="#5-4-Protocol-Transport-Versioning" class="headerlink" title="5.4 Protocol/Transport Versioning"></a>5.4 Protocol/Transport Versioning</h3><h2 id="6-RPC实现"><a href="#6-RPC实现" class="headerlink" title="6. RPC实现"></a>6. RPC实现</h2><h3 id="6-1-TProcessor"><a href="#6-1-TProcessor" class="headerlink" title="6.1 TProcessor"></a>6.1 TProcessor</h3><p>Thrift设计中最后一个核心接口是TProcessor，可能是最简单的构造了。接口如下：</p>
+<pre><code>interface TProcessor {
+    bool process(TProtocol in, TProtocol out)
+        throws TException
+}
+</code></pre><p>这儿关键的设计观点是：我们创建的复杂系统从根本上可以看做是处理输入和输出的服务。大多数情况下，确实是一个需要处理的输入和输出系统。</p>
+<h3 id="6-2-Generated-Code"><a href="#6-2-Generated-Code" class="headerlink" title="6.2 Generated Code"></a>6.2 Generated Code</h3><p>当定义一个service时，我们生成一个能够处理RPC请求的TProcessor实例。基本结构如下：</p>
+<pre><code>Service.thrift
+=&gt; Service.cpp
+interface ServiceIf
+class ServiceClient : virtual ServiceIf
+    TProtocol in
+    TProtocol out
+class ServiceProcessor : TProcessor
+    ServiceIf handler
+
+
+ServiceHandler.cpp
+    class ServiceHandler : virtual ServiceIf
+
+TServer.cpp
+    TServer(TProcessor processor,
+        TServerTransport transport,
+        TTransportFactory tfactory,
+        TProtocolFactory pfactory)
+    serve()
+</code></pre><ul>
+<li>从Thrift定义文件，我们生成虚拟服务接口。</li>
+<li>生成的客户端类实现了接口，并使用两个TProtocol实例执行I/O操作。</li>
+<li>生成的processor实现了TProcessor接口</li>
+<li>生成的代码中有所有处理RPC请求的逻辑，通过process()调用来处理。</li>
+<li>用户提供一个应用接口的实现，这与生成的源码是独立的。</li>
+</ul>
+<h3 id="6-3-TServer"><a href="#6-3-TServer" class="headerlink" title="6.3 TServer"></a>6.3 TServer</h3><p>最后，Thrift 核心库提供了一个TServer的抽象。TServer对象通常如下工作：</p>
+<ul>
+<li>使用TServerTransport生成一个TTransport</li>
+<li>使用TTransportFactory将一个基本的transport转换为合适的应用层transport（典型的是使用TBufferedTransportFactory）</li>
+<li>使用TProtocolFactory 创建一个用于TTransport的input/output协议</li>
+<li>触发TProcessor对象的process()方法</li>
+</ul>
+<p>这些层都是分开的，从而服务器代码不需要知道传输层、编码。server封装了连接处理、线程等逻辑。The only code written by the application developer lives in the definitional Thrift file and the interface implementation.</p>
+<p>设计的TProcessor接口很通用。一个TServer没有带着一个生成的TProcessor对象。Thrift允许应用开发者写任何类型的server用于处理TProtocol对象。</p>
+<h2 id="7-实现细节"><a href="#7-实现细节" class="headerlink" title="7. 实现细节"></a>7. 实现细节</h2><h3 id="7-1-Target-Language"><a href="#7-1-Target-Language" class="headerlink" title="7.1 Target Language"></a>7.1 Target Language</h3><p>Thrift目前支持五种目标语言：C++, Java, Python, Ruby 和PHP。</p>
+<h3 id="7-2-Generated-Structs"><a href="#7-2-Generated-Structs" class="headerlink" title="7.2 Generated Structs"></a>7.2 Generated Structs</h3><p>We made a conscious decision to make our generated structs as transparent as possible. All fields are publicly accessible; there are no set() and get() methods. Similarly, use of the isset object is not enforced. We do not include any FieldNotSetException construct. Developers have the option to use these fields to write more robust code, but the system is robust to the developer ignor- ing the isset construct entirely and will provide suitable default behavior in all cases.<br>This choice was motivated by the desire to ease application devel- opment. Our stated goal is not to make developers learn a rich new library in their language of choice, but rather to generate code that allow them to work with the constructs that are most familiar in each language.<br>We also made the read() and write() methods of the generated objects public so that the objects can be used outside of the con- text of RPC clients and servers. Thrift is a useful tool simply for generating objects that are easily serializable across programming languages.</p>
+<h3 id="7-3-RPC-Method-Identification"><a href="#7-3-RPC-Method-Identification" class="headerlink" title="7.3 RPC Method Identification"></a>7.3 RPC Method Identification</h3><p>在RPC中是通过发送方法名来调用方法的。 这种方法的一个问题是需要更多的带宽。</p>
+<p>在方法调用时，我们希望避免很多不必要的字符串比较。为了处理这个，我们生成字符串到函数指针的映射，因此通常情况下能够以常量时间完成方法调用。在C++中，我们使用一个相对深奥的语言构造：member function pointers。</p>
+<pre><code>std::map&lt;std::string,
+    void (ExampleServiceProcessor::*)(int32_t,
+    facebook::thrift::protocol::TProtocol*,
+    facebook::thrift::protocol::TProtocol*)&gt;
+    processMap_;
+</code></pre><p>使用这些技术，处理字符串的消耗被降到最低。</p>
+<h3 id="7-4-Servers-and-Multithreading"><a href="#7-4-Servers-and-Multithreading" class="headerlink" title="7.4 Servers and Multithreading"></a>7.4 Servers and Multithreading</h3><p>Thrift服务需要基本的多线程来处理并发请求。对于Python和Java的Thrift服务器逻辑的实现，语言自带的线程库提供了足够的支持。对于C++的实现，没有标准的多线程实时库。特别地，健壮的、轻量的、可移植的线程管理和timer类不存在。我们研究了已有的实现，有boost::thread, boost:threadpool, ACE_Thread_Manager, ACE_TImer。</p>
+<p>boost::threads：提供了多线程的轻量、健壮的实现；但是没有提供线程管理或timer实现。<br>boost::threadpool:看起来不错但还是没有达到我们的目标。我们希望尽可能的限制第三方以来。因为boost::threadpool不是一个纯净的模板库，还需要实时库，因为目前还不是官方boost的一部分。</p>
+<h3 id="7-5-Thread-Primitives"><a href="#7-5-Thread-Primitives" class="headerlink" title="7.5 Thread Primitives"></a>7.5 Thread Primitives</h3><p>在命名空间facebook::thrift::concurrency中实现了Thrift线程库，有三个组件：</p>
+<ul>
+<li>primitives</li>
+<li>thread pool manager</li>
+<li>timer manager</li>
+</ul>
+<p>正如上面提到的，我们在由于要不要在thrift中引入其他依赖。我们决定使用boost::shared_ptr，因为这对于多线程应用是很有用的，不需要link-time或runtime库，并且它编程了C++0x标准的一部分。</p>
+<p>我们实现了标准的Mutex和Condition类，和一个Monitor类。后者是一个mutex和condition变量的组合，有点类似Java Object的Monitor实现。</p>
+<p>This is also sometimes referred to as a barrier. We provide a Synchronized guard class to allow Java-like synchronized blocks. This is just a bit of syntactic sugar, but, like its Java counterpart, clearly delimits critical sec- tions of code. Unlike its Java counterpart, we still have the ability to programmatically lock, unlock, block, and signal monitors.</p>
+<p>xxxx<br>xxxx<br>xxxx</p>
+<h3 id="7-6-Thread-Runnable-and-shared-ptr"><a href="#7-6-Thread-Runnable-and-shared-ptr" class="headerlink" title="7.6 Thread, Runnable, and shared_ptr"></a>7.6 Thread, Runnable, and shared_ptr</h3><h3 id="7-7-ThreadManager"><a href="#7-7-ThreadManager" class="headerlink" title="7.7 ThreadManager"></a>7.7 ThreadManager</h3><h3 id="7-8-TimerManager"><a href="#7-8-TimerManager" class="headerlink" title="7.8 TimerManager"></a>7.8 TimerManager</h3><h3 id="7-9-Nonblocking-Operation"><a href="#7-9-Nonblocking-Operation" class="headerlink" title="7.9 Nonblocking Operation"></a>7.9 Nonblocking Operation</h3><h3 id="7-10-Compiler"><a href="#7-10-Compiler" class="headerlink" title="7.10 Compiler"></a>7.10 Compiler</h3><h3 id="7-11-TFileTransport"><a href="#7-11-TFileTransport" class="headerlink" title="7.11 TFileTransport"></a>7.11 TFileTransport</h3>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/11/12/Thrift：可扩展的跨语言的服务实现/" data-id="ckw5yql4d001dp8nueq9t07dc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Thrift安装" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/11/12/Thrift安装/" class="article-date">
+  <time datetime="2016-11-11T23:41:07.000Z" itemprop="datePublished">2016-11-12</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/11/12/Thrift安装/">Thrift安装</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>参考文章：<br><a href="http://thrift.apache.org/tutorial/" target="_blank" rel="noopener">http://thrift.apache.org/tutorial/</a><br><a href="http://thrift.apache.org/docs/BuildingFromSource" target="_blank" rel="noopener">http://thrift.apache.org/docs/BuildingFromSource</a></p>
+<p>几点说明：</p>
+<ol>
+<li>在mac上尝试，PHP是可以的，但是CPP的例子跑不通。</li>
+<li>在centos6.8上使用BuildingFromSource进行安装（需要libevent），CPP的例子直接就编译通过。目录(tutorial/cpp/)</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/11/12/Thrift安装/" data-id="ckw5yql4a0016p8nukkmklibv" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-laravel到lumen" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/10/07/laravel到lumen/" class="article-date">
@@ -120,7 +399,7 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="ckw1x704a002s5enuo7dd7xy5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/07/laravel到lumen/" data-id="ckw5yql4x002rp8nuuk0e8jmt" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
@@ -183,7 +462,7 @@ foreach ($cfg_files as $cfg_file) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="ckw1x703g000l5enue9pheriv" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/06/Laravel等框架压测/" data-id="ckw5yql42000np8nuwt7xef4e" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/laravel/">laravel</a></li></ul>
@@ -328,7 +607,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="ckw1x703e000h5enu861u09js" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/10/03/Laravel中日志类/" data-id="ckw5yql3z000hp8nut2pkoro6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Laravel/">Laravel</a></li></ul>
@@ -366,7 +645,7 @@ KLog::getBizProcErr()-&gt;notice($msg);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="ckw1x703f000j5enu8d2hez2d" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/29/Linux下expect使用教程/" data-id="ckw5yql40000jp8nuqf3i4iat" class="article-share-link">Share</a>
       
       
     </footer>
@@ -439,7 +718,7 @@ echo $foo, $bar; // Outputs &quot;Hello World!&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="ckw1x705800585enumbk9m1m9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/匿名函数与闭包/" data-id="ckw5yql620056p8nuare2opuy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -591,7 +870,7 @@ ZEND_FUNCTION(create_function)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="ckw1x703i000q5enuvih7w0b5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/21/PHP函数之匿名函数/" data-id="ckw5yql43000qp8nux8f00wuv" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -647,7 +926,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="ckw1x703600055enuxqw1lnm6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/4PHP变量之常量/" data-id="ckw5yql3o0004p8nuvtqjo4l8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -689,203 +968,7 @@ int module_number;  /* 模块号 */
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="ckw1x703200025enucmlvd7yu" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-3PHP变量之基本数据类型之哈希表" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/20/3PHP变量之基本数据类型之哈希表/" class="article-date">
-  <time datetime="2016-09-20T11:57:23.000Z" itemprop="datePublished">2016-09-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/20/3PHP变量之基本数据类型之哈希表/">3. PHP中哈希表实现与数组的顺序遍历</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="PHP中哈希表实现"><a href="#PHP中哈希表实现" class="headerlink" title="PHP中哈希表实现"></a>PHP中哈希表实现</h2><p>哈希表的相关概念可以看<a href="http://www.php-internals.com/book/?p=chapt03/03-01-01-hashtable" target="_blank" rel="noopener">TIPI中哈希表介绍</a>，也可以直接看算法导论中哈希表的介绍。</p>
-<h3 id="哈希表"><a href="#哈希表" class="headerlink" title="哈希表"></a>哈希表</h3><p>PHP中的哈希表实现在Zend/zend_hash.c中。HashTable结构体用于保存整个哈希表需要的基本信息，Bucket结构体用于保存具体的数据内容，如下：</p>
-<pre><code>typedef struct _hashtable { 
-    uint nTableSize;        // hash Bucket的大小，最小为8，以2x增长。
-    uint nTableMask;        // nTableSize-1 ， 索引取值的优化
-    uint nNumOfElements;    // hash Bucket中当前存在的元素个数，count()函数会直接返回此值 
-    ulong nNextFreeElement; // 下一个数字索引的位置
-    Bucket *pInternalPointer;   // 当前遍历的指针（foreach比for快的原因之一）pInternalPointer指向当前的内部指针的位置, 在对数组进行顺序遍历的时候, 这个指针指明了当前的元素.当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历.
-
-
-    Bucket *pListHead;          // 存储数组头元素指针
-    Bucket *pListTail;          // 存储数组尾元素指针
-    Bucket **arBuckets;         // 存储hash数组
-    dtor_func_t pDestructor;    // 在删除元素时执行的回调函数，用于资源的释放
-    zend_bool persistent;       //指出了Bucket内存分配的方式。如果persisient为TRUE，则使用操作系统本身的内存分配函数为Bucket分配内存，否则使用PHP的内存分配函数。
-    unsigned char nApplyCount; // 标记当前hash Bucket被递归访问的次数（防止多次递归）
-    zend_bool bApplyProtection;// 标记当前hash桶允许不允许多次访问，不允许时，最多只能递归3次
-#if ZEND_DEBUG
-    int inconsistent;
-#endif
-} HashTable;
-</code></pre><h3 id="数据容器：槽位"><a href="#数据容器：槽位" class="headerlink" title="数据容器：槽位"></a>数据容器：槽位</h3><pre><code>typedef struct bucket {
-    ulong h;            // 对char *key进行hash后的值，或者是用户指定的数字索引值
-    uint nKeyLength;    // hash关键字的长度，如果数组索引为数字，此值为0
-    void *pData;        // 指向value，一般是用户数据的副本，如果是指针数据，则指向pDataPtr
-    void *pDataPtr;     //如果是指针数据，此值会指向真正的value，同时上面pData会指向此值
-    struct bucket *pListNext;   // 整个hash表的下一元素
-    struct bucket *pListLast;   // 整个哈希表该元素的上一个元素
-    struct bucket *pNext;       // 存放在同一个hash Bucket内的下一个元素
-    struct bucket *pLast;       // 同一个哈希bucket的上一个元素
-
-    char arKey[1];   // 保存当前值所对于的key字符串，这个字段只能定义在最后，实现变长结构体            
-} Bucket;
-</code></pre><p>在PHP中可以使用字符串或者数字作为数组的索引，数字索引直接就可以作为哈希表的索引，数字无需进行哈希处理。h字段后面的nKeyLength字段是作为key长度的标示，如果索引是数字的话，则nKeyLength为0.在PHP数组中如果索引字符串可以被转换成数字也会被转换成数字索引。所以在php中’19’ ‘20’这样的字符索引和数字索引19，20没有区别。</p>
-<p>上面结构体的最后一个字段用来保存key的字符串，而这个字段却申明为只有一个字符的数组， 其实这里是一种长见的<a href="http://stackoverflow.com/a/4690976/319672" target="_blank" rel="noopener">变长结构体</a>，主要的目的是增加灵活性。</p>
-<p>一张图来解释<img src="http://www.php-internals.com/images/book/chapt03/03-01-02-zend_hashtable.png" alt="Zend引擎哈希表结构和关系 来自tipi"></p>
-<p>详细解释：</p>
-<ul>
-<li>PHP的Zend引擎中哈希表处理冲突使用的是拉链</li>
-<li>HashTable结构体中存储的是哈希表的整体信息，Bucket中存储的是真正的数据</li>
-<li>Bucket结构体维护了两个双向链表，pNext和pLast指针分别指向本槽位所在的链表关系。比如相同hash值的两个key分别是k1,k2,先插入k1再插入k2，那么k2-&gt;pNext = k1; k1-&gt;pLast = k2;</li>
-<li>pListHead和pListTail维护了整个哈希表的头元素指针和最后一个元素的指针。</li>
-<li>关于pListNext和pListLast<ul>
-<li>当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历。</li>
-<li>数组添加元素的时候，依次添加元素。比如两个key，先添加k1再添加k2，则k1-&gt;pListNext=k2, k2-&gt;pListLast=k1。</li>
-<li>也就是说PHP中遍历数组的顺序是和元素的添加先后顺序相关的。</li>
-<li>哈希表的Bucket结构通过pListNext和pListLast维护了哈希表插入元素的先后顺序。</li>
-</ul>
-</li>
-<li>pListNext和pListLast指针指向的是整个哈希表所有的数据之间的链接关系。</li>
-</ul>
-<p>参考文章：</p>
-<ol>
-<li><a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组(遍历顺序)</a></li>
-<li><a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a></li>
-<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-00-variables-structure" target="_blank" rel="noopener">变量的结构和类型</a></li>
-<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-02-hashtable-in-php" target="_blank" rel="noopener">PHP的哈希表实现</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="ckw1x703900085enu9iybaiwd" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-5PHP预定义变量REQUEST-GET-POST等处理过程" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" class="article-date">
-  <time datetime="2016-09-20T11:22:50.000Z" itemprop="datePublished">2016-09-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/">5. PHP预定义变量REQUEST/GET/POST等处理过程</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="1-基础环境"><a href="#1-基础环境" class="headerlink" title="1. 基础环境"></a>1. 基础环境</h2><ul>
-<li>php版本：php.5.6.25</li>
-<li>php.ini中一个配置 <code>variables_order = &quot;GPCS&quot;</code></li>
-</ul>
-<h2 id="2-处理流程"><a href="#2-处理流程" class="headerlink" title="2. 处理流程"></a>2. 处理流程</h2><h3 id="a-初始化"><a href="#a-初始化" class="headerlink" title="a. 初始化"></a>a. 初始化</h3><ol>
-<li><p>对于<code>_GET,_POST,_COOKIE,_SERVER, _ENV, _REQUEST, _FILES</code>处理<br> fpm启动时会对这些预定义常量进行处理初始化，设置其回调函数。</p>
-<p> <code>php_cgi_startup</code>(sapi/fpm/fpm/fpm_main.c)-&gt;<code>php_startup_auto_globals</code>中进行初始化</p>
-<pre><code>void php_startup_auto_globals(TSRMLS_D)
-{
-    zend_register_auto_global(ZEND_STRL(&quot;_GET&quot;), 0, php_auto_globals_create_get TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_POST&quot;), 0, php_auto_globals_create_post TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_COOKIE&quot;), 0, php_auto_globals_create_cookie TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_SERVER&quot;), PG(auto_globals_jit), php_auto_globals_create_server TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_ENV&quot;), PG(auto_globals_jit), php_auto_globals_create_env TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_REQUEST&quot;), PG(auto_globals_jit), php_auto_globals_create_request TSRMLS_CC);
-    zend_register_auto_global(ZEND_STRL(&quot;_FILES&quot;), 0, php_auto_globals_create_files TSRMLS_CC);
-}
-</code></pre></li>
-<li><p>对于<code>GLOBALS</code>处理<br> 在<code>php_cgi_startup-&gt;php_module_startup-&gt;zend_startup</code>中会对<code>$GLOBALS</code>的处理进行初始化</p>
-<p> <code>zend_register_auto_global(&quot;GLOBALS&quot;, sizeof(&quot;GLOBALS&quot;) - 1, 1, php_auto_globals_create_globals TSRMLS_CC);</code></p>
-</li>
-<li><p><code>zend_register_auto_global</code>解释<br> 该函数在<code>Zend/zend_compile.c</code>中定义，主要是将这些添加到CG(auto_globals)这个全局的hash表中。</p>
-</li>
-</ol>
-<h3 id="b-请求到来时"><a href="#b-请求到来时" class="headerlink" title="b. 请求到来时"></a>b. 请求到来时</h3><p><code>php_request_startup-&gt;php_hash_environment-&gt; zend_activate_auto_globals -&gt;zend_hash_apply</code>其中<code>zend_activate_auto_globals</code>的核心是调用</p>
-<pre><code>zend_hash_apply(CG(auto_globals),(apply_func_t) zend_auto_global_init TSRMLS_CC)
-</code></pre><p>在<code>zend_auto_global_init</code>中会对CG(auto_globals)进行处理，执行初始化时设置的回调函数。</p>
-<h4 id="对于回调函数的解释"><a href="#对于回调函数的解释" class="headerlink" title="对于回调函数的解释"></a>对于回调函数的解释</h4><p>首先介绍php.ini中的配置<a href="http://php.net/manual/en/ini.core.php#ini.variables-order" target="_blank" rel="noopener">variables_order</a>。<code>variables_order</code>目的是设置the EGPCS (Environment, Get, Post, Cookie, and Server)变量的解析顺序。比如，variables_order设置为PG，那么只会设置全局变量<code>$POST</code>和<code>$_GET</code>，并且对于<code>$_REQUEST</code>，如果<code>$POST[&#39;a&#39;]</code> 和<code>$_GET[&#39;a&#39;]</code>，那么在<code>$_REQUEST</code>中<code>$_GET[&#39;a&#39;]</code>会覆盖<code>$_POST[&#39;a&#39;]</code>的值。</p>
-<p>明白了<code>variables_order</code>的含义，接下来就看一下回调函数。</p>
-<ul>
-<li>数据处理：对于GET，POST，COOKIE三者的回调函数都是<code>sapi_module.treate_data</code>。对于SERVER,ENV,FILES,REQUEST则走的其他逻辑。</li>
-<li>数据保存：得到数据以后，会经过<code>zend_hash_update(&amp;EG(symbol_table), 变量名..)</code>存入符号表中。</li>
-</ul>
-<p>一些细节的地方：</p>
-<ul>
-<li><p>其中<code>sapi_module.treate_data</code>的初始化是在<code>php_startup_sapi_content_types</code>中设置的， <code>sapi_module.treate_data = php_default_treate_data</code>。大多数sapi都是使用的默认的处理函数<code>php_default_treate_data</code>。</p>
-</li>
-<li><p>在<code>php_default_treat_data</code>中，对于变量，都调用<code>php_register_variable_safe</code>来注册变量， 而<code>php_register_variable_safe</code>最终会调用<code>php_register_variable_ex</code>:</p>
-</li>
-</ul>
-<pre><code>PHPAPI void php_register_variable_ex(char *var, zval *val, zval *track_vars_array TSRMLS_DC)
-{
-        ... 省略
-  for (p = var; *p; p++) {
-  if (*p == &apos; &apos; || *p == &apos;.&apos;) {
-      *p=&apos;_&apos;;
-  } else if (*p == &apos;[&apos;) {
-      is_array = 1;
-      ip = p;
-      *p = 0;
-      break;
-  }
-        ....以下省略
-}
-</code></pre><p>就是在<code>php_register_variable</code>的时候，会将(.)转换成（_)</p>
-<h2 id="3-预定义变量的获取"><a href="#3-预定义变量的获取" class="headerlink" title="3. 预定义变量的获取"></a>3. 预定义变量的获取</h2><p>在某个局部函数中使用类似于<code>$GLOBALS</code>变量这样的预定义变量， 如果在此函数中有改变的它们的值的话，这些变量在其它局部函数调用时会发现也会同步变化。 为什么呢？是否是这些变量存放在一个集中存储的地方？ 从PHP中间代码的执行来看，这些变量是存储在一个集中的地方：EG(symbol_table)。</p>
-<p>在通过$获取变量时，PHP内核都会通过这些变量名区分是否为全局变量（<code>ZEND_FETCH_GLOBAL</code>）， 其调用的判断函数为<code>zend_is_auto_global</code>，这个过程是在生成中间代码过程中实现的。 如果是<code>ZEND_FETCH_GLOBAL</code>或<code>ZEND_FETCH_GLOBAL_LOCK</code>(global语句后的效果)， 则在获取获取变量表时(<code>zend_get_target_symbol_table</code>)， 直接返回EG(<code>symbol_table</code>)。则这些变量的所有操作都会在全局变量表进行。</p>
-<h2 id="4-参考文章"><a href="#4-参考文章" class="headerlink" title="4. 参考文章"></a>4. 参考文章</h2><p>说明：<br>    在参考文章中使用的php版本应该是5.3.x版本。我特意下载了php-5.3.0看了一下<code>php_hash_environment</code>的实现，确实是下面两篇文章所介绍的。而在php-5.6中，采用的则是先初始化<code>CG(auto_globals)</code>的方式。</p>
-<ol>
-<li><a href="http://www.php-internals.com/book/?p=chapt03/03-03-pre-defined-variable" target="_blank" rel="noopener">预定义常量</a></li>
-<li><a href="http://www.laruence.com/2008/11/07/581.html" target="_blank" rel="noopener">PHP的GET/POST等大变量生成过程</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="ckw1x703400045enu2vv79me9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/2PHP变量之基本数据类型/" data-id="ckw5yql3l0002p8nugaypn8ey" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -947,6 +1030,14 @@ int module_number;  /* 模块号 */
       <ul>
         
           <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -956,14 +1047,6 @@ int module_number;  /* 模块号 */
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

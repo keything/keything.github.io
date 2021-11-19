@@ -62,6 +62,281 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-git基本操作" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/12/20/git基本操作/" class="article-date">
+  <time datetime="2015-12-20T05:02:01.000Z" itemprop="datePublished">2015-12-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2015/12/20/git基本操作/">git基本操作</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-初始化"><a href="#0-初始化" class="headerlink" title="0. 初始化"></a>0. 初始化</h2><pre><code>git init --bare 创建一个仓库
+
+git clone user@host:/path/repo.git
+</code></pre><h2 id="1-Git-用户配置"><a href="#1-Git-用户配置" class="headerlink" title="1. Git 用户配置"></a>1. Git 用户配置</h2><pre><code>1. 用户和邮箱
+
+        git config --global user.name &quot;Example Surname&quot;
+        git config --global user.email &quot;your.email@gmail.com&quot;
+
+2. 设置提交的分支
+
+    simple只是将当前激活态的提交
+    matching则是全部提交
+    建议使用simple
+
+        git config --global push.default simple 
+
+3. 设置高亮
+
+
+        git config --global color.ui true 
+        git config --global color.status auto 
+        git config --global color.branch auto
+
+4. 默认的编辑器
+
+        git config --global core.editor vim
+        git config --global merge.tool vimdiff
+        git config --global alias.d &apos;difftool -y&apos;
+
+
+        git config --global alias.staged &apos;diff --cached&apos;
+        git config --global alias.st &apos;status&apos;
+5. 设置git status时显示中文
+
+    git config --global core.quotepath false
+</code></pre><h2 id="2-设置忽略文件"><a href="#2-设置忽略文件" class="headerlink" title="2. 设置忽略文件"></a>2. 设置忽略文件</h2><pre><code>.gitignore
+</code></pre><h2 id="3-基本操作"><a href="#3-基本操作" class="headerlink" title="3. 基本操作"></a>3. 基本操作</h2><pre><code>add rm commit branch push pull log status
+</code></pre><h2 id="4-恢复文件"><a href="#4-恢复文件" class="headerlink" title="4. 恢复文件"></a>4. 恢复文件</h2><pre><code>从stage阶段恢复一个文件
+
+    git reset HEAD xxx_file_
+
+从modify恢复一个文件
+
+    git checkout -- xxx_file
+
+
+    git commit -m &apos;message&apos;
+    git commit --amend -m &quot;new message&quot;
+</code></pre><h2 id="5-从仓库中删除一个文件"><a href="#5-从仓库中删除一个文件" class="headerlink" title="5. 从仓库中删除一个文件"></a>5. 从仓库中删除一个文件</h2><pre><code>git rm -r --cached xxxfile
+git rm xxfile 二者区别
+</code></pre><h2 id="6-远程操作"><a href="#6-远程操作" class="headerlink" title="6. 远程操作"></a>6. 远程操作</h2><pre><code>Git remote add xxx_name yyy_url
+git remote rm xxx_name
+Git push repo_name xxx_branch
+</code></pre><h2 id="7-分支操作"><a href="#7-分支操作" class="headerlink" title="7. 分支操作"></a>7. 分支操作</h2><pre><code>Git branch
+git checkout -b xx_branch
+git branch -a // 包含远程分支
+</code></pre><h2 id="8-分支之间的区别"><a href="#8-分支之间的区别" class="headerlink" title="8. 分支之间的区别"></a>8. 分支之间的区别</h2><pre><code>Git diff master your_branch
+</code></pre><h2 id="9-标签-tag"><a href="#9-标签-tag" class="headerlink" title="9. 标签 tag"></a>9. 标签 tag</h2><pre><code>Git tag
+git tag 1.7.1 // 创建轻量的tag
+git show 1.7.1
+
+git tag 1.6.1 -m &quot;release 1.6.1&quot;
+git checkout &lt;tag_name&gt;
+git push origin [tag_name]
+git push origin tag &lt;tag_name&gt;
+git tag -d &lt;tag_name&gt;
+git push origin :refs/tags/1.6.1
+</code></pre><h2 id="10-储藏"><a href="#10-储藏" class="headerlink" title="10. 储藏"></a>10. 储藏</h2><pre><code>Git stash
+git stash pop
+git stash
+git stash list
+git stash apply stash@{0}
+git stash drop stash@{0}
+git stash clear
+</code></pre><h2 id="11-通过git-reset-移动HEAD指针"><a href="#11-通过git-reset-移动HEAD指针" class="headerlink" title="11. 通过git reset 移动HEAD指针"></a>11. 通过git reset 移动HEAD指针</h2><pre><code>git reset --mixed HEAD~2
+
+git reflog
+
+git reset --soft HEAD~2
+
+git reset --hard HEAD~2
+</code></pre><h2 id="12-恢复丢失的提交"><a href="#12-恢复丢失的提交" class="headerlink" title="12. 恢复丢失的提交"></a>12. 恢复丢失的提交</h2><pre><code>git reflog: is a mechanism to record the movements of the HEAD pointer and the branches
+</code></pre><h2 id="13-远程分支删除"><a href="#13-远程分支删除" class="headerlink" title="13. 远程分支删除"></a>13. 远程分支删除</h2><pre><code>remote and local tracking branches
+ git branch -r // list all remote branches
+
+ git branch -d -r origin/[remote_branch] // delete remote branch from origin
+
+ git branch origin :branch_name
+ git push origin --delete branch_name
+</code></pre><h2 id="14-解决冲突"><a href="#14-解决冲突" class="headerlink" title="14. 解决冲突"></a>14. 解决冲突</h2><pre><code>git mergetool
+
+    &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD Change in the first repository 
+    ======= Change in the second repository 
+    &gt;&gt;&gt;&gt;&gt;&gt;&gt; b29196692f5ebfd10d8a9ca1911c8b08127c85f8
+</code></pre><h2 id="15-git-log"><a href="#15-git-log" class="headerlink" title="15. git log"></a>15. git log</h2><pre><code>git log --since=1.days --graph --pretty=format:&quot;%cn %d--&gt;%s&quot;
+</code></pre><h2 id="16-git-archive"><a href="#16-git-archive" class="headerlink" title="16. git archive"></a>16. git archive</h2><pre><code>git archive &lt;COMMIT_ID&gt; &gt; destFile.tar.gz
+将提交id为COMMIT_ID的版本提取出来，以tar.gz的格式将其保存到destFile.tar.gz中
+
+其中COMMIT_ID可以替换为分支名，就是将当前分支的最新版本提取出来保存到目标文件
+</code></pre>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="ckw5yql4o0025p8nun0t4crhn" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Kafka-学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/11/28/Kafka-学习笔记/" class="article-date">
+  <time datetime="2015-11-28T09:02:01.000Z" itemprop="datePublished">2015-11-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2015/11/28/Kafka-学习笔记/">Kafka-学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-Kafka基本概念"><a href="#1-Kafka基本概念" class="headerlink" title="1. Kafka基本概念"></a>1. Kafka基本概念</h2><ol>
+<li>话题topic: 特定类型的消息流，话题是消息的分类名。物理上不同topic的消息分开存储，逻辑上一个Topic消息可以保存在一个或多个broker上，但用户只需要指定指定消息的topic即可生产或消费数据而不必关系数据存于何处</li>
+<li>生产者producer：能够发布消息到话题的任何对象</li>
+<li>kafka集群：已经发布的消息保存的服务器</li>
+<li>代理broker：kafka集群中的服务器</li>
+<li>分片partition：Partition：topic物理上的分组，一个topic可以分为多个partition，每个partition是一个有序的队列</li>
+<li>消费组 consumer group：每个consumer属于一个特定的Consumer Group，可以为每个Consumer指定group name，如果不指定，则属于默认的group。每一个consumer实例都属于一个consumer group，每一条消息只会被同一个consumer group里的一个consumer实例消费。每条消息可以被多个consumer group消费</li>
+<li>segment：partition物理上由多个segment组成</li>
+<li>offset：每个partition都由一系列有序的、不可变的消息组成，这些消息被连续的追加到partition中。partition中的每个消息都有一个连续的序列号叫做offset,用于partition唯一标识一条消息</li>
+</ol>
+<h2 id="2-Topic，Partition，Segment，Offset"><a href="#2-Topic，Partition，Segment，Offset" class="headerlink" title="2. Topic，Partition，Segment，Offset"></a>2. Topic，Partition，Segment，Offset</h2><h3 id="topic和Partition关系"><a href="#topic和Partition关系" class="headerlink" title="topic和Partition关系"></a>topic和Partition关系</h3><ol>
+<li>topic在逻辑上可以认为是一个queue，每条消息都必须指定它的topic</li>
+<li>为了使Kafka吞吐率可以线性提高，物理上把Topic分成一个或多个Partition，每个Partition在物理上对应一个文件夹，该文件夹下存储这个Partition的所有消息和索引文件。</li>
+</ol>
+<h3 id="Partition的存储分布"><a href="#Partition的存储分布" class="headerlink" title="Partition的存储分布"></a>Partition的存储分布</h3><ol>
+<li>参考<a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a> </li>
+<li>目录：在config/server.properties的log.dirs中。同一个topic下有多个不同partition，每个partition是一个目录，目录命名是topic名称+有序序号。</li>
+<li>Partition中文件存储方式<ol>
+<li>每个partition相当于一个巨型文件被平均分配到多个大小相同的segment段数据文件中。但每个段segmentfile的消息数量不一定相等。</li>
+<li>每个partition只需要支持顺序读写就行了，segment文件生命周期由服务端配置参数决定。</li>
+</ol>
+</li>
+<li><p>Partition中segment文件存储结构</p>
+<ol>
+<li>segment file组成：由两大部分组成，分别为index file和data file。这两个文件一一对应，后缀.index和.log，分别表示segment索引文件、数据文件</li>
+<li>segment命名规则:partion全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值。这种命名很重要，有助于通过offset查找message。</li>
+<li>一个片段segment的index和data file的对应关系，索引中存储大量元数据，数据文件存储大量消息，索引文件中元数据指向对应数据文件中message的物理偏移地址。</li>
+</ol>
+</li>
+<li><p>Segment数据文件组成</p>
+<ol>
+<li>segment data file由许多message组成</li>
+</ol>
+</li>
+<li>如何在Partition中通过offset查找message<ol>
+<li>通过二分查找offset，找到该offset所在的segment文件</li>
+<li>在所找到的segment文件中，顺序到在index文件中的元数据物理位置和log文件中物理偏移地址。</li>
+<li>segment index file采取稀疏索引存储方式，它减少索引文件大小，通过mmap可以直接内存操作，稀疏索引为数据文件的每个对应message设置一个元数据指针,它比稠密索引节省了更多的存储空间，但查找起来需要消耗更多的时间</li>
+</ol>
+</li>
+<li>Partition的好处<ol>
+<li>实现并发：传统的队列，为了保证数据的有序性，只能锁定一个队列。而kafka由于采用Partition的方式，则可以实现并发。</li>
+<li>实现并发的设计：将一个topic中的所有分片partition分配给一个consumer group中的消费者们。这样的话，每个分片就可以被consumer group中的准确的某个消费者消费。</li>
+<li>注意：确保一个consumer group中消费者的个数不要多于分片的个数</li>
+<li>kafka的有序性只能保证某个分片内的有序，不能保证分片之间的有效性。如果要想保证所有数据的有序，那么可以只有一个分片。</li>
+</ol>
+</li>
+</ol>
+<p>摘录来自: kafka.apache.org. “Apache Kafka”。 iBooks. </p>
+<h2 id="3-生产者-Producer"><a href="#3-生产者-Producer" class="headerlink" title="3. 生产者 Producer"></a>3. 生产者 Producer</h2><h3 id="1-负载均衡"><a href="#1-负载均衡" class="headerlink" title="1. 负载均衡"></a>1. 负载均衡</h3><ol>
+<li>由producer客户端决定消息被路由到哪个partition。producer将会和Topic下所有partition leader保持socket连接;消息由producer直接通过socket发送到broker,中间不会经过任何”路由层”.路由策略比如random, key-hash。</li>
+</ol>
+<h3 id="2-异步发送"><a href="#2-异步发送" class="headerlink" title="2. 异步发送"></a>2. 异步发送</h3><p>将多条消息暂且在客户端buffer起来，并将他们批量的发送到broker，小数据IO太多，会拖慢整体的网络延迟，批量延迟发送事实上提升了网络效率。不过这也有一定的隐患，比如说当producer失效时，那些尚未发送的消息将会丢失</p>
+<h3 id="3-消息传送保证机制"><a href="#3-消息传送保证机制" class="headerlink" title="3. 消息传送保证机制"></a>3. 消息传送保证机制</h3><p>有几种方式：<br>    1) at most once: 最多一次,这个和JMS中”非持久化”消息类似.发送一次,无论成败,将不会重发.<br>    2) at least once: 消息至少发送一次,如果消息未能接受成功,可能会重发,直到接收成功.<br>    3) exactly once: 消息只会发送一次</p>
+<h2 id="4-消费者-Consumer"><a href="#4-消费者-Consumer" class="headerlink" title="4. 消费者 Consumer"></a>4. 消费者 Consumer</h2><ol>
+<li>通常来讲，消息有两种模式：a.队列 b.发布订阅。队列的话，一条消息只能被一个消费者消费。发布订阅的话，消息被所有消费者消费。如果所有consumer实例属于一个consumer group，则实现队列。如果每个consumer group只有一个consumer实例，则实现发布订阅。</li>
+<li>consumer端向broker发送”fetch”请求,并告知其获取消息的offset;此后consumer将会获得一定条数的消息;consumer端也可以重置offset来重新消费消息.</li>
+<li>Consumer与Consumer Group<ol>
+<li>每个consumer实例都属于一个consumer group。每个消息只能被同一个consumer group里的一个consumer实例消费，但不同consumer group可以同时消费同一条消息</li>
+</ol>
+</li>
+</ol>
+<h2 id="5-系统级别"><a href="#5-系统级别" class="headerlink" title="5. 系统级别"></a>5. 系统级别</h2><h3 id="1-kafka的broker是无状态的"><a href="#1-kafka的broker是无状态的" class="headerlink" title="1. kafka的broker是无状态的"></a>1. kafka的broker是无状态的</h3><ol>
+<li>kafka代理是无状态的，意味着消费者必须维护已消费的状态信息。<ol>
+<li>从代理broker删除消息很棘手，因为代理不知道消费者是否已经使用了该消息。kafka使用一个简单的基于时间的SLA应用于保留策略。当消息在代理中超过一定时间以后，将会自动删除。</li>
+<li>好处是：消费者可以故意倒回到老的偏移量再次消费数据。</li>
+</ol>
+</li>
+</ol>
+<h3 id="2-broker数据删除"><a href="#2-broker数据删除" class="headerlink" title="2. broker数据删除"></a>2. broker数据删除</h3><ol>
+<li>不管消息被消费与否，kafka集群会保留所有消息。由于磁盘限制，kafka提供两种策略删除旧数据：一种基于时间，一种基于partition文件大小。可以通过config/server.properties配置</li>
+</ol>
+<h3 id="3-ZooKeeper与Kafka"><a href="#3-ZooKeeper与Kafka" class="headerlink" title="3. ZooKeeper与Kafka"></a>3. ZooKeeper与Kafka</h3><ol>
+<li>zookeeper的关注问题：<ol>
+<li>所有分布式系统的一个常见问题是：如何在任一时间点确定哪些服务器活着并且在工作中</li>
+<li>面对网络失败，带宽限制，可变延迟连接，安全问题，跨多个数据中心时可能发生错误时，如何可靠做这些事情</li>
+</ol>
+</li>
+</ol>
+<h3 id="4-Kafka设计目标"><a href="#4-Kafka设计目标" class="headerlink" title="4. Kafka设计目标"></a>4. Kafka设计目标</h3><ol>
+<li>以时间复杂度O(1)的方式提供消息持久化能力</li>
+<li>高吞吐率</li>
+<li>支持Kafka Server间的消息分区，及分布式消费，同时保证每个Partition内的消息顺序传输</li>
+<li>同时保持离线数据处理和实时数据处理。</li>
+<li>支持在线水平扩展</li>
+</ol>
+<h3 id="5-为何使用消息系统"><a href="#5-为何使用消息系统" class="headerlink" title="5. 为何使用消息系统"></a>5. 为何使用消息系统</h3><ol>
+<li>解耦</li>
+<li>扩展性</li>
+<li>灵活性&amp;峰值处理能力</li>
+<li>顺序保证</li>
+<li>异步通信</li>
+<li>demo</li>
+</ol>
+<p>参考文章：</p>
+<ol>
+<li><a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a></li>
+<li><a href="http://my.oschina.net/frankwu/blog/305010" target="_blank" rel="noopener">http://my.oschina.net/frankwu/blog/305010</a></li>
+<li><a href="http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral" target="_blank" rel="noopener">http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="ckw5yql3w000ep8nuh3r5dtyp" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-RedisCluster详细说明[翻译]" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2015/11/14/RedisCluster详细说明[翻译]/" class="article-date">
@@ -436,7 +711,7 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/14/RedisCluster详细说明[翻译]/" data-id="ckw1x706o00705enu3hn1cdvm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2015/11/14/RedisCluster详细说明[翻译]/" data-id="ckw5yql770075p8nu5vsltrea" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Redis/">Redis</a></li></ul>
@@ -498,6 +773,14 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
       <ul>
         
           <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -507,14 +790,6 @@ We send A: CLUSTER SETSLOT 8 MIGRATING B
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

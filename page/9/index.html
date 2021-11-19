@@ -62,6 +62,178 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-memcache启动及telnet命令" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/17/memcache启动及telnet命令/" class="article-date">
+  <time datetime="2016-04-17T05:00:01.000Z" itemprop="datePublished">2016-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/17/memcache启动及telnet命令/">2. Memcache启动及Telnet命令</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-Memcached启动选项"><a href="#1-Memcached启动选项" class="headerlink" title="1. Memcached启动选项"></a>1. Memcached启动选项</h2><ol>
+<li>“p:”   小写p，memcached监听的tcp端口。默认端口为11211, 该选项的参数赋值给settings.port</li>
+<li>“m:”  小写m。memcached能够使用的最大内存值，默认是64MB。参数单位为MB。该参数赋值给settings.maxbytes</li>
+<li>“v”    小写v。输出memcached运行时的一些信息。-v -vv -vvv输出的信息依次增加。该选项会增加settings.verbose的值</li>
+<li>“d”    以守护进程的形式运行memcached</li>
+<li>“f:”    item的扩容因子。默认值为1.25。该选项的参数值可以是小数但必须大于1.0。该选项参数将赋值给settings.factor</li>
+<li>“n:”   设置最小的item能存储多少字节的数据。该选项参数赋值给settings.chunk_size.</li>
+<li>“C:”  大写C。memcached默认是使用CAS的，本选项是禁用CAS。本选项会将settings.use_cas赋值为false</li>
+<li>“B:”  memcached支持文本协议和二进制协议。该选项的参数用于指定使用的协议。默认情况下是根据客户端的命令而自动判断(也叫协商)，参数只能取auto、binary、ascii这三个字符串值。将参数将赋值给settings.binding_protocol</li>
+<li>“I:”   大写i。slab分配器中，每一个页的大小。这个选项的参数是一个数值表示页的大小。默认单位是B也可以在数值后面带K或者M(大小写都行)，表示KB和MB。页的大小小于1KB或者大于128MB都是不允许的。不推荐使用该选项。本选项参数会赋值给settings.item_size_max</li>
+<li>“P:”  大写P。指定pid文件。存放当前mc进程的pid</li>
+<li>“t:”    该选项的参数用于指定worker线程的个数，不建议超过64个。如果不设置该选项默认有4个线程。该参数会赋值给settings.num_threads</li>
+<li>“c:”   小写c。最多允许多少个客户端同时在线(这个值不等价于listen函数的第二个参数)，该选项和后面的b选项有所不同。 默认值为1024个。该选项参数赋值给settings.maxconns。</li>
+<li>“u:”  小写u。当以root用户启动memcached的时候需要指定memcached的所属用户，其他用户启动memcached不需要此选项</li>
+</ol>
+<p>举例</p>
+<pre><code>memcached -d -p 11211 -P /var/run/memcached.pid -c 4096 -t 4 -m 1024 -u root -v
+</code></pre><h2 id="2-一些高级telnet命令"><a href="#2-一些高级telnet命令" class="headerlink" title="2. 一些高级telnet命令"></a>2. 一些高级telnet命令</h2><p>stats slabs<br>查看 memcache的slab class的状态，能够知道数据分布的范围，每个slab有多少页</p>
+<p>stats cachedump 1 0<br>第三个字段是slab的标识<br>第四个字段表示拉取的该slab下的数据，第四个字段0表示不受限制（但实际上只会拉取1M的数据， 并不会全拉）</p>
+<h2 id="3-基础Memcached命令"><a href="#3-基础Memcached命令" class="headerlink" title="3. 基础Memcached命令"></a>3. 基础Memcached命令</h2><p>Memcached 有 4 种类型的命令:</p>
+<pre><code>1. 存储命令(set/add /replace/append/prepend)
+指示服务器储存一些由键值标识的 数据。客户端发送一行命令,后面跟着数据区块;然后,客户端等待接收服务器回传 的命令行,指示成功与否。
+2. 读取命令(get/bget/gets)指示服务器返回与所给键值相符合的数据(一个请求中右 一个或多个键值)。客户端发送一行命令,包括所有请求的键值;服务器每找到一项内容,都会发送回客户端一行关于这项内容的信息,紧跟着是对应的数据区块;直到服务器以一行“END”回应命令结束。
+3. 状态命令(stat)被用于查询服务器的运行状态和其他内部数据。 
+4. 其他命令,如 flush_all,version,quit 等。
+
+
+COMMAND    DESCRIPTION    EXAMPLE
+get    Reads a value    get mykey
+set    Set a key unconditionally    set mykey 0 60 5
+add    Add a new key    add newkey 0 60 5
+replace    Overwrite existing key    replace key 0 60 5
+append    Append data to existing key    append key 0 60 15
+prepend    Prepend data to existing key    prepend key 0 60 15
+incr    Increments numerical key value by given number    incr mykey 2
+decr    Decrements numerical key value by given number    decr mykey 5
+delete    Deletes an existing key    delete mykey
+flush_all    Invalidate specific items immediately    flush_all
+Invalidate all items in n seconds    flush_all 900
+stats    Prints general statistics    stats
+Prints memory statistics    stats slabs
+Prints memory statistics    stats malloc
+Print higher level allocation statistics    stats items
+stats detail
+stats sizes
+Resets statistics    stats reset
+version    Prints server version.    version
+verbosity    Increases log level    verbosity
+quit    Terminate telnet session    quit
+</code></pre><h3 id="stats命令详解"><a href="#stats命令详解" class="headerlink" title="stats命令详解"></a>stats命令详解</h3><pre><code>pid    memcache服务器的进程ID
+uptime    服务器已经运行的秒数
+time    服务器当前的unix时间戳
+version    memcache版本
+pointer_size    当前操作系统的指针大小（32位系统一般是32bit）
+rusage_user    进程的累计用户时间
+rusage_system    进程的累计系统时间
+curr_items    服务器当前存储的items数量
+total_items    从服务器启动以后存储的items总数量
+bytes    当前服务器存储items占用的字节数
+curr_connections    当前打开着的连接数
+total_connections    从服务器启动以后曾经打开过的连接数
+connection_structures    服务器分配的连接构造数
+cmd_get    get命令（获取）总请求次数
+cmd_set    set命令（保存）总请求次数
+get_hits    总命中次数
+get_misses    总未命中次数
+evictions    为获取空闲内存而删除的items数（分配给memcache的空间用满后需要删除旧的items来得到空间分配给新的items）
+bytes_read    总读取字节数（请求字节数）
+bytes_written    总发送字节数（结果字节数）
+limit_maxbytes    分配给memcache的内存大小（字节）
+threads    当前线程数
+</code></pre><p>参考文章<br><a href="http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/" target="_blank" rel="noopener">http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="ckw5yql57003ep8nu5m09k2kc" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-memcache概述" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/17/memcache概述/" class="article-date">
+  <time datetime="2016-04-17T04:00:01.000Z" itemprop="datePublished">2016-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/17/memcache概述/">1. memcache概述</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ol>
+<li>memcached的特征<br> memcached 作为高速运行的分布式缓存服务器,具有以下的特点。<ol>
+<li>协议简单</li>
+<li>基于 libevent 的事件处理 </li>
+<li>内置内存存储方式</li>
+<li>memcached 不互相通信的分布式<br>mc是分布式缓存服务器，完全取决于客户端的实现</li>
+</ol>
+</li>
+</ol>
+<h2 id="Memcache的内存分配"><a href="#Memcache的内存分配" class="headerlink" title="Memcache的内存分配"></a>Memcache的内存分配</h2><ol>
+<li>基本概念<ol>
+<li>Page<br>分配给Slab的内存空间,默认是 1MB。<br>分配给Slab之后根据slab的大小切分成chunk。</li>
+<li>Chunk 用于缓存记录的内存空间。 </li>
+<li>Slab Class：特定大小的Chunk数组</li>
+</ol>
+</li>
+<li>保存<br> memcached 根据收到的数据的大小,选择最适合数据大小的 slab。 memcached 中保存着 slab 内空闲 chunk 的列表,根据该列表选择 chunk, 然后 将数据缓存于其中。</li>
+<li><p>调优<br> 使用Growth Factor进行调优，默认是1.25</p>
+</li>
+<li><p>小结</p>
+<p> 将固定大小的内存（page）分割成各种尺寸的块（chunk）<br> 把尺寸相同的块分组，叫做slab classes</p>
+</li>
+</ol>
+<h2 id="Memcache的过期"><a href="#Memcache的过期" class="headerlink" title="Memcache的过期"></a>Memcache的过期</h2><p> memcached不会释放已分配的内存。记录超时后,客户端就无法再 看见该记录(invisible,透明), 其存储空间即可重复使用。<br> Lazy Expiration<br> memcached 内部不会监视记录是否过期,而是在 get 时查看记录的时间戳,检查 记录是否过期。 这种技术被称为 lazy(惰性)expiration。因此,memcached 不会在过期监视上耗费 CPU 时间。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="ckw5yql58003hp8nuvjxiu7dt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-gitflow工作流" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/03/15/gitflow工作流/" class="article-date">
@@ -133,7 +305,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw1x703z00205enucwnzrblj" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw5yql4n0022p8nukqodc4w7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -192,7 +364,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckw1x7053004t5enu1gf8fhf8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckw5yql5v004pp8nu6mpr3ret" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -244,7 +416,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckw1x705500505enu1ndg2y60" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckw5yql5z004zp8nuykz9cmam" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -565,7 +737,7 @@ set @@tx_isolation=&apos;read-committed&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw1x704l003l5enuxh9bgfav" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw5yql5b003np8nu49zd7915" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -627,7 +799,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckw1x703w001s5enu5sf24nes" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckw5yql4k001vp8nufowuxfw7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -687,7 +859,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckw1x704h003b5enuix7iggei" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckw5yql540037p8nugffssvue" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -787,7 +959,7 @@ hbase(main):013:0&gt; drop &apos;test&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="ckw1x704f00365enudrqw2beg" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="ckw5yql55003bp8nubxkw3s6i" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -893,285 +1065,10 @@ start-yarn.sh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="ckw1x704e00345enuyi9sak54" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="ckw5yql510030p8nug2nplnwi" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-git基本操作" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2015/12/20/git基本操作/" class="article-date">
-  <time datetime="2015-12-20T05:02:01.000Z" itemprop="datePublished">2015-12-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/12/20/git基本操作/">git基本操作</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-初始化"><a href="#0-初始化" class="headerlink" title="0. 初始化"></a>0. 初始化</h2><pre><code>git init --bare 创建一个仓库
-
-git clone user@host:/path/repo.git
-</code></pre><h2 id="1-Git-用户配置"><a href="#1-Git-用户配置" class="headerlink" title="1. Git 用户配置"></a>1. Git 用户配置</h2><pre><code>1. 用户和邮箱
-
-        git config --global user.name &quot;Example Surname&quot;
-        git config --global user.email &quot;your.email@gmail.com&quot;
-
-2. 设置提交的分支
-
-    simple只是将当前激活态的提交
-    matching则是全部提交
-    建议使用simple
-
-        git config --global push.default simple 
-
-3. 设置高亮
-
-
-        git config --global color.ui true 
-        git config --global color.status auto 
-        git config --global color.branch auto
-
-4. 默认的编辑器
-
-        git config --global core.editor vim
-        git config --global merge.tool vimdiff
-        git config --global alias.d &apos;difftool -y&apos;
-
-
-        git config --global alias.staged &apos;diff --cached&apos;
-        git config --global alias.st &apos;status&apos;
-5. 设置git status时显示中文
-
-    git config --global core.quotepath false
-</code></pre><h2 id="2-设置忽略文件"><a href="#2-设置忽略文件" class="headerlink" title="2. 设置忽略文件"></a>2. 设置忽略文件</h2><pre><code>.gitignore
-</code></pre><h2 id="3-基本操作"><a href="#3-基本操作" class="headerlink" title="3. 基本操作"></a>3. 基本操作</h2><pre><code>add rm commit branch push pull log status
-</code></pre><h2 id="4-恢复文件"><a href="#4-恢复文件" class="headerlink" title="4. 恢复文件"></a>4. 恢复文件</h2><pre><code>从stage阶段恢复一个文件
-
-    git reset HEAD xxx_file_
-
-从modify恢复一个文件
-
-    git checkout -- xxx_file
-
-
-    git commit -m &apos;message&apos;
-    git commit --amend -m &quot;new message&quot;
-</code></pre><h2 id="5-从仓库中删除一个文件"><a href="#5-从仓库中删除一个文件" class="headerlink" title="5. 从仓库中删除一个文件"></a>5. 从仓库中删除一个文件</h2><pre><code>git rm -r --cached xxxfile
-git rm xxfile 二者区别
-</code></pre><h2 id="6-远程操作"><a href="#6-远程操作" class="headerlink" title="6. 远程操作"></a>6. 远程操作</h2><pre><code>Git remote add xxx_name yyy_url
-git remote rm xxx_name
-Git push repo_name xxx_branch
-</code></pre><h2 id="7-分支操作"><a href="#7-分支操作" class="headerlink" title="7. 分支操作"></a>7. 分支操作</h2><pre><code>Git branch
-git checkout -b xx_branch
-git branch -a // 包含远程分支
-</code></pre><h2 id="8-分支之间的区别"><a href="#8-分支之间的区别" class="headerlink" title="8. 分支之间的区别"></a>8. 分支之间的区别</h2><pre><code>Git diff master your_branch
-</code></pre><h2 id="9-标签-tag"><a href="#9-标签-tag" class="headerlink" title="9. 标签 tag"></a>9. 标签 tag</h2><pre><code>Git tag
-git tag 1.7.1 // 创建轻量的tag
-git show 1.7.1
-
-git tag 1.6.1 -m &quot;release 1.6.1&quot;
-git checkout &lt;tag_name&gt;
-git push origin [tag_name]
-git push origin tag &lt;tag_name&gt;
-git tag -d &lt;tag_name&gt;
-git push origin :refs/tags/1.6.1
-</code></pre><h2 id="10-储藏"><a href="#10-储藏" class="headerlink" title="10. 储藏"></a>10. 储藏</h2><pre><code>Git stash
-git stash pop
-git stash
-git stash list
-git stash apply stash@{0}
-git stash drop stash@{0}
-git stash clear
-</code></pre><h2 id="11-通过git-reset-移动HEAD指针"><a href="#11-通过git-reset-移动HEAD指针" class="headerlink" title="11. 通过git reset 移动HEAD指针"></a>11. 通过git reset 移动HEAD指针</h2><pre><code>git reset --mixed HEAD~2
-
-git reflog
-
-git reset --soft HEAD~2
-
-git reset --hard HEAD~2
-</code></pre><h2 id="12-恢复丢失的提交"><a href="#12-恢复丢失的提交" class="headerlink" title="12. 恢复丢失的提交"></a>12. 恢复丢失的提交</h2><pre><code>git reflog: is a mechanism to record the movements of the HEAD pointer and the branches
-</code></pre><h2 id="13-远程分支删除"><a href="#13-远程分支删除" class="headerlink" title="13. 远程分支删除"></a>13. 远程分支删除</h2><pre><code>remote and local tracking branches
- git branch -r // list all remote branches
-
- git branch -d -r origin/[remote_branch] // delete remote branch from origin
-
- git branch origin :branch_name
- git push origin --delete branch_name
-</code></pre><h2 id="14-解决冲突"><a href="#14-解决冲突" class="headerlink" title="14. 解决冲突"></a>14. 解决冲突</h2><pre><code>git mergetool
-
-    &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD Change in the first repository 
-    ======= Change in the second repository 
-    &gt;&gt;&gt;&gt;&gt;&gt;&gt; b29196692f5ebfd10d8a9ca1911c8b08127c85f8
-</code></pre><h2 id="15-git-log"><a href="#15-git-log" class="headerlink" title="15. git log"></a>15. git log</h2><pre><code>git log --since=1.days --graph --pretty=format:&quot;%cn %d--&gt;%s&quot;
-</code></pre><h2 id="16-git-archive"><a href="#16-git-archive" class="headerlink" title="16. git archive"></a>16. git archive</h2><pre><code>git archive &lt;COMMIT_ID&gt; &gt; destFile.tar.gz
-将提交id为COMMIT_ID的版本提取出来，以tar.gz的格式将其保存到destFile.tar.gz中
-
-其中COMMIT_ID可以替换为分支名，就是将当前分支的最新版本提取出来保存到目标文件
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="ckw1x704000235enuhron7e4w" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-Kafka-学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2015/11/28/Kafka-学习笔记/" class="article-date">
-  <time datetime="2015-11-28T09:02:01.000Z" itemprop="datePublished">2015-11-28</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/11/28/Kafka-学习笔记/">Kafka-学习笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="1-Kafka基本概念"><a href="#1-Kafka基本概念" class="headerlink" title="1. Kafka基本概念"></a>1. Kafka基本概念</h2><ol>
-<li>话题topic: 特定类型的消息流，话题是消息的分类名。物理上不同topic的消息分开存储，逻辑上一个Topic消息可以保存在一个或多个broker上，但用户只需要指定指定消息的topic即可生产或消费数据而不必关系数据存于何处</li>
-<li>生产者producer：能够发布消息到话题的任何对象</li>
-<li>kafka集群：已经发布的消息保存的服务器</li>
-<li>代理broker：kafka集群中的服务器</li>
-<li>分片partition：Partition：topic物理上的分组，一个topic可以分为多个partition，每个partition是一个有序的队列</li>
-<li>消费组 consumer group：每个consumer属于一个特定的Consumer Group，可以为每个Consumer指定group name，如果不指定，则属于默认的group。每一个consumer实例都属于一个consumer group，每一条消息只会被同一个consumer group里的一个consumer实例消费。每条消息可以被多个consumer group消费</li>
-<li>segment：partition物理上由多个segment组成</li>
-<li>offset：每个partition都由一系列有序的、不可变的消息组成，这些消息被连续的追加到partition中。partition中的每个消息都有一个连续的序列号叫做offset,用于partition唯一标识一条消息</li>
-</ol>
-<h2 id="2-Topic，Partition，Segment，Offset"><a href="#2-Topic，Partition，Segment，Offset" class="headerlink" title="2. Topic，Partition，Segment，Offset"></a>2. Topic，Partition，Segment，Offset</h2><h3 id="topic和Partition关系"><a href="#topic和Partition关系" class="headerlink" title="topic和Partition关系"></a>topic和Partition关系</h3><ol>
-<li>topic在逻辑上可以认为是一个queue，每条消息都必须指定它的topic</li>
-<li>为了使Kafka吞吐率可以线性提高，物理上把Topic分成一个或多个Partition，每个Partition在物理上对应一个文件夹，该文件夹下存储这个Partition的所有消息和索引文件。</li>
-</ol>
-<h3 id="Partition的存储分布"><a href="#Partition的存储分布" class="headerlink" title="Partition的存储分布"></a>Partition的存储分布</h3><ol>
-<li>参考<a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a> </li>
-<li>目录：在config/server.properties的log.dirs中。同一个topic下有多个不同partition，每个partition是一个目录，目录命名是topic名称+有序序号。</li>
-<li>Partition中文件存储方式<ol>
-<li>每个partition相当于一个巨型文件被平均分配到多个大小相同的segment段数据文件中。但每个段segmentfile的消息数量不一定相等。</li>
-<li>每个partition只需要支持顺序读写就行了，segment文件生命周期由服务端配置参数决定。</li>
-</ol>
-</li>
-<li><p>Partition中segment文件存储结构</p>
-<ol>
-<li>segment file组成：由两大部分组成，分别为index file和data file。这两个文件一一对应，后缀.index和.log，分别表示segment索引文件、数据文件</li>
-<li>segment命名规则:partion全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值。这种命名很重要，有助于通过offset查找message。</li>
-<li>一个片段segment的index和data file的对应关系，索引中存储大量元数据，数据文件存储大量消息，索引文件中元数据指向对应数据文件中message的物理偏移地址。</li>
-</ol>
-</li>
-<li><p>Segment数据文件组成</p>
-<ol>
-<li>segment data file由许多message组成</li>
-</ol>
-</li>
-<li>如何在Partition中通过offset查找message<ol>
-<li>通过二分查找offset，找到该offset所在的segment文件</li>
-<li>在所找到的segment文件中，顺序到在index文件中的元数据物理位置和log文件中物理偏移地址。</li>
-<li>segment index file采取稀疏索引存储方式，它减少索引文件大小，通过mmap可以直接内存操作，稀疏索引为数据文件的每个对应message设置一个元数据指针,它比稠密索引节省了更多的存储空间，但查找起来需要消耗更多的时间</li>
-</ol>
-</li>
-<li>Partition的好处<ol>
-<li>实现并发：传统的队列，为了保证数据的有序性，只能锁定一个队列。而kafka由于采用Partition的方式，则可以实现并发。</li>
-<li>实现并发的设计：将一个topic中的所有分片partition分配给一个consumer group中的消费者们。这样的话，每个分片就可以被consumer group中的准确的某个消费者消费。</li>
-<li>注意：确保一个consumer group中消费者的个数不要多于分片的个数</li>
-<li>kafka的有序性只能保证某个分片内的有序，不能保证分片之间的有效性。如果要想保证所有数据的有序，那么可以只有一个分片。</li>
-</ol>
-</li>
-</ol>
-<p>摘录来自: kafka.apache.org. “Apache Kafka”。 iBooks. </p>
-<h2 id="3-生产者-Producer"><a href="#3-生产者-Producer" class="headerlink" title="3. 生产者 Producer"></a>3. 生产者 Producer</h2><h3 id="1-负载均衡"><a href="#1-负载均衡" class="headerlink" title="1. 负载均衡"></a>1. 负载均衡</h3><ol>
-<li>由producer客户端决定消息被路由到哪个partition。producer将会和Topic下所有partition leader保持socket连接;消息由producer直接通过socket发送到broker,中间不会经过任何”路由层”.路由策略比如random, key-hash。</li>
-</ol>
-<h3 id="2-异步发送"><a href="#2-异步发送" class="headerlink" title="2. 异步发送"></a>2. 异步发送</h3><p>将多条消息暂且在客户端buffer起来，并将他们批量的发送到broker，小数据IO太多，会拖慢整体的网络延迟，批量延迟发送事实上提升了网络效率。不过这也有一定的隐患，比如说当producer失效时，那些尚未发送的消息将会丢失</p>
-<h3 id="3-消息传送保证机制"><a href="#3-消息传送保证机制" class="headerlink" title="3. 消息传送保证机制"></a>3. 消息传送保证机制</h3><p>有几种方式：<br>    1) at most once: 最多一次,这个和JMS中”非持久化”消息类似.发送一次,无论成败,将不会重发.<br>    2) at least once: 消息至少发送一次,如果消息未能接受成功,可能会重发,直到接收成功.<br>    3) exactly once: 消息只会发送一次</p>
-<h2 id="4-消费者-Consumer"><a href="#4-消费者-Consumer" class="headerlink" title="4. 消费者 Consumer"></a>4. 消费者 Consumer</h2><ol>
-<li>通常来讲，消息有两种模式：a.队列 b.发布订阅。队列的话，一条消息只能被一个消费者消费。发布订阅的话，消息被所有消费者消费。如果所有consumer实例属于一个consumer group，则实现队列。如果每个consumer group只有一个consumer实例，则实现发布订阅。</li>
-<li>consumer端向broker发送”fetch”请求,并告知其获取消息的offset;此后consumer将会获得一定条数的消息;consumer端也可以重置offset来重新消费消息.</li>
-<li>Consumer与Consumer Group<ol>
-<li>每个consumer实例都属于一个consumer group。每个消息只能被同一个consumer group里的一个consumer实例消费，但不同consumer group可以同时消费同一条消息</li>
-</ol>
-</li>
-</ol>
-<h2 id="5-系统级别"><a href="#5-系统级别" class="headerlink" title="5. 系统级别"></a>5. 系统级别</h2><h3 id="1-kafka的broker是无状态的"><a href="#1-kafka的broker是无状态的" class="headerlink" title="1. kafka的broker是无状态的"></a>1. kafka的broker是无状态的</h3><ol>
-<li>kafka代理是无状态的，意味着消费者必须维护已消费的状态信息。<ol>
-<li>从代理broker删除消息很棘手，因为代理不知道消费者是否已经使用了该消息。kafka使用一个简单的基于时间的SLA应用于保留策略。当消息在代理中超过一定时间以后，将会自动删除。</li>
-<li>好处是：消费者可以故意倒回到老的偏移量再次消费数据。</li>
-</ol>
-</li>
-</ol>
-<h3 id="2-broker数据删除"><a href="#2-broker数据删除" class="headerlink" title="2. broker数据删除"></a>2. broker数据删除</h3><ol>
-<li>不管消息被消费与否，kafka集群会保留所有消息。由于磁盘限制，kafka提供两种策略删除旧数据：一种基于时间，一种基于partition文件大小。可以通过config/server.properties配置</li>
-</ol>
-<h3 id="3-ZooKeeper与Kafka"><a href="#3-ZooKeeper与Kafka" class="headerlink" title="3. ZooKeeper与Kafka"></a>3. ZooKeeper与Kafka</h3><ol>
-<li>zookeeper的关注问题：<ol>
-<li>所有分布式系统的一个常见问题是：如何在任一时间点确定哪些服务器活着并且在工作中</li>
-<li>面对网络失败，带宽限制，可变延迟连接，安全问题，跨多个数据中心时可能发生错误时，如何可靠做这些事情</li>
-</ol>
-</li>
-</ol>
-<h3 id="4-Kafka设计目标"><a href="#4-Kafka设计目标" class="headerlink" title="4. Kafka设计目标"></a>4. Kafka设计目标</h3><ol>
-<li>以时间复杂度O(1)的方式提供消息持久化能力</li>
-<li>高吞吐率</li>
-<li>支持Kafka Server间的消息分区，及分布式消费，同时保证每个Partition内的消息顺序传输</li>
-<li>同时保持离线数据处理和实时数据处理。</li>
-<li>支持在线水平扩展</li>
-</ol>
-<h3 id="5-为何使用消息系统"><a href="#5-为何使用消息系统" class="headerlink" title="5. 为何使用消息系统"></a>5. 为何使用消息系统</h3><ol>
-<li>解耦</li>
-<li>扩展性</li>
-<li>灵活性&amp;峰值处理能力</li>
-<li>顺序保证</li>
-<li>异步通信</li>
-<li>demo</li>
-</ol>
-<p>参考文章：</p>
-<ol>
-<li><a href="http://tech.meituan.com/kafka-fs-design-theory.html" target="_blank" rel="noopener">http://tech.meituan.com/kafka-fs-design-theory.html</a></li>
-<li><a href="http://my.oschina.net/frankwu/blog/305010" target="_blank" rel="noopener">http://my.oschina.net/frankwu/blog/305010</a></li>
-<li><a href="http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral" target="_blank" rel="noopener">http://dataunion.org/9307.html?utm_source=tuicool&amp;utm_medium=referral</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/11/28/Kafka-学习笔记/" data-id="ckw1x703d000e5enubk0772on" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
 
     </footer>
   </div>
@@ -1230,6 +1127,14 @@ git reset --hard HEAD~2
       <ul>
         
           <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -1239,14 +1144,6 @@ git reset --hard HEAD~2
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

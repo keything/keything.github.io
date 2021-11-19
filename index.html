@@ -62,6 +62,176 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-分布式-CAP理论" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/19/分布式-CAP理论/" class="article-date">
+  <time datetime="2021-11-19T05:49:15.000Z" itemprop="datePublished">2021-11-19</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="CAP-理论"><a href="#CAP-理论" class="headerlink" title="CAP 理论"></a>CAP 理论</h1><p>CAP理论在互联网界有着广泛认知度，大家会将其作为衡量系统设计的标准。大家都能够清楚地讲出CAP理论：任何分布式系统在可用性、一致性、分区容错性方面，不能兼得，最多只能三选二，因此任何分布式系统设计只能在三者中进行不同取舍。</p>
+<h2 id="1-CAP历史"><a href="#1-CAP历史" class="headerlink" title="1. CAP历史"></a>1. CAP历史</h2><p>2000年， Eric Brewer教授在PODC研讨会上提出一个猜想<a href="https://radlab.cs.berkeley.edu/people/fox/static/pubs/pdf/c18.pdf" target="_blank" rel="noopener">[1]</a>：一致性、可用性和分区容错性三者无法在分布式系统中被同时满足，并且最多只能满足其中两个！</p>
+<p>这个猜想首次把一致性、可用性和分区容错三个因素提炼出来作为系统设计的重要特征，断言用此三者可以划分所有的分布式系统，并指明这三个特征之间的不可能性关系。</p>
+<p>Brewer教授当时想象的分布式场景是webservice，一组webservice后台运行众多server，对service的读写会反应到后台的server集群，并且对CAP进行定义：</p>
+<ul>
+<li>Strong consistency: means single-copy ACID consistency; </li>
+<li>High availability: 通过冗余（比如副本）提供高可用。如果特定数据消费者能够一直访问一些副本，那么数据被认为是高可用。</li>
+<li>Partition-resilience: 当出现数据副本分区时，系统可以存活。</li>
+</ul>
+<p>Strong CAP Principle：Strong Consistency, High Availability, Partition-resilience：最多选择两个。</p>
+<p>CAP猜想清晰表达在设计分布式应用的取舍，</p>
+<ul>
+<li>CA without P： 在没有网络分区的情况下，数据库提供分布式事务语义。</li>
+<li>CP without A： 有网络分区下，在分区恢复之前，更多的ACID数据库的事务都会被阻塞，从而避免引入合并冲突，并带来不一致。</li>
+<li>AP without C:  出现分区时，数据出现不一致。 通常，任何分布式数据问题可以通过基于过期的caching来获得AP，或多数选举获得PC（少数人群是不可用的）。</li>
+</ul>
+<p>Weak CAP Principle: 保证CAP的两个更强，那么意味着另外一个更弱。 </p>
+<h2 id="2-CAP被上升为定理，"><a href="#2-CAP被上升为定理，" class="headerlink" title="2. CAP被上升为定理，"></a>2. CAP被上升为定理，</h2><p>2002年，Lynch与其他人<a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf" target="_blank" rel="noopener">[2]</a>证明了Brewer猜想，从而把CAP上升为一个定理。但是只是证明了CAP三者不可能同时满足，并没有证明任意二者都可满足的问题，所以，该证明被认为是一个收窄的结果。</p>
+<p>Lynch的证明采用反证法：如果三者同时满足，则因为P的存在，那么一定存在Server之间丢包，那么就不能保证C，证明简洁而严谨。</p>
+<p>在该证明中，CAP进行更明确的声明：</p>
+<ul>
+<li>C：一致性被称为原子对象，任何读写都应该看起来是原子的，又叫线性化。写后面的读一定能读到前面写的内容。所有的读写请求都好像被全局排序。 </li>
+<li>A：对任何非失败节点都应该在有限时间内给出响应。（请求的可终止性）</li>
+<li>P：允许节点之间丢失任意多的消息，当网络分区发生时，节点之间的消息可能会完全丢失。</li>
+</ul>
+<h2 id="3-CAP的质疑"><a href="#3-CAP的质疑" class="headerlink" title="3. CAP的质疑"></a>3. CAP的质疑</h2><p>CAP理论考虑的场景很少，提供的是一个大的思路；不同论文/文章针对具体场景去质疑时，总能够指出CAP不合理的地方。 </p>
+<p>但一个比较重要的地方就是不要真的只是进行三选二。比如在没有网络分区时，一致性和可用性也只能二选一。  </p>
+<blockquote>
+<p>以下是几篇论文和文章对CAP的质疑，有兴趣的可以了解一下</p>
+</blockquote>
+<h3 id="3-1-质疑1："><a href="#3-1-质疑1：" class="headerlink" title="3.1 质疑1："></a>3.1 质疑1：</h3><p>文章<a href="http://markburgess.org/blog_cap.html" target="_blank" rel="noopener">[8]</a>中对CAP有一系列描述，没太明白在说什么。 </p>
+<h3 id="3-2-质疑2：-不要快速丢弃掉C"><a href="#3-2-质疑2：-不要快速丢弃掉C" class="headerlink" title="3.2 质疑2： 不要快速丢弃掉C"></a>3.2 质疑2： 不要快速丢弃掉C</h3><p>在<a href="https://cacm.acm.org/blogs/blog-cacm/83396-errors-in-database-systems-eventual-consistency-and-the-cap-theorem/fulltext" target="_blank" rel="noopener">[3]</a>中，其质疑的主张是：CAP必须放弃某一个目标。从错误中恢复有很多维度要考虑，该文章解释了很多种错误。结论是：不要轻易放弃C。因为分区容错在局域网中很少发生，在广域网中也有各种备选方案。 </p>
+<h3 id="3-3-质疑3-构建不可避免模型避免CAP的复杂性"><a href="#3-3-质疑3-构建不可避免模型避免CAP的复杂性" class="headerlink" title="3.3 质疑3 构建不可避免模型避免CAP的复杂性"></a>3.3 质疑3 构建不可避免模型避免CAP的复杂性</h3><p>文章<a href="http://nathanmarz.com/blog/how-to-beat-the-cap-theorem.html" target="_blank" rel="noopener">[4]</a>的标题是锤死CAP。<br>作者认为CAP困境在于允许数据变更，每次变更都得数据同步，保持一致性，他认为数据是客观存在的，维护增删操作（译注：我个人认为是LSM log-structured message tree的理念）。<br>作者认为数据模型可以抽象为Query=Function(all data)，完全抛弃CAP中繁琐且模糊的定义。</p>
+<p>我个人觉得：这篇文章只是换了一个角度来说明分布式系统，与CAP没啥关系。 </p>
+<h2 id="4-对质疑的回应"><a href="#4-对质疑的回应" class="headerlink" title="4. 对质疑的回应"></a>4. 对质疑的回应</h2><p>面对大量的质疑，Brewer和Lynch进行重申，</p>
+<p>Brewer在2012你那重申<a href="https://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed/" target="_blank" rel="noopener">[5]</a>:</p>
+<ul>
+<li>3选2这个表述是不准确的，在某些分区极少发生的情况下，三者能顺畅在一起配合。没有P时是CA，发生P时是PC或PA</li>
+<li>CAP不仅仅发生在整个系统中，可能是发生在某个子系统或系统的某个阶段</li>
+<li>CAP中每一个都是连续取值，而不是0-1关系。</li>
+</ul>
+<p>Lynch在10年后的2012年重写了论文<a href="http://groups.csail.mit.edu/tds/papers/Gilbert/Brewer2.pdf" target="_blank" rel="noopener">[9]</a>，该论文主要做了几件事：</p>
+<ul>
+<li>一致性场景不会引入用户agent，只发生在后台集群之内</li>
+<li>引入了活性(liveness)和安全属性(safety)，在一个更抽象的概念下研究分布式系统，并认为CAP是活性与安全熟悉之间权衡的一个特例。其中的一致性属于liveness，可用性属于safety</li>
+<li>把分区容错归结为一个对网络环境的陈述，而非之前一个独立条件。这实际上就是更加明确了概念</li>
+<li>把CAP的研究推到一个更广阔的空间：网络存在同步、部分同步；一致性性的结果也从仅存在一个到存在N个（部分一致）；引入了通信周期round，并引用了其他论文，给出了为了保证N个一致性结果，至少需要通信的round数。也介绍了其他人的一些成果，这些成果分别都对CAP的某一个方面做出了特殊的贡献！</li>
+</ul>
+<p>其实Lynch论文主要做了两件事：</p>
+<ul>
+<li>缩小CAP适用的定义，消除质疑的场景；</li>
+<li>展示了CAP在非单一一致性结果下的广阔研究成果！并顺便暗示CAP定理依旧正确！</li>
+</ul>
+<h2 id="5-很多系统既不是线性化-也不是CAP-Available-6"><a href="#5-很多系统既不是线性化-也不是CAP-Available-6" class="headerlink" title="5. 很多系统既不是线性化 也不是CAP-Available [6]"></a>5. 很多系统既不是线性化 也不是CAP-Available [6]</h2><p>基于严格的CAP定义，很多系统既不是线性化、也不是CAP-Available。</p>
+<p>举例，考虑单主的多副本数据库，这是大多数关系型数据库创建副本的标准方式。在这种配置下，如果一个client与leader分离，那么它就不能再向数据库写入数据。即使可以从follower读取数据，但已经不能写入，这就不符合CAP-Avaible。当然这种配置常常被叫做“高可用性”。</p>
+<p>如果单主复制不是CAP-Avaible，那么是不是CP呢？并不一定是。如果运行应用从follower读取数据，并且复制是异步的，那么副本可能会落后于leader，这时候读取就不是线性的，不符合CAP-consistent。</p>
+<p>所以这些系统既不是CAP-consistent，也不是CAP-avaible。他们只是P。</p>
+<p>以Zookeeper为例：</p>
+<p>zookeeper使用consensus algorithm，所以人们常常将其看做是选择一致性高于可用性的例子，但事实上，zk默认是不提供线性读取。连接到数据库某个节点的client，读取的是该节点上的数据，即时最新的数据在其他节点。 默认Zookeeper不满足CAP中的C。</p>
+<p>关于Zookeeper的Availablility？ </p>
+<p>zk采用法定人数的方式实现共识。那么多数节点是可用的，而少数节点的集群是不能写入的，不符合ZK的CAP-available。 </p>
+<h2 id="6-该如何看待CAP"><a href="#6-该如何看待CAP" class="headerlink" title="6. 该如何看待CAP"></a>6. 该如何看待CAP</h2><ul>
+<li>当我们提到CAP的时候，首先我们指的是严格的CAP定义；</li>
+<li>首先肯定的是，CAP并不适合再作为一个适应任何场景的定理，它的正确性更适合基于原子读写的NoSQL场景</li>
+<li>无论如此，C、A、P三个概念始终存在于任何分布式系统，只是不同模型会有不同呈现；一个系统的不同子模块会有不同关系；<ul>
+<li>在没有出现P（分区时），可以实现CA；</li>
+<li>在出现P时，CA二选一，或者实现的是 C+HA</li>
+</ul>
+</li>
+<li>当我们分析一个系统的时候，要从多个维度去分析，比如etcd是CP+HA <a href="https://medium.com/@ahadrana/understanding-etcd3-8784c4f61755" target="_blank" rel="noopener">[10]</a></li>
+<li>有一个CAP理论的扩展叫PACELC理论</li>
+</ul>
+<h2 id="论文"><a href="#论文" class="headerlink" title="论文"></a>论文</h2><ol>
+<li><a href="https://radlab.cs.berkeley.edu/people/fox/static/pubs/pdf/c18.pdf" target="_blank" rel="noopener">Harvest, Yield, and Scalable Tolerant Systems</a></li>
+<li><a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf" target="_blank" rel="noopener">Brewer’s Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web</a></li>
+<li><a href="https://cacm.acm.org/blogs/blog-cacm/83396-errors-in-database-systems-eventual-consistency-and-the-cap-theorem/fulltext" target="_blank" rel="noopener">Errors in Database Systems, Eventual Consistency, and the CAP Theorem</a></li>
+<li><a href="http://nathanmarz.com/blog/how-to-beat-the-cap-theorem.html" target="_blank" rel="noopener">How to beat the CAP theorem</a></li>
+<li><a href="https://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed/" target="_blank" rel="noopener">CAP Twelve Years Later: How the “Rules” Have Changed</a></li>
+<li><a href="https://martin.kleppmann.com/2015/05/11/please-stop-calling-databases-cp-or-ap.html" target="_blank" rel="noopener">Please stop calling databases CP or AP</a></li>
+<li><a href="https://blog.csdn.net/chen77716/article/details/30635543?spm=1001.2014.3001.5501" target="_blank" rel="noopener">CAP理论</a></li>
+<li><a href="http://markburgess.org/blog_cap.html" target="_blank" rel="noopener">Deconstructing the `CAP theorem’ for CM and DevOps</a></li>
+<li><a href="http://groups.csail.mit.edu/tds/papers/Gilbert/Brewer2.pdf" target="_blank" rel="noopener">Perspectives on the CAP Theorem</a></li>
+<li><a href="https://medium.com/@ahadrana/understanding-etcd3-8784c4f61755" target="_blank" rel="noopener">understanding etcd3 (需要翻墙)</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/19/分布式-CAP理论/" data-id="ckw5yql5y004wp8nutl5bp23m" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-分布式-全序广播" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/17/分布式-全序广播/" class="article-date">
+  <time datetime="2021-11-17T12:25:12.000Z" itemprop="datePublished">2021-11-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>本文是读论文 <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.110.6701&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener">Total Order Broadcast and Multicast Algorithms</a> 的摘录。</p>
+<p>读该论文是想对全序广播(Total Order Broadcast)有一个直观印象。</p>
+<p>本文将从以下几方面来进行：</p>
+<ol>
+<li>什么是全序广播？</li>
+<li>为什么引入全序广播？</li>
+<li>全序广播如何实现？</li>
+<li>全序广播的难点是什么？</li>
+<li>全序广播有哪些应用场景？</li>
+</ol>
+<h2 id="什么是全序广播"><a href="#什么是全序广播" class="headerlink" title="什么是全序广播"></a>什么是全序广播</h2><p>在容错的分布式系统中，全序广播（total order broadcast） 是一个广播：多进程系统中全部正确的进程都能够以相同顺序收到相同内容消息。<br>当然全序广播又叫原子广播(atomic broadcast)，因为对于全部参与者而言，最后要么全部成功，那么没有副作用的终止。</p>
+<h3 id="全序广播有哪些属性？"><a href="#全序广播有哪些属性？" class="headerlink" title="全序广播有哪些属性？"></a>全序广播有哪些属性？</h3><h2 id="为什么引入全序广播"><a href="#为什么引入全序广播" class="headerlink" title="为什么引入全序广播"></a>为什么引入全序广播</h2><h3 id="全序广播解决哪些问题？"><a href="#全序广播解决哪些问题？" class="headerlink" title="全序广播解决哪些问题？"></a>全序广播解决哪些问题？</h3><h3 id="分布式中广播有哪些？"><a href="#分布式中广播有哪些？" class="headerlink" title="分布式中广播有哪些？"></a>分布式中广播有哪些？</h3><h2 id="全序广播如何实现"><a href="#全序广播如何实现" class="headerlink" title="全序广播如何实现"></a>全序广播如何实现</h2><h3 id="不容错的全序广播"><a href="#不容错的全序广播" class="headerlink" title="不容错的全序广播"></a>不容错的全序广播</h3><h3 id="容错的全序广播"><a href="#容错的全序广播" class="headerlink" title="容错的全序广播"></a>容错的全序广播</h3><h2 id="全序广播应用场景"><a href="#全序广播应用场景" class="headerlink" title="全序广播应用场景"></a>全序广播应用场景</h2><h2 id="参考文章："><a href="#参考文章：" class="headerlink" title="参考文章："></a>参考文章：</h2><ol>
+<li><a href="https://en.wikipedia.org/wiki/Atomic_broadcast" target="_blank" rel="noopener">Atomic broadcast</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/17/分布式-全序广播/" data-id="ckw5yql67005jp8nusw4s6he1" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Spark-DataSource-Hive Tables" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2021/11/16/Spark-DataSource-Hive Tables/" class="article-date">
@@ -78,7 +248,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/16/Spark-DataSource-Hive Tables/" data-id="ckw1x701z00005enumzuqbp7y" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/16/Spark-DataSource-Hive Tables/" data-id="ckw5yql2t0000p8nunhvkcqex" class="article-share-link">Share</a>
       
       
     </footer>
@@ -286,7 +456,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw1x7059005a5enuw1k1ob4a" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2021/11/14/分布式-事务/" data-id="ckw5yql67005lp8nua611kc7e" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
@@ -345,7 +515,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="ckw1x7046002i5enupenh40uq" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/29/golang继承/" data-id="ckw5yql4u002hp8nux815um9c" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -591,7 +761,7 @@ object SimpleApp {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="ckw1x7052004q5enuggr4u302" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/04/28/spark-Quick-Start/" data-id="ckw5yql5s004kp8nujmriezl5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -673,7 +843,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="ckw1x7043002a5enu2wnwawt5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/20/golang-包导入/" data-id="ckw5yql4p0026p8nuig1vp401" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -713,7 +883,7 @@ func main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="ckw1x704200285enun5f2ms9x" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-与zookeeper交互/" data-id="ckw5yql4q0029p8nuudrdhnkj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -805,7 +975,7 @@ type InterfaceAction func(hosts []string, is_high_node, is_primary bool) (bool, 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="ckw1x7043002b5enucuxz3fp3" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2019/03/02/golang-面向对象编程/" data-id="ckw5yql4s002dp8nuzyykl5hy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/golang/">golang</a></li></ul>
@@ -886,249 +1056,7 @@ AS (thing1 INT, thing2 INT)</code></p>
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="ckw1x7049002q5enu6p7m4szo" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-hive权威指南学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/09/23/hive权威指南学习笔记/" class="article-date">
-  <time datetime="2018-09-23T15:02:05.000Z" itemprop="datePublished">2018-09-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/09/23/hive权威指南学习笔记/">hive权威指南学习笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Hive操作</p>
-<p>本篇文章是对 <code>https://cwiki.apache.org/confluence/display/Hive/GettingStarted#GettingStarted-DDLOperations</code> </p>
-<p>以及</p>
-<p>《Hive编程指南》的学习总结</p>
-<ol>
-<li>DDL Operations (data defination language)</li>
-</ol>
-<ul>
-<li>create table pokes (foo INT, bar STRING);</li>
-<li>create table invites (foo INT, bar STRING) PARTITIONED BY (ds STRING);</li>
-</ul>
-<p>partition column 是一个虚拟列，并不是数据本身的一部分，但是可以获得某一份特定数据集。 </p>
-<ul>
-<li>show tables;</li>
-<li>show tables ‘.*s’</li>
-<li>describe invites;</li>
-</ul>
-<ol start="2">
-<li>DML Operations (data manipulation language)</li>
-</ol>
-<h3 id="2-1-装载数据"><a href="#2-1-装载数据" class="headerlink" title="2.1 装载数据"></a>2.1 装载数据</h3><ul>
-<li>LOAD DATA LOCAL INPUT ‘./examples/files/kv1.txt’ OVERWRITE INTO TABLE pokes;</li>
-<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv2.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-15’);</li>
-<li>LOAD DATA LOCAL INPATH ‘./examples/files/kv3.txt’ OVERWRITE INTO TABLE invites PARTITION (ds=’2008-08-08’);</li>
-</ul>
-<p><code>LOCAL</code> 表明这是在本地文件系统上的文件；如果没有的话，那么就从hdfs上获取文件。</p>
-<p><code>OVERWRITE</code> 表明表中已经存在的数据将会被删除。 如果没有的话，数据文件被添加到已经存在的数据集合中。 </p>
-<h3 id="2-2-通过查询语句插入数据"><a href="#2-2-通过查询语句插入数据" class="headerlink" title="2.2 通过查询语句插入数据"></a>2.2 通过查询语句插入数据</h3><ul>
-<li><code>FROM staged_employees se 
-INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;OR&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;OR&#39;
-INSERT OVERWRITE TABLE employee PARTITION (country = &#39;US&#39; and state = &#39;CA&#39;) select *  where se.country = &#39;US&#39; and se.state = &#39;CA&#39;</code></li>
-</ul>
-<h4 id="动态分区插入"><a href="#动态分区插入" class="headerlink" title="动态分区插入"></a>动态分区插入</h4><p>前面的语法中有一个问题，即：如果需要创建非常多的分区，那么用户就需要写非常多的SQL。<br>幸运的是：Hive提供了一个动态分区功能，可以基于查询参数推断出需要创建的分区名称。相比之下，前面看到的都是静态分区。 </p>
-<p><code>INSERT OVERWRITE TABLE employees PARTITION (country, state) 
- SELECT ..., se.cnty, se.st FROM staged_employees se;</code></p>
-<p>注意：Hive 根据SELECT语句中最后2列来确定分区字段country和state的值。<br>而不是根据命名来匹配的。</p>
-<p>在SQL语句使用不同的命名就是为了强调源表字段值和输出分区值直接的关系是根据位置而不是根据命名来匹配的。 </p>
-<h3 id="2-3-单个查询语句中创建表并加载数据"><a href="#2-3-单个查询语句中创建表并加载数据" class="headerlink" title="2.3 单个查询语句中创建表并加载数据"></a>2.3 单个查询语句中创建表并加载数据</h3><ul>
-<li>create table u_data_v2 as SELECT userid, rating from u_data limit 10;</li>
-</ul>
-<h3 id="2-4-导出数据"><a href="#2-4-导出数据" class="headerlink" title="2.4 导出数据"></a>2.4 导出数据</h3><ul>
-<li>INSERT OVERWRITE LOCAL DIRECTORY ‘/tmp/hive’ SELECT userid, rating FROM u_data; </li>
-</ul>
-<ol start="3">
-<li>SQL操作</li>
-</ol>
-<h3 id="SELECT-…-FROM-语句"><a href="#SELECT-…-FROM-语句" class="headerlink" title="SELECT … FROM 语句"></a>SELECT … FROM 语句</h3><p>3.1 数据类型</p>
-<p> 当用户选择的列是集合数据类型时，Hive会使用JSON语法进行输出。</p>
-<ul>
-<li>当列是一个数组时，其值使用一个括在<code>[...]</code>的逗号分隔的列进行表示，如[“Mary Smith”, “Todd Jones”]</li>
-<li>当列是一个Map时，使用JSON格式来表达map，即使用一个被括在<code>{...}</code>内的以逗号分隔的键值对列表进行表示；如 <code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
-<li>当列是一个Struct时，使用map格式来表示，如<code>{&quot;Federal Taxes&quot;:0.2 &quot;State Taxes&quot;: 0.05}</code></li>
-</ul>
-<p>引用元素的方式：</p>
-<ul>
-<li>引用Map元素，使用ARRAY[…]语法；</li>
-<li>引用Struct的一个元素，使用<code>点</code>符号。</li>
-</ul>
-<p>3.2 使用函数</p>
-<p>3.3 列别名</p>
-<p>如果新产生的结果在源表中不存在的话，通常有必要给这些新产生的列起一个名称，也就是别名。 </p>
-<ul>
-<li>select userid as uid from u_data;</li>
-</ul>
-<p>3.4 嵌套SELECT 语句</p>
-<p><code>FROM (
-    SELECT upper(name), salary ,deductions[&quot;Federal Taxes&quot;] as fed_taxes FROM employees
-    ) e
-SELECT e.name, e.fed_taxes where e.name = &quot;yan&quot;</code></p>
-<p>从这个嵌套语句中可以看到，我们将前面的结果集起了个别名，称之为e，在这个语句外面嵌套查询了name fed_taxes两个字段。 同时约束name必须是yan。</p>
-<p>3.5 CASE … WHEN … THEN 句式</p>
-<p>CASE .. WHEN .. THEN 语句和if条件语句类似，用于处理单个列的查询结果。 </p>
-<p><code>SELECT userid, movieid, 
-    CASE 
-    WHEN rating &lt;= 1 THEN &quot;low&quot; 
-    WHEN rating &gt; 1 and rating &lt;= 3 THEN &quot;middle&quot; ELSE &quot;high&quot;  
-    END  as level 
-    from u_data limit 10;</code></p>
-<h3 id="4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）"><a href="#4-WHERE-语句-（对应Hive编程指南的6-2-WHERE语句）" class="headerlink" title="4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）"></a>4. WHERE 语句 （对应Hive编程指南的6.2 WHERE语句）</h3><h4 id="4-1-WHERE语句不能使用列别名。"><a href="#4-1-WHERE语句不能使用列别名。" class="headerlink" title="4.1  WHERE语句不能使用列别名。"></a>4.1  WHERE语句不能使用<code>列别名</code>。</h4><p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
-FROM employees
-WHERE round(salary * (1-deductions[&quot;Federal Taxes&quot;])) &gt; 70000</code></p>
-<p>这个查询语句里面，有重复的表达式。下面的查询语句使用一个列别名来消除重复问题，但是并不能生效。 </p>
-<p><code>SELECT name, salary,  salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes 
-FROM employees
-WHERE round(salary_minus_fed_taxes) &gt; 70000;
-报错：Invalid table alias or column reference &#39;salary_minus_fed_taxes&#39;</code></p>
-<p>正如错误信息所提示的，WHERE语句不能使用<code>列别名</code>。<br>不过我们可以使用一个嵌套的SELECT语句</p>
-<p><code>SELECT e.* FROM 
-(SELECT name,salary, salary * (1-deductions[&quot;Federal Taxes&quot;]) as salary_minus_fed_taxes FROM employees) e 
-WHERE round(e.salary_minus_fed_taxes) &gt; 70000;</code></p>
-<h4 id="4-2-谓词操作符"><a href="#4-2-谓词操作符" class="headerlink" title="4.2 谓词操作符"></a>4.2 谓词操作符</h4><h4 id="4-3-GROUP-BY语句"><a href="#4-3-GROUP-BY语句" class="headerlink" title="4.3 GROUP BY语句"></a>4.3 GROUP BY语句</h4><p>GROUP BY 通常会和聚合函数一起使用，按照一个或者多个列队结果进行分组，然后对每个组执行聚合操作。 </p>
-<h3 id="4-4-JOIN-语句"><a href="#4-4-JOIN-语句" class="headerlink" title="4.4 JOIN 语句"></a>4.4 JOIN 语句</h3><p>Hive支持通常的SQL JOIN语句，但是只支持<code>等值连接</code>，并且在ON子句中只支持AND。</p>
-<p>4.4.1 INNER JOIN</p>
-<p><code>SELECT a.ymd, a.price_close, b.price_close, c.price_close 
-FROM stocks a JOIN stocks b ON a.ymd = b.ymd
-              JOIN stocks c ON a.ymd = c.ymd
-WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39;GE&#39;;</code></p>
-<p>在这个例子中，会首先启动一个MapReduce job对表a和表b进行连接操作，然后会再启动一个MapReduce job将第一个MapReduce job的输出和表c进行连接操作。 </p>
-<p>Hive表总是按照从左到右的顺序执行的。 </p>
-<h4 id="JOIN优化"><a href="#JOIN优化" class="headerlink" title="JOIN优化"></a>JOIN优化</h4><p>Hive同时假定查询中最后一个表是最大的那个表。在对每行记录进行连接操作时，它会尝试将其他表缓存起来，然后扫描最后那个表进行计算。</p>
-<p>因此用户需要保证<code>连续查询中的表的大小是从左到右依次增加的</code>。</p>
-<h4 id="LEFT-OUTER-JOIN"><a href="#LEFT-OUTER-JOIN" class="headerlink" title="LEFT OUTER JOIN"></a>LEFT OUTER JOIN</h4><h4 id="OUTER-JOIN"><a href="#OUTER-JOIN" class="headerlink" title="OUTER JOIN"></a>OUTER JOIN</h4><h4 id="RIGHT-OUTER-JOIN"><a href="#RIGHT-OUTER-JOIN" class="headerlink" title="RIGHT OUTER JOIN"></a>RIGHT OUTER JOIN</h4><h4 id="FULL-OUTER-JOIN"><a href="#FULL-OUTER-JOIN" class="headerlink" title="FULL OUTER JOIN"></a>FULL OUTER JOIN</h4><h4 id="LEFT-SEMI-JOIN"><a href="#LEFT-SEMI-JOIN" class="headerlink" title="LEFT SEMI-JOIN"></a>LEFT SEMI-JOIN</h4><h4 id="笛卡尔积JOIN"><a href="#笛卡尔积JOIN" class="headerlink" title="笛卡尔积JOIN"></a>笛卡尔积JOIN</h4><h4 id="map-side-JOIN"><a href="#map-side-JOIN" class="headerlink" title="map-side JOIN"></a>map-side JOIN</h4><h3 id="4-5-ORDER-BY-和-SORT-BY"><a href="#4-5-ORDER-BY-和-SORT-BY" class="headerlink" title="4.5 ORDER BY 和 SORT BY"></a>4.5 ORDER BY 和 SORT BY</h3><h3 id="4-6-含有SORT-BY-的DISTRIBUTE-BY"><a href="#4-6-含有SORT-BY-的DISTRIBUTE-BY" class="headerlink" title="4.6 含有SORT BY 的DISTRIBUTE BY"></a>4.6 含有SORT BY 的DISTRIBUTE BY</h3><h3 id="4-10-UNION-ALL"><a href="#4-10-UNION-ALL" class="headerlink" title="4.10 UNION ALL"></a>4.10 UNION ALL</h3><p>UNION ALL将2个或多个进行合并。每个union子查询都必须有相同的列，并且每个字段的字段类型必须是一致的。</p>
-<p>比如，如果第2个字段是FLOAT类型，那么所有其他子查询的第2个字段必须都是FLOAT类型的。</p>
-<p>举例，将日志数据进行合并的例子:</p>
-<p><code>SELECT log.ymd, log.level, log.message 
-    FROM(
-            SELECT l1.ymd, l1.level, l1.message, &#39;Log1&#39; AS source
-            FROM log1 l1
-        UNION ALL
-            SELECT l2.ymd, l2.level, l2.message, &#39;Log2&#39; AS source
-            FROM log2 l2 
-        ) log
-    SORT BY log.ymd ASC;</code></p>
-<h2 id="5-视图（hive编程指南第7章-视图）"><a href="#5-视图（hive编程指南第7章-视图）" class="headerlink" title="5 视图（hive编程指南第7章 视图）"></a>5 视图（hive编程指南第7章 视图）</h2><p>3.3 一些用法</p>
-<ul>
-<li>SELECT a.* FROM invites a WHERE a.ds=’2008-08-15’;</li>
-<li>FROM pokes t1 JOIN invites t2 ON (t1.bar = t2.bar) INSERT OVERWRITE TABLE events SELECT t1.bar, t1.foo, t2.foo;</li>
-<li><p>CREATE TABLE u_data (<br>userid INT,<br>movieid INT,<br>rating INT,<br>unixtime STRING)<br>ROW FORMAT DELIMITED<br>FIELDS TERMINATED BY ‘\t’<br>STORED AS TEXTFILE;</p>
-</li>
-<li><p>LOAD DATA LOCAL INPATH ‘/Users/keything/Downloads/ml-100k/u.data’ OVERWRITE INTO TABLE u_data;</p>
-</li>
-<li><code>SELECT COUNT(*) FROM u_data;</code></li>
-</ul>
-<p>一个简单的例子：</p>
-<p>创建表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  unixtime STRING)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;</span><br><span class="line">STORED AS TEXTFILE;</span><br></pre></td></tr></table></figure>
-<p>获取数据集</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http://files.grouplens.org/datasets/movielens/ml-100k.zip</span><br><span class="line">unzip ml-100k.zip</span><br></pre></td></tr></table></figure>
-<p>加载数据集</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LOAD DATA LOCAL INPATH &apos;&lt;path&gt;/u.data&apos; OVERWRITE INTO TABLE u_data;</span><br></pre></td></tr></table></figure>
-<p>创建weekday_mapper.py</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">import sys</span><br><span class="line">import datetime</span><br><span class="line"></span><br><span class="line">for line in sys.stdin:</span><br><span class="line">  line = line.strip()</span><br><span class="line">  userid, movieid, rating, unixtime = line.split(&apos;\t&apos;)</span><br><span class="line">  weekday = datetime.datetime.fromtimestamp(float(unixtime)).isoweekday()</span><br><span class="line">  print &apos;\t&apos;.join([userid, movieid, rating, str(weekday)])</span><br></pre></td></tr></table></figure>
-<p>对于这个脚本是否正确，可以通过自己创建文件来验证。</p>
-<p>创建mapper脚本：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE u_data_new (</span><br><span class="line">  userid INT,</span><br><span class="line">  movieid INT,</span><br><span class="line">  rating INT,</span><br><span class="line">  weekday INT)</span><br><span class="line">ROW FORMAT DELIMITED</span><br><span class="line">FIELDS TERMINATED BY &apos;\t&apos;;</span><br><span class="line"></span><br><span class="line">add FILE weekday_mapper.py;</span><br><span class="line"></span><br><span class="line">INSERT OVERWRITE TABLE u_data_new</span><br><span class="line">SELECT</span><br><span class="line">  TRANSFORM (userid, movieid, rating, unixtime)</span><br><span class="line">  USING &apos;python weekday_mapper.py&apos;</span><br><span class="line">  AS (userid, movieid, rating, weekday)</span><br><span class="line">FROM u_data;</span><br><span class="line"></span><br><span class="line">SELECT weekday, COUNT(*)</span><br><span class="line">FROM u_data_new</span><br><span class="line">GROUP BY weekday;</span><br></pre></td></tr></table></figure>
-<p>最后得到</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1	12254</span><br><span class="line">2	13579</span><br><span class="line">3	14430</span><br><span class="line">4	15114</span><br><span class="line">5	14743</span><br><span class="line">6	18229</span><br><span class="line">7	11651</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="ckw1x7048002o5enu0svcw2be" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-hadoop权威指南第四版学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/09/23/hadoop权威指南第四版学习笔记/" class="article-date">
-  <time datetime="2018-09-23T03:30:21.000Z" itemprop="datePublished">2018-09-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/09/23/hadoop权威指南第四版学习笔记/">hadoop权威指南第四版学习笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="Hadoop权威指南第四版-学习笔记"><a href="#Hadoop权威指南第四版-学习笔记" class="headerlink" title="Hadoop权威指南第四版-学习笔记"></a>Hadoop权威指南第四版-学习笔记</h1><h2 id="第二章-关于MapReduce"><a href="#第二章-关于MapReduce" class="headerlink" title="第二章 关于MapReduce"></a>第二章 关于MapReduce</h2><p>MapReduce是一种可用于数据处理的编程模型。 </p>
-<p>Hadoop将MapReduce的输入数据划分成等长的小数据块，称为输入分片（input split) 或简称“分片”。hadoop为每个分片构建一个map任务，并由该任务来运行用户自定义的map函数，从而处理分片中的每条记录。 </p>
-<p>一个合理的分片大小趋向于HDFS的一个块的大小，默认是128MB。</p>
-<h4 id="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？"><a href="#map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢-？" class="headerlink" title="map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？"></a>map任务将其输出写入本地硬盘，而非HDFS。这是为什么呢 ？</h4><p>因为map的输出是中间结果：该中间结果由reduce任务处理后才产生最终输出结果，而且一旦作业完成，map的输出结果就可以删除。 因此，如果把map输出存储在HDFS中并实现备份，难免有些小题大做。 </p>
-<p>如果运行map任务的节点在map中间结果传送给reduce任务之前失败，hadoop将在另一个节点重新运行这个map任务以再次构建map中间结果。</p>
-<p>reduce任务并不具备数据本地化的优势，单个reduce任务的输入通常来自于所有mapper的输出。</p>
-<p>reduce任务的数量并不是由输入数据的大小决定，相反是独立指定的。<br>如果有多个reduce任务，每个map任务就会针对输出进行分区(partition)，即为每个reduce任务建一个分区，每个分区有许多键（及其对应的值），但每个键对应的key-value 都在同一个分区中。 用户可以使用自定义的分区函数控制分区，但通常使用默认的partitioner 通过哈希函数来区分，很高效。</p>
-<p>一般情况下，多个reduce任务的数据流如图2-4所示，该图清楚表明了为什么map任务和reduce任务之间的数据流成为shuffle（混洗），因为每个reduce任务的输入都来自许多map任务。shuffle一般比图中所示的更复杂，而且调整混洗参数对作业总执行时间的影响非常大。 </p>
-<h2 id="第三章-Hadoop分布式文件系统"><a href="#第三章-Hadoop分布式文件系统" class="headerlink" title="第三章 Hadoop分布式文件系统"></a>第三章 Hadoop分布式文件系统</h2><h3 id="3-2-HDFS概念"><a href="#3-2-HDFS概念" class="headerlink" title="3.2 HDFS概念"></a>3.2 HDFS概念</h3><p>3.2.1 数据块</p>
-<p>HDFS同样也有块block的概念，默认是128MB。</p>
-<p>3.2.2 namenode和datanode</p>
-<p>HDFS集群有两类节点，以 管理节点-工作节点 模式运行，即一个namenode（管理节点）和多个datanode（工作节点）。<br>namenode 管理文件系统的命名空间。它维护者文件系统树及整颗树内所有的文件和目录。这些信息以两个文件形式永久保存在本地磁盘上：命名空间镜像文件和编辑日志文件。 </p>
-<p>namenode也记录着每个文件中各个块所在的数据节点信息，但它并不用就保存块的位置信息，因为这些信息会在系统启动时根据数据节点信息重建。 </p>
-<p>datanode是文件系统的工作节点。他们根据需要存储并检索数据块（受客户端或namenode调度），并且定期向namenode发送所存储的块的列表。</p>
-<p>3.2.3 块缓存<br>3.2.4 联邦HDFS<br>3.2.5 HDFS的高可用性</p>
-<h3 id="3-3-命令行接口"><a href="#3-3-命令行接口" class="headerlink" title="3.3 命令行接口"></a>3.3 命令行接口</h3><h3 id="3-4-Hadoop-文件系统"><a href="#3-4-Hadoop-文件系统" class="headerlink" title="3.4 Hadoop 文件系统"></a>3.4 Hadoop 文件系统</h3><h3 id="3-5-Java接口"><a href="#3-5-Java接口" class="headerlink" title="3.5 Java接口"></a>3.5 Java接口</h3><h3 id="3-6-数据流"><a href="#3-6-数据流" class="headerlink" title="3.6 数据流"></a>3.6 数据流</h3><p>3.6.1 剖析文件读取<br>3.6.2 剖析文件写入<br>3.6.3 一致性模型</p>
-<h2 id="第4章-关于YARN"><a href="#第4章-关于YARN" class="headerlink" title="第4章  关于YARN"></a>第4章  关于YARN</h2><p>Apache YARN(Yet Another Resource Negotiator的缩写)是Hadoop的集群资源管理系统。</p>
-<h2 id="第5章-Hadoop的I-O-操作"><a href="#第5章-Hadoop的I-O-操作" class="headerlink" title="第5章 Hadoop的I/O 操作"></a>第5章 Hadoop的I/O 操作</h2><p>5.1 数据完整性<br>5.2 压缩</p>
-<p>5.2.1 codec<br>5.2.2 压缩和输入分片</p>
-<p>5.4 基于文件的数据结构</p>
-<h2 id="第6章-MapReduce应用开发"><a href="#第6章-MapReduce应用开发" class="headerlink" title="第6章 MapReduce应用开发"></a>第6章 MapReduce应用开发</h2><p>MapReduce编程遵循一个特定的流程。首先写map函数和reduce函数，最好使用单元测试来确保函数的运行符合预期。 然后写一个驱动程序来运行作业。</p>
-<h2 id="第7章-MapReduce的工作机制"><a href="#第7章-MapReduce的工作机制" class="headerlink" title="第7章 MapReduce的工作机制"></a>第7章 MapReduce的工作机制</h2><h3 id="7-3-shuffle和排序"><a href="#7-3-shuffle和排序" class="headerlink" title="7.3 shuffle和排序"></a>7.3 shuffle和排序</h3><p>MapReduce确保每个reducer的输入都是按键排序的。</p>
-<p>系统执行排序、将map输出作为输入传给reducer的过程称为shuffle。</p>
-<p>7.3.1 map端</p>
-<p>map函数开始产生输出时，并不是简单地将它写到磁盘。这个过程更复杂，利用缓冲的方式写到内存并出于效率的考虑进行预排序。<br>每个map任务都有一个环形内存缓冲区用于存储任务输出。在默认情况下，缓冲区大小是100mb。一旦缓冲内容达到阈值，一个后台线程便开始把内容溢出到splill到磁盘。</p>
-<p>在溢出写到磁盘过程中，map输出继续写到缓存区，但如果在此期间缓冲区被填满，map会被阻塞直到写磁盘过程完成。 </p>
-<p>在写磁盘之前，线程首先根据数据最终要传的reduer 将数据划分成相应的分区(partition)。在每个分区中，后台线程按键进行内存中排序，如果有一个combiner函数，它就在排序后的输出上运行。运行combiner函数使得map输出结果更紧凑。</p>
-<p>每次内存缓冲区达到溢出阈值，就会新建一个溢出文件spill file，因此在map任务写完最后一个输出记录之后，会有几个溢出文件。</p>
-
-<p>7.3.2 reduce端</p>
-<h3 id="7-4-任务的执行"><a href="#7-4-任务的执行" class="headerlink" title="7.4 任务的执行"></a>7.4 任务的执行</h3><h2 id="第8章"><a href="#第8章" class="headerlink" title="第8章"></a>第8章</h2><p>8.1 MapReduce的类型</p>
-<p>Hadoop的MapReduce中，map函数和reduce函数遵循如下常规格式：</p>
-<p>map:(k1, v1) -&gt; list(k2, v2)<br>combiner: (k2, list(v2)) -&gt; list(k2, v2)<br>reduce:(k2, list(v2)) -&gt; list(k3, v3)</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="ckw1x7048002m5enuzmjss2wc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="ckw5yql4x002pp8nuarc91nov" class="article-share-link">Share</a>
       
       
     </footer>
@@ -1188,6 +1116,14 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       <ul>
         
           <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -1197,14 +1133,6 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>

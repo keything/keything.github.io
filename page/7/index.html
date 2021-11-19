@@ -62,6 +62,278 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-linux定时任务" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/08/17/linux定时任务/" class="article-date">
+  <time datetime="2016-08-17T08:11:49.000Z" itemprop="datePublished">2016-08-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/08/17/linux定时任务/">linux定时任务</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="34-1-Cron"><a href="#34-1-Cron" class="headerlink" title="34.1. Cron"></a>34.1. Cron</h2><p>Cron是一个守护进程，根据分时日月周的组合来执行任务。<br>Cron假设系统是可用的。如果系统不可用，那么定时任务不会执行。为了安排one-time tasks，可以参考 at and batch.</p>
+<p>为了执行Cron服务，<code>crond</code>服务必须执行。<br>可以使用命令<code>rpm -q vixie-cron</code>命令查看是否安装。可以使用命令 <code>service crond status</code>查看状态</p>
+<h3 id="34-1-1-配置定时任务"><a href="#34-1-1-配置定时任务" class="headerlink" title="34.1.1 配置定时任务"></a>34.1.1 配置定时任务</h3><pre><code>SHELL=/bin/bash 
+PATH=/sbin:/bin:/usr/sbin:/usr/bin 
+MAILTO=root HOME=/  
+# run-parts 
+01 * * * * root run-parts /etc/cron.hourly 
+02 4 * * * root run-parts /etc/cron.daily 
+22 4 * * 0 root run-parts /etc/cron.weekly 
+42 4 1 * * root run-parts /etc/cron.monthly
+</code></pre><p>前四行用于配置定时任务执行时的环境变量。<code>SHELL</code>变量告诉系统使用哪个shell，<code>PATH</code>变量定义了执行命令的路径。<code>MAILTO</code>定义了定时任务的输出结果被email给谁，如果MAILTO=””，则不发送邮件。<code>HOME</code>变量用于home目录。</p>
+<p>在<code>/etc/crontab/</code>文件中任务的格式如下：<br>    <code>minute hour day month dayofweek command</code></p>
+<ul>
+<li>minute – 从0到59的任何数字</li>
+<li>hour   – 从0到23的任何数字</li>
+<li>day    – 从0到31的任何一天</li>
+<li>month  – 从1到12的任何数字（或者月份的缩写，如jan或feb）</li>
+<li>dayofweek – 从0到7的数字，其中0或7代表星期天（或者缩写，如mon或sun）</li>
+<li>command – 要执行的命令</li>
+</ul>
+<p>几种取值情况</p>
+<ul>
+<li><code>*</code>：代表任何有效值</li>
+<li><code>-</code>：指定一个数字的范围，如1-3代表整数1，2，3。</li>
+<li><code>,</code>: 一个以逗号分隔的列表，如3,4,5,8代表四个特定的数字。</li>
+<li><code>/</code>: 用于指定步进的值（step value）。 The value of an integer can be skipped within a range by following the range with /<integer>. For example, 0-59/2 can be used to define every other minute in the minute field. Step values can also be used with an asterisk. For instance, the value */3 can be used in the month field to run the task every third month.</integer></li>
+</ul>
+<p>正如在/etc/crontab文件中，run-parts脚本执行/etc/cron.hourly/，/etc/cron.daily/, /etc/cron.weekly/, and /etc/cron.monthly/目录下的文件。在这些目录下面必须是shell脚本。</p>
+<p>如果定时任务不是每小时，每天，每周，每月，那么定时任务可以加到/ect/cron.d/目录下，这个目录下文件的格式与/etc/crontab是一样的。</p>
+<p>除了root以外的用户，可以使用crontab工具配置定时任务。所有用户定义的crontab都存在/var/spool/cron/目录下，并且使用创建他们的用户名来执行。使用crontab -e可以编辑。</p>
+<p>cron守护进程每分钟会检查/etc/crontab文件，/ect/cron.d/目录的变化，如果有变化则加载到内存。因此如果crontab文件改变了不需要重启守护进程。</p>
+<h3 id="34-1-2-控制访问cron权限"><a href="#34-1-2-控制访问cron权限" class="headerlink" title="34.1.2 控制访问cron权限"></a>34.1.2 控制访问cron权限</h3><p>/etc/cron.allow和/etc/cron.deny文件用于严格控制cron进程的访问。文件格式：一行一个用户名，不需要出现空格。如果访问控制文件修改了，crond不需要重启。</p>
+<p>root用户什么时候都可以使用cron，而不用考虑访问控制文件中的用户名<br>如果cron.allow文件存在，只有users列表中的用户允许访问；忽略cron.deny文件<br>如果cron.allow文件不存在，只有cron.deny中用户不允许访问。</p>
+<h3 id="34-1-3-开始和停止服务"><a href="#34-1-3-开始和停止服务" class="headerlink" title="34.1.3 开始和停止服务"></a>34.1.3 开始和停止服务</h3><p>使用service crond start 开启。<br>使用service crond stop 关闭。</p>
+<h2 id="34-2-At和Batch"><a href="#34-2-At和Batch" class="headerlink" title="34.2 At和Batch"></a>34.2 At和Batch</h2><p>cron用于规划重复的任务，at命令用于规划一次性任务（one-time task)，batch用于在系统负载小于0.8的时候执行一次性任务。</p>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-autotasks-at-batch.html" target="_blank" rel="noopener">cron</a></li>
+<li><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-autotasks-at-batch.html" target="_blank" rel="noopener">at and batch</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="ckw5yql4z002vp8nutjtsu2lr" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-RedisCluster总结" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/08/10/RedisCluster总结/" class="article-date">
+  <time datetime="2016-08-10T13:39:06.000Z" itemprop="datePublished">2016-08-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/08/10/RedisCluster总结/">RedisCluster总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="一、RedisCluster基本内容"><a href="#一、RedisCluster基本内容" class="headerlink" title="一、RedisCluster基本内容"></a>一、RedisCluster基本内容</h1><h2 id="1-项目背景"><a href="#1-项目背景" class="headerlink" title="1. 项目背景"></a>1. 项目背景</h2><h3 id="a-整个项目背景"><a href="#a-整个项目背景" class="headerlink" title="a. 整个项目背景"></a>a. 整个项目背景</h3><ul>
+<li><p>云盘memcache服务器分散，监控和替换麻烦</p>
+<p>  云盘100多个集群，每个集群4个memcache，需要业务方配置和监控这些memcache。一旦memcache超时或者不可用，需要业务方和ops共同操作才能解决memcache的问题。</p>
+</li>
+<li><p>云盘缓存并发高、空间大</p>
+<p>  云盘缓存有36亿，400G空间，每秒钟25万的请求量，因此需要高并发的缓存集群才能满足需求。</p>
+</li>
+</ul>
+<h3 id="b-现在的替代方案"><a href="#b-现在的替代方案" class="headerlink" title="b. 现在的替代方案"></a>b. 现在的替代方案</h3><p>使用RedisCluster作为缓存集群。其特点（也是其设计目标）是：</p>
+<ul>
+<li>水平扩展：最大可以扩展到1000个节点</li>
+<li>可以接受的写安全：当出现网络分区（即脑裂）的时候能保证连接到大多数节点分区的写是安全的。</li>
+<li>高可用性：当出现网络分区时，大多数节点所在的分区是可用的；并且通过复制转移（replicas migration）保证没有从节点的主节点获得一个从节点。<br>  （所谓的复制转移：当一个主节点A有多个从节点A1,A2,A3，而另外一个主节点B没有从节点时，RedisCluster集群会从多个从节点A1,A2,A3中选择一个从节点A2作为主节点B的从节点）</li>
+</ul>
+<p>目前RedisCluster 目前集群大小是：</p>
+<ul>
+<li>一个机房一个大集群</li>
+<li>bjdt：集群中有24个节点，每个节点一主一从。每个节点18.63G</li>
+<li>bjcc：集群内有16个节点，每个节点一主一从。每个节点18.63G。</li>
+</ul>
+<h2 id="2-使用方法"><a href="#2-使用方法" class="headerlink" title="2. 使用方法"></a>2. 使用方法</h2><h3 id="a-业务方使用："><a href="#a-业务方使用：" class="headerlink" title="a. 业务方使用："></a>a. 业务方使用：</h3><p>有两种客户端，一种是笨蛋客户端，一种是智能客户端。</p>
+<p><code>笨蛋客户端</code>：本地不缓存节点信息，请求达到任意一个RedisCluster节点后，被告知真正的节点，然后再次请求。比如：redis-cli，telnet</p>
+<pre><code>redis-cli -c -h 10.10.10.10 -p 6666
+10.10.10.10:6666&gt; get ab
+-&gt; Redirected to slot [13567] located at 11.11.11.11:6666
+&quot;1&quot;
+</code></pre><p><code>智能客户端</code>：本地缓存节点信息，通过本地计算出槽位，直接发一次请求即可。</p>
+<h3 id="b-phpredis"><a href="#b-phpredis" class="headerlink" title="b. phpredis"></a>b. phpredis</h3><p>目前<a href="https://github.com/phpredis/phpredis" target="_blank" rel="noopener">phpredis</a>是智能客户端。</p>
+<p>不过在最开始的版本中，phpredis每次new RedisCluster都会发送cluster slots来获取节点信息，其实对于一个业务而言是没有必要的。原因是因为RedisCluster一旦稳定后一般不会调整，那么其节点信息就维持不变，因此没有必要每次都去获取。并且cluster slots非常消耗cluster节点的cpu。这一点<a href="https://github.com/JacketWoo" target="_blank" rel="noopener">吴晓飞</a>同学已经给phpredis提了<a href="https://github.com/phpredis/phpredis/pull/826" target="_blank" rel="noopener">pullrequest</a></p>
+<h2 id="3-RedisCluster基本概念"><a href="#3-RedisCluster基本概念" class="headerlink" title="3. RedisCluster基本概念"></a>3. RedisCluster基本概念</h2><h3 id="a-集群创建"><a href="#a-集群创建" class="headerlink" title="a. 集群创建"></a>a. 集群创建</h3><ol>
+<li>Redis实例启动，redis.conf中多了一个配置项<code>cluster-enabled yes</code></li>
+<li>Redis节点通过<code>cluster meet</code>形成一个集群，但是集群不可用</li>
+<li>分配槽位：需要将16384个槽位分配到集群中各个节点。如果有的槽位没有分配成功，那么集群就可能不可用（跟<code>cluster-require-full-coverage</code>参数有关系）</li>
+</ol>
+<h3 id="b-RedisCluster-keys分布模型"><a href="#b-RedisCluster-keys分布模型" class="headerlink" title="b. RedisCluster keys分布模型"></a>b. RedisCluster keys分布模型</h3><p>一共有16384个hash槽位。集群中每个主节点负责16384个槽位中的一部分。如果没有正在进行中的集群重新配置，那么槽位的分布是稳定的。</p>
+<p>key与槽位的映射关系计算算法（如果有hash tags则不使用该计算算法）</p>
+<pre><code>HASH_SLOT=CRC(key) mod 16384
+</code></pre><h3 id="c-RedisCluster与Memcache比较"><a href="#c-RedisCluster与Memcache比较" class="headerlink" title="c. RedisCluster与Memcache比较"></a>c. RedisCluster与Memcache比较</h3><p>我们知道Memcached是“分布式”缓存服务器，但是服务器端没有分布式功能，需要客户端来实现分布式，也就是需要客户端配置好几台memcached服务器，根据分布式算法（一般采用一致性hash算法）计算哪个key位于哪台memcached机器上。</p>
+<p>而RedisCluster没有采用一致性hash算法，而是采用了一种<code>hash 槽位</code>的概念。与Memcached相比，业务方不需要维护memcached服务器的列表。使用智能客户端，可以先获取一份节点信息，然后在本地进行计算hash槽位。</p>
+<h3 id="d-RedisCluster-HashTags"><a href="#d-RedisCluster-HashTags" class="headerlink" title="d. RedisCluster HashTags"></a>d. RedisCluster HashTags</h3><p>所谓的<code>hash tags</code>是指key中出现了<code>{&quot;字符串&quot;}</code>或者空的符合<code>{}</code>。 当出现<code>HashTags</code>时，key的<code>hash 槽位</code>不是计算整个key所在的槽位，而是计算<code>{}</code>中间字符串的槽位。<br>举例：<code>{user1000}.following</code> 与 <code>{user1000}.followers</code> 这两个key在同一个slot里面。因为其<code>hash tags</code>中的字符串是 <code>user1000</code></p>
+<h3 id="e-RedisCluster和Redis比较"><a href="#e-RedisCluster和Redis比较" class="headerlink" title="e. RedisCluster和Redis比较"></a>e. RedisCluster和Redis比较</h3><ul>
+<li>RedisCluster实现了所有单key的命令，比如get,set</li>
+<li>RedisCluster中多key操作的命令要求多key必须在同一个节点上，可以通过<code>hash tags</code>强迫这些key存在相同节点上。</li>
+</ul>
+<h3 id="f-RedisCluster重定向"><a href="#f-RedisCluster重定向" class="headerlink" title="f. RedisCluster重定向"></a>f. RedisCluster重定向</h3><h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><p>RedisCluster有两种重定向错误：<code>-MOVED</code>和<code>-ASK</code>两种重定向错误</p>
+<p>刚刚在<code>RedisCluster keys</code>分布模型中提到如果没有进行中的集群重新配置，那么槽位分布是稳定的。<br>如果集群正在发生调整呢，那么集群会返回给客户端<code>-MOVED 8 127.0.0.1:8080</code>错误或者 <code>-ASK 8 127.0.0.1:8080</code>这两个重定向错误。 </p>
+<h4 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h4><p>举例：假设集群中节点A(<code>127.0.0.1:8080</code>)负责hash槽位13565,13566,13567。 节点B(<code>127.0.0.2:8080</code>)负责hash槽位100，101，102。</p>
+<p><code>根据crc(ab) mod 16384计算得到ab这个key的slot是13567</code></p>
+<p>a. 如果集群没有调整，那么 向节点B请求get ab ，那么节点B会返回<code>-MOVED 127.0.0.1:8080</code>。 </p>
+<p>b. 如果集群有所调整，将hash槽位13567从节点A迁移到节点B。</p>
+<p>在迁移过程中，节点A处于<code>MIGRATING</code>状态，节点B处于<code>IMPORTING</code>状态。</p>
+<p>此时向节点A请求get ab， </p>
+<p>1) 如果ab这个位于13567的key已经迁移到节点B了，那么将会受到<code>-ASK 127.0.0.2:8080</code>，此时客户端先向节点B发送一个ASKING的命令，然后再get ab就可以获得数据。如果客户端不向节点B发送一个ASKING命令，而是直接向节点B发送get ab则会返回<code>-MOVED</code>错误。<br>2) 如果ab这个位于13567的key没有迁移到节点B，即依然在节点A上，那么直接返回数据。</p>
+<p>c. 如果集群已经调整完毕，即hash槽位13567位于节点B，那么向节点A请求 get ab就会返回<code>-MOVED 127.0.0.2:8080</code></p>
+<h4 id="MOVED和-ASK两个重定向区别："><a href="#MOVED和-ASK两个重定向区别：" class="headerlink" title="-MOVED和-ASK两个重定向区别："></a><code>-MOVED</code>和<code>-ASK</code>两个重定向区别：</h4><ol>
+<li>MOVED代表槽已经完全从一个节点迁移到另外一个节点</li>
+<li>ASK是槽位迁移的中间态，代表这个槽位的节点正在迁移。只针对这个槽位的这个key进行重定向，该槽位上其他key依然先到原来的节点</li>
+</ol>
+<h3 id="f-RedisCluster节点属性"><a href="#f-RedisCluster节点属性" class="headerlink" title="f. RedisCluster节点属性"></a>f. RedisCluster节点属性</h3><pre><code>redis-cli cluster nodes
+d1861060fe6a534d42d8a19aeb36600e18785e04 127.0.0.1:6379 myself - 0 1318428930 1 connected 0-1364
+3886e65cc906bfd9b1f7e7bde468726a052d1dae 127.0.0.1:6380 master - 1318428930 1318428931 2 connected 1365-2729
+d289c575dcbc4bdd2931585fd4339089e461a27d 127.0.0.1:6381 master - 1318428931 1318428931 3 connected 2730-4095
+</code></pre><p>通过<a href="http://redis.io/commands/cluster-nodes" target="_blank" rel="noopener">cluster nodes</a>命令可以知道RedisCluster集群的很多信息，比如当前槽位分布，当前节点个数及其ip:port等等</p>
+<h1 id="二、RedisCluster的高可用原理"><a href="#二、RedisCluster的高可用原理" class="headerlink" title="二、RedisCluster的高可用原理"></a>二、RedisCluster的高可用原理</h1><h2 id="1-RedisCluster的CAP"><a href="#1-RedisCluster的CAP" class="headerlink" title="1. RedisCluster的CAP"></a>1. RedisCluster的CAP</h2><p>RedisCluster本身是一个分布式NoSQL，因此必然符合CAP定理中的相关内容。</p>
+<h3 id="CAP定理"><a href="#CAP定理" class="headerlink" title="CAP定理"></a>CAP定理</h3><p>CAP定理基本描述：</p>
+<p>给定”一致性Consistency“、”可用性Availability“、”分区耐受性Partition tolerance”这三个属性，我们只能同时满足其中两个属性。</p>
+<ul>
+<li><p>分区耐受性：如果发生通信故障，导致整个集群被分隔成多个无法互相通信的分区时（这种情况也叫“脑裂” split brain），集群依然可用。</p>
+<p>  在RedisCluster中有个参数cluster-require-full-coverage<br>  该参数取值为yes时，出现分区时则不可用；反之则不可用</p>
+<p>  <img src="/images/redis_cluster/脑裂.png" alt="脑裂"></p>
+</li>
+<li><p><code>一致性</code>：在各个节点上数据一样。<br>  一致性的关键在于：将请求序列化，使之成为原子的（atomic）、相互隔离的（Isolated）”工作单元“（work unit）。</p>
+</li>
+<li><p><code>可用性</code>：如果客户可以同集群中的某个节点通信，那么该节点就必须能够处理读取及写入操作。<br>CAP定理中将可用性定义为：系统中某个无故障节点所接受的每一条请求，无论成功或失败，都必将得到响应。所以按照这个定义，发生故障且无法响应客户请求的节点，并不会导致系统失去“CAP定理”所定义的那种“可用性”。</p>
+</li>
+</ul>
+<p>这意味着你可以构建一个CA集群，如果出现“分区”现象，那么所有节点必须全部停止工作。</p>
+<p>尽管CAP定理经常表述为“三个属性中只能保有两个”，但实际上是在讲：当系统可能遭遇“分区”状况时，我们需要在“一致性”与“可用性”之间进行权衡。通常我们会略微舍弃“一致性”，以获取某种程度的“可用性”。这样产生的系统，既不具备完美的“一致性”，也不具备完美的“可用性”，但是这两种不完美的特性结合起来却能够满足特定需求。</p>
+<h3 id="RedisCluster满足了AP，最终一致性"><a href="#RedisCluster满足了AP，最终一致性" class="headerlink" title="RedisCluster满足了AP，最终一致性"></a>RedisCluster满足了AP，最终一致性</h3><ol>
+<li>分区耐受性：大多数节点可用时，RedisCluster可以分区可用。当出现分区时，连接到多数节点分区和连接到少数节点分区有很大不同。</li>
+<li>可用性：通过复制转移（replicas migration），没有从节点的主节点会获得一个从节点，从而提供可用性。</li>
+<li>高性能并且能够线性扩展到1000个节点。</li>
+<li><p>最终一致性，异步复制，存在写入安全问题。</p>
+<p> 最终一致性：eventually consistent：也就是说在任意时刻，节点中都可能存在“复制不一致”问题，然而只要不再继续执行其他更新操作，那么上一次更新操作的结果最终将会反映到全部节点中去。</p>
+</li>
+</ol>
+<h3 id="RedisCluster写入的流程"><a href="#RedisCluster写入的流程" class="headerlink" title="RedisCluster写入的流程"></a>RedisCluster写入的流程</h3><p>RedisCluster的写入是异步复制。</p>
+<ul>
+<li>client先写入主，主回复<code>+OK</code>，此时client认为写入成功</li>
+<li>主节点开始异步复制，将写入同步到从节点</li>
+</ul>
+<h3 id="RedisCluster写入安全"><a href="#RedisCluster写入安全" class="headerlink" title="RedisCluster写入安全"></a>RedisCluster写入安全</h3><ul>
+<li>写入安全情况1:<br>  先写入主<br>  再由主传播到从。<br>  主从式分布模型，存在主写入成功，主挂没有传播<br>  从升为主，数据丢失。</li>
+</ul>
+<ul>
+<li><p>写入安全情况2: 发生分区时写丢失</p>
+<p>  举例：6节点集群，3主3从，节点是A,B,C, A1,B1,C1。还有一个客户端Z1。发生分区时，一个分区是A,C,A1,B1,C1，另外一个分区是B和Z1.此时Z1还可以向B写入，B也可以接收写操作。<br>  如果在很短时间内，B恢复了那么集群正常；<br>  如果分区持续太久，那么B1就被推举为新主，此时过了NODE_TIMEOUT时间，节点B也不写，那么分区后写入B的数据就丢失了。<br>  写操作丢失的最大持续时间是NODE_TIMEOUT+从推举时间</p>
+<p>  NoSQL倡导者经常说，与关系型数据库所支持的ACID事务不同，NoSQL系统具备“BASE属性“（基本可用，柔性状态，最终一致性）英文是 Basically Available, Soft state, Eventual consistency.</p>
+</li>
+</ul>
+<h2 id="2-容错-Fault-Tolerance"><a href="#2-容错-Fault-Tolerance" class="headerlink" title="2. 容错 Fault Tolerance"></a>2. 容错 Fault Tolerance</h2><h3 id="心跳包和流言消息"><a href="#心跳包和流言消息" class="headerlink" title="心跳包和流言消息"></a>心跳包和流言消息</h3><p>心跳包的目的：RedisCluster集群中各个节点会通过发送心跳包（ping包和pong包）来进行通信，更新集群的配置信息。通常节点发送ping包以后，期待对方回复pong包。</p>
+<p>RedisCluster一个节点一次只向集群中某些节点发送心跳包（目前一次发送的节点数量是总节点个数的十分之一）。同时考虑到RedisCluster发送对象节点是随机的，所以存在两个节点很久都没有交换消息，为了保证集群状态能够在很多时间内达到一致性，RedisCluster规定当两个节点超过<code>NODE_TIMEOUT一半</code>的时间没有交换消息时，下次发心跳包交换消息。</p>
+<p>比如，对于100个节点的集群，NODE_TIMEOUT设置为60秒，那么根据上面的理论，一个节点在30s内要向99个节点发送ping，对于100各节点则每秒发送330个pings。<a href="https://mp.weixin.qq.com/s?__biz=MzAwMDU1MTE1OQ==&amp;mid=2653547585&amp;idx=1&amp;sn=9a664b16f656f757632cd4eb29f9a5dc&amp;scene=0&amp;key=8dcebf9e179c9f3a346c582e0a5712dda1ec87878842175cce35a5ea1cd92ee99c770c79d2f99f97dcb43597000373f8&amp;ascene=0&amp;uin=NTE5MDc2ODU1&amp;devicetype=iMac+MacBookPro11%2C1+OSX+OSX+10.11.3+build(15D21" target="_blank" rel="noopener">近千节点的Redis Cluster高可用集群案例</a>&amp;version=11020201&amp;pass_ticket=4CBC9RgbSswvChRwX4aHuDwbNTxwAjmPNbOVneP4ac8%2BaS%2BQ8YWN5LJF3ipxB8fR)</p>
+<p>通过这一点可以看出，集群间通信占用大量带宽资源。</p>
+<h3 id="故障检测"><a href="#故障检测" class="headerlink" title="故障检测"></a>故障检测</h3><p>目的：当大多数节点不能访问某个主或从节点时，其从节点就会被推举为主节点。当从推举失败后，集群是error state, 将会停止接收来自客户端的请求。</p>
+<p>实现：</p>
+<ol>
+<li>PFAIL状态：<br>集群中有n个节点，当节点A自己认为节点B不可用了，并不能认为节点B不可用，</li>
+<li>FAIL状态：<br>必须集群中大多数节点认为节点B不可用了，节点B才是真的不可用。<br>当在<code>NODE_TIME * FAIL_REPORT_VALIDITY_MULT</code>时间内超过一半的节点认为B不可达时，节点B才真的是不可达<br>（当前实现中该validity参数是2）。<br> 节点不可达的概念：节点发送的ping包超过NODE_TIMEOUT时间依然收不到pong包。<br> 工作原理：当发送的ping包，在<code>NODE_TIMEOUT/2</code>时间后依然收不到pong包时，节点会去重连集群中的其他节点。</li>
+<li>广播：<br>此时节点A会广播一条FAIL消息，告知大家节点B不可达。所有收到FAIL消息的节点，都被强制设定节点B不可达。<br> FAIL标志只是为了安全的触发从推举的算法。</li>
+</ol>
+<h3 id="故障转移-failover"><a href="#故障转移-failover" class="headerlink" title="故障转移 failover"></a>故障转移 failover</h3><ol>
+<li><p>从节点选举</p>
+<p> 从已经下线的主节点的所有从节点里面，选中一个从节点。从节点的选举需要得到大多数主节点的授权</p>
+</li>
+<li><p>成为主节点</p>
+<p> 被选中的从节点会执行SLAVEOF no one命令，成为新的主节点并且负责旧主节点的槽位</p>
+</li>
+<li><p>广播</p>
+<p> 广播一条pong消息，通知其他节点更新节点映射信息</p>
+</li>
+</ol>
+<h3 id="复制转移-replicas-migration"><a href="#复制转移-replicas-migration" class="headerlink" title="复制转移 replicas migration"></a>复制转移 replicas migration</h3><p>复制转移的定义：如果一个主节点A没有从节点，而集群中有的主节点B有多个从节点s1,s2,s3；那么RedisCluster会从多个从节点中选择一个从节点作为主节点A的从节点。<br>复制转移的目的：为了提高系统的可用性。</p>
+<p>比如一个集群中A,B,C 3个主节点，其从节点分别是A1,B1,C1,C2，其中C的从节点有两个。<br>当B挂了以后，B1升为主节点，此时B1节点没有从节点。</p>
+<p>a. 如果没有复制转移的话，那么B1再挂了的话，这个节点上的槽位都不可用了。<br>b. 如果有复制转移的话，那么会从C的两个从节点C1和C2中选择一个作为B1的从节点，我们假设选择的是C2。那么现在集群的情况是A-A1，B1-C2，C-C1。如果这时候B节点又可用了，那么他将会作为某个主节点的从节点。</p>
+<h2 id="4-配置操作、传播、故障转移"><a href="#4-配置操作、传播、故障转移" class="headerlink" title="4. 配置操作、传播、故障转移"></a>4. 配置操作、传播、故障转移</h2><h3 id="Cluster-currentEpoch"><a href="#Cluster-currentEpoch" class="headerlink" title="Cluster currentEpoch"></a>Cluster currentEpoch</h3><p>其目的是为了当节点信息发生冲突的时候来解决冲突。解决冲突的方法很简单，epoch高的配置覆盖epoch低的配置，即以epoch高的配置为准。</p>
+<h3 id="configuration-epoch"><a href="#configuration-epoch" class="headerlink" title="configuration epoch"></a>configuration epoch</h3><ol>
+<li>新节点创建时，configEpoch是0</li>
+<li>从节点推举后，生成新的configEpoch，从节点尝试取代失败主节点的epoch，并且获得大多数主节点的授权，那么configEpoch会加1. </li>
+<li>configEpoch帮助解决的是当不同节点声明不同配置配置时，用于解决冲突。</li>
+</ol>
+<p>RedisCluster配置参数：</p>
+<pre><code>cluster-enabled 
+cluster-config-file &lt;filename&gt;
+cluster-node-timeout &lt;milliseconds&gt;
+cluster-slave-validity-factor &lt;factor&gt;
+cluster-migration-barrier &lt;count&gt;
+cluster-require-full-coverage &lt;yes/no&gt;
+</code></pre><h1 id="三、期间出现问题"><a href="#三、期间出现问题" class="headerlink" title="三、期间出现问题"></a>三、期间出现问题</h1><ol>
+<li><p>客户端cluster slots没有缓存，造成RedisCluster节点cpu过高。</p>
+<p> phpredis虽然是智能客户端，<br> 但对于每个RedisCluster类都需要发送<code>cluster slots</code>命令获取节点和slot的对应关系，从而造成节点CPU过高。<br> 因为<code>cluster slots</code>命令需要执行两层主循环，分别是循环nodes和slot。对于master节点还需要扫描slave，cpu的计算开销就出来了</p>
+</li>
+<li><p>timewait过高</p>
+<p> 由于我们代码中设置100ms超时，当RedisCluster服务器返回过慢时，客户端会主动断开连接，因此出现大量timewait</p>
+</li>
+<li><p>为何不使用长连接。</p>
+<p> a. 因为云盘前端机非常多，300台前端机，每台前端机128个进程，那么对于cluster节点而言是38400个长连接，cluster节点所占用的内存和fd开销非常大。<br> b. 长连接：cpu明显下降，但是连接数暴涨<br> c. 短连接：通过客户端缓存节点信息能够降低部分cpu，但cpu依然偏高</p>
+</li>
+<li><p>del返回warning</p>
+<p>原因是del对返回值校验严格，要求必须是整形（即<code>:1</code>)这种格式，当出现<code>-MOVED</code>错误或者超时没有读取到数据时，则会报warning<br>出现时机：当RedisCluster的CPU过高时，del在100ms（设定的读超时是100ms）内没有响应，那么返回<code>?</code>的值，不是整形，因此会报warning</p>
+</li>
+</ol>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
+<li><a href="http://itindex.net/detail/52699-redis-cluster-failover" target="_blank" rel="noopener">Redis Cluster的FailOver失败案例分析</a></li>
+<li><a href="http://itindex.net/detail/54098-redis-cluster-%E7%99%BE%E4%B8%87" target="_blank" rel="noopener">Redis 百万QPS挑战</a></li>
+<li><a href="http://redis.io/topics/cluster-spec" target="_blank" rel="noopener">Redis Cluster Specification</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="ckw5yql47000zp8nuu8caeomp" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-mysql锁" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/07/28/mysql锁/" class="article-date">
@@ -129,7 +401,7 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="ckw1x704p003u5enuxnpwk0rg" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="ckw5yql5c003pp8nu79t854di" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -190,7 +462,7 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="ckw1x703o00145enu1ph6e5t3" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="ckw5yql480011p8nujmyd8idm" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -302,7 +574,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="ckw1x705a005f5enuzj9mlk4x" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="ckw5yql66005gp8nu87ny2yvn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -346,7 +618,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="ckw1x705600535enuhsdvgs7e" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="ckw5yql610054p8nuew8lbcxr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tcp/">tcp</a></li></ul>
@@ -505,7 +777,7 @@ net.ipv4.tcp_max_tw_buckets = 5000
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="ckw1x704z004g5enuq74z2ufd" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="ckw5yql5q004fp8nuf6gdddl8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -578,7 +850,7 @@ AND address LIKE &apos;%Main Street%&apos;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="ckw1x703a00095enus2wip66e" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="ckw5yql3v000cp8nuuftk9bdy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -659,7 +931,7 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="ckw1x703n00115enuwy5sqs24" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="ckw5yql490014p8nui6arzvzw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -830,479 +1102,10 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckw1x704y004e5enuwy8fifkl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckw5yql5o004ap8nu9d6zomg9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx模块执行顺序" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/08/nginx模块执行顺序/" class="article-date">
-  <time datetime="2016-05-08T10:00:01.000Z" itemprop="datePublished">2016-05-08</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/08/nginx模块执行顺序/">nginx模块执行顺序</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>整篇文章参考</p>
-<ol>
-<li><a href="http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html" target="_blank" rel="noopener">http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html</a></li>
-<li><a href="http://www.nginxguts.com/2011/01/phases/" target="_blank" rel="noopener">http://www.nginxguts.com/2011/01/phases/</a></li>
-</ol>
-<h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><h2 id="1-简要介绍"><a href="#1-简要介绍" class="headerlink" title="1. 简要介绍"></a>1. 简要介绍</h2><p> 在每个阶段都可以注册多个自定义的handlers。但是下面的几个阶段是不能够注册自定义的handler的：</p>
-<pre><code>1. find-config阶段
-2. post-access阶段
-3. post-rewrite阶段
-4. try-files阶段
-</code></pre><p>每个阶段都有一个与之相关的handler的列表。一旦把handler注册到对应阶段，那么handler就会返回下面的取值：</p>
-<pre><code>NGX_OK：请求已经成功处理，请求将会传到下一个阶段。
-
-NGX_DECLINED：请求需要被转发到本阶段的下一个handler
-
-NGX_AGAIN,NGX_DONE：请求已经被正确处理，同时请求被挂起，直到某个事件（子请求结束、socket可写或超时等）到来，handler才会再次被调用
-</code></pre><h2 id="2-如何注册自定义的handler"><a href="#2-如何注册自定义的handler" class="headerlink" title="2. 如何注册自定义的handler"></a>2. 如何注册自定义的handler</h2><p> 为了在某个阶段注册自定义的handler，需要找到<code>ngx_http_core_module</code>，并添加（<code>ngx_array_push</code>)到指定的phrase向量中。handlers以相反的顺序被调用。因此在配置中最后注册的handler会首先被调用。</p>
-<p>  从上面可以看出，请求处理的顺序和配置文件中的配置指令的先后顺序无关，无论配置文件中指令的顺序如何，各个阶段的处理函数都会按照预先的顺序执行。因此一个处理函数需要知道自己什么时候会被调用，何时需要返回NGX_DECLINED，而且保证减少性能损耗。</p>
-<h2 id="3-各个phase对于返回值的处理："><a href="#3-各个phase对于返回值的处理：" class="headerlink" title="3. 各个phase对于返回值的处理："></a>3. 各个phase对于返回值的处理：</h2><ol>
-<li><p>Access阶段</p>
-<pre><code>NGX_OK：允许访问请求URI指定的资源
-   NGX_HTTP_FORBIDDEN，NGX_HTTP_UNAUTHORIZED：不允许访问请求URI指定的资源
-</code></pre></li>
-<li><p>Content阶段</p>
-<pre><code> NGX_AGAIN或NGX_DONE时，content handler不会再被调用。取而代之的handler改变请求的读或写的handler
-如果content handler返回NGX_DECLINED， nginx将会将请求转发到content phrase handlers。
-</code></pre></li>
-<li><p>关于content phase handler与content handler的区别</p>
-</li>
-</ol>
-<p>a. content phase handler是混乱的：每个到达content阶段的请求都可以调用content phase handler. 对于配置content handler的location，这些请求只能调用一次content handler。</p>
-<p>b. 在一个location中可以调用多个content phase handler。但是在一个location中只能有一个content handler。</p>
-<p>这儿借用agentzh 文章Nginx配置指令的执行顺序（五）中例子。</p>
-<pre><code>location /test {
-    echo_before_body &quot;before...&quot;;
-    proxy_pass http://127.0.0.1:8080/foo;
-    echo_after_body &quot;after...&quot;;
-}
-
-location /foo {
-    echo &quot;contents to be proxied&quot;;
-}
-</code></pre><p>测试结果表明这一次我们成功了：</p>
-<pre><code>$ curl &apos;http://localhost:8080/test&apos;
-before...
-contents to be proxied
-after...
-
-因此我们知道echo_before_body 和echo_after_body指令都属于content phase handler。也就是Agentzh文中的输出过滤器。
-</code></pre><h1 id="二、详细介绍"><a href="#二、详细介绍" class="headerlink" title="二、详细介绍"></a>二、详细介绍</h1><p>Nginx 处理请求的过程一共划分为 11 个阶段，按照执行顺序依次是 post-read、server-rewrite、find-config、rewrite、post-rewrite、preaccess、access、post-access、try-files、content 以及 log.</p>
-<h2 id="1-post-read"><a href="#1-post-read" class="headerlink" title="1. post-read"></a>1. post-read</h2><ol>
-<li>支持模块注册处理程序</li>
-<li>发生阶段:nginx读取并解析完请求头之后立即开始执行 </li>
-<li>示例模块：标准模块 ngx_realip，目的：改写请求的来源地址。</li>
-<li><p>举例</p>
-<pre><code>server {
-    listen 8080;
-
-    set_real_ip_from 127.0.0.1; # 规定来源地址的改写只对那些来自127.0.0.1请求生效
-    real_ip_header   X-My-IP;
-
-    location /test {
-        set $addr $remote_addr;
-        echo &quot;from: $addr&quot;;
-    }
-}
-</code></pre><p> 结果</p>
-<pre><code>$curl -H &apos;X-My-IP: 1.2.3.4&apos; your.domain/test
-from: 1.2.3.4
-</code></pre></li>
-</ol>
-<h2 id="2-server-rewrite"><a href="#2-server-rewrite" class="headerlink" title="2. server-rewrite"></a>2. server-rewrite</h2><ol>
-<li>支持模块注册处理程序</li>
-</ol>
-<h2 id="3-find-config"><a href="#3-find-config" class="headerlink" title="3. find-config"></a>3. find-config</h2><ol>
-<li>不支持模块注册处理程序</li>
-<li>目的：由nginx核心完成当前请求与location配置块之间的配对工作。在此阶段之前，请求没有与任何location配置块相关联。</li>
-</ol>
-<h2 id="4-rewrite"><a href="#4-rewrite" class="headerlink" title="4. rewrite"></a>4. rewrite</h2><ol>
-<li>支持模块注册处理程序</li>
-<li>目的：对当前请求进行各种修改，比如URI，URL，或者创建并初始化一系列后续处理阶段所需要的变量</li>
-</ol>
-<h2 id="5-post-rewrite"><a href="#5-post-rewrite" class="headerlink" title="5. post-rewrite"></a>5. post-rewrite</h2><p>location级别重写的后一阶段，用来检查上阶段是否有uri重写，并根据结果跳转到合适的阶段；</p>
-<ol>
-<li>不支持模块注册处理程序</li>
-<li>目的：nginx核心完成rewrite阶段所要求的“内部跳转”操作。“内部跳转”本质上其实是把当前请求的处理阶段倒退到find-config阶段，以便重新进行请求URI与location配置块的配对。 </li>
-<li><p>注意：有趣的地方是，倒退回find-config阶段的动作并不是发生在rewrite阶段，而是发生在后面的POST-REWRITE阶段。rewrite指令只是简单地指示Nginx有必要在POST-REWRITE阶段发起“内部跳转”。这个设计的目的是：为了在最初匹配的location块中支持多次反复地改写URI。</p>
-<pre><code>location /foo {
-rewrite ^ /bar;
-rewrite ^ /baz;
-
-echo foo;
-}
-
-location /bar {
-    echo bar;
-}
-
-location /baz {
-    echo baz;
-}
-</code></pre><p>请求</p>
-<pre><code> $ curl localhost:8080/foo
-baz
-</code></pre><p> 日志</p>
-<pre><code>$ grep &apos;using config&apos; logs/error.log
-   [debug] 89449#0: *1 using configuration &quot;/foo&quot;
-   [debug] 89449#0: *1 using configuration &quot;/baz&quot;
-</code></pre></li>
-<li><p>server配置块中的rewrite指令</p>
-<p> server配置块中的rewrite指令对请求URI进行改写，则不会涉及”内部跳转“，因为此时URI改写发生在server-rewrite阶段，早于location配对的find-config阶段。</p>
-</li>
-</ol>
-<h2 id="6-pre-access"><a href="#6-pre-access" class="headerlink" title="6. pre-access"></a>6. pre-access</h2><ol>
-<li>标准模块<code>ngx_limit_req</code>和<code>ngx_limit_zone</code> 就运行在此阶段，前者控制请求的访问频度，后者限制访问的并发度。</li>
-<li>【建议】 尽量在server配置块中配置ngx_realip这样的模块</li>
-</ol>
-<h2 id="7-acess"><a href="#7-acess" class="headerlink" title="7. acess"></a>7. acess</h2><ol>
-<li>标准模块 ngx_access</li>
-<li>第三方模块 ngx_auth_request, access_by_lua</li>
-</ol>
-<h2 id="8-post-access阶段"><a href="#8-post-access阶段" class="headerlink" title="8. post-access阶段"></a>8. post-access阶段</h2><ol>
-<li>不支持模块注册处理程序</li>
-<li>目的：主要配合acess阶段实现标准ngx_http_core模块提供的配置指令satisfy的功能。在access阶段注册多个处理指令，satisfy指令可以用于控制它们彼此之间的协作方式。有两种协作方式，一种是all（与关系），一种是any（或关系）。</li>
-<li><p>举例：</p>
-<pre><code>location /test {
-satisfy all;
-
-deny all;
-access_by_lua &apos;ngx.exit(ngx.OK)&apos;;
-
-echo something important;
-}
-</code></pre><p> 请求</p>
-<pre><code>satisfy all; $curl your.domain/test ----403 forbidden
-satisfy any; $curl your.domain/test ---- something important
-</code></pre></li>
-</ol>
-<h2 id="9-try-files"><a href="#9-try-files" class="headerlink" title="9. try-files"></a>9. try-files</h2><ol>
-<li>不支持模块注册处理程序</li>
-<li>目的：专门实现标准配置指令<code>try_files</code>功能</li>
-<li><code>try_files</code> 指令接受两个以上任意数量的参数，每个参数都指定了一个 URI. 这里假设配置了 N 个参数，则 Nginx 会在 try-files 阶段，依次把前 N-1 个参数映射为文件系统上的对象（文件或者目录），然后检查这些对象是否存在。一旦 Nginx 发现某个文件系统对象存在，就会在 try-files 阶段把当前请求的 URI 改写为该对象所对应的参数 URI（但不会包含末尾的斜杠字符，也不会发生 “内部跳转”）。如果前 N-1 个参数所对应的文件系统对象都不存在，try-files 阶段就会立即发起“内部跳转”到最后一个参数（即第 N 个参数）所指定的 URI. </li>
-<li><code>try_files</code> 指令本质上只是有条件地改写当前请求的 URI，而这里说的“条件”其实就是文件系统上的对象是否存在。当“条件”都不满足时，它就会无条件地发起一个指定的“内部跳转”。当然，除了无条件地发起“内部跳转”之外， try_files 指令还支持直接返回指定状态码的 HTTP 错误页，例如try_files /foo /bar =404;</li>
-<li><p>特别注意：对于<code>try_files</code>指令，通过URI末尾的斜杠字符来区分”目录“和”文件“的。</p>
-<pre><code> root /var/www/;
-
-location /test {
-    try_files /foo /bar/ /baz;
-    echo &quot;uri: $uri&quot;;
-}
-
-location /foo {
-    echo $uri;
-    echo &quot;foo&quot;;
-}
-
-location /bar/ {
-       echo $uri;
-     echo bar;
-}
-
-location /baz {
-    echo $uri;
-    echo baz;
-}
-</code></pre></li>
-</ol>
-<p>case1 ：根目录下没有foo文件，bar目录，输出/baz, baz</p>
-<pre><code>$ grep trying logs/error.log
-[debug] 3869#0: *1 trying to use file: &quot;/foo&quot; &quot;/var/www/foo&quot;
-[debug] 3869#0: *1 trying to use dir: &quot;/bar&quot; &quot;/var/www/bar&quot;
-[debug] 3869#0: *1 trying to use file: &quot;/baz&quot; &quot;/var/www/baz&quot;
-</code></pre><p> 这里最后一条“调试信息”容易产生误解，会让人误以为 Nginx 也把最后一个参数 /baz 给映射成了文件系统对象进行检查，事实并非如此。当 try_files 指令处理到它的最后一个参数时，总是直接执行“内部跳转”，而不论其对应的文件系统对象是否存在。</p>
-<p> case2 :根目录下有foo文件，输出 uri: /foo</p>
-<h2 id="10-content"><a href="#10-content" class="headerlink" title="10. content"></a>10. content</h2><ol>
-<li><p>目的：内容生成阶段。肩负着生成“内容”， 并输出HTTP响应的使命。echo, proxy_pass都属于该阶段。</p>
-</li>
-<li><p>对于content阶段，有两种情况：</p>
-<p>  a. 没有使用任何content阶段的指令。那么就会执行静态资源服务模块：<code>ngx_index</code>, <code>ngx_autoindex</code>, <code>ngx_static</code>模块</p>
-<p>  b. 如果使用了content阶段的指令，如echo，proxy_pass。</p>
-<pre><code>每个location只能有一个内容处理程序content handler.有多个时content阶段指令时，只有一个能够被注册并执行。
-</code></pre><p>  比如指令中有 <code>echo ‘hello’;proxy_pass so.com;</code>到底哪个被执行是不一定的。因为在同一个阶段phase中，各个handler的执行顺序是不一定的。</p>
-</li>
-</ol>
-<h2 id="11-log"><a href="#11-log" class="headerlink" title="11. log"></a>11. log</h2>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="ckw1x704t00455enu64z8oid6" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx-rewrite详解" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/05/nginx-rewrite详解/" class="article-date">
-  <time datetime="2016-05-05T10:00:01.000Z" itemprop="datePublished">2016-05-05</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/05/nginx-rewrite详解/">nginx-rewrite详解</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="一-概述"><a href="#一-概述" class="headerlink" title="一. 概述"></a>一. 概述</h3><p><code>ngx_http_rewrite_module</code>模块通过正则表达式、return重定向和条件选择配置（conditionally select configurations）改变请求的URI。<br><code>ngx_http_rewrite_module</code>模块中的指令以下面的顺序执行：</p>
-<pre><code>1. 在server{}中的指令先被执行，并且是根据配置中先后顺序依次执行
-2. 重复的：
-    1. 根据请求URI匹配一个location
-    2. 在匹配的location中，该模块的指令按先后顺序依次执行
-    3. 如果一个请求URI被重定向，这个循环被重复，但最多不超过10次。
-</code></pre><p>【解释】在<code>ngx_http_rewrite_module</code>初始化的时候(<code>ngx_http_rewrite_init</code>)的时候，在<code>SERVER_REWRITE</code>和<code>REWRITE</code>两个阶段注册了相同的处理函数<code>ngx_http_rewrite_handler</code>.</p>
-<h3 id="二-指令"><a href="#二-指令" class="headerlink" title="二. 指令"></a>二. 指令</h3><h4 id="1-break"><a href="#1-break" class="headerlink" title="1. break"></a>1. break</h4><pre><code>Syntax:break;
-Default:—
-Context:server, location, if
-</code></pre><p>停止处理<code>ngx_http_rewrite_module</code>模块的指令。<br>如果在location里面使用，那么这个请求接下来phase的处理也都是在这个location里面。<br>看下面的例子</p>
-<pre><code>location /proxy3 {
-    rewrite (.*) /third;
-    set $a 35;
-    break;
-    rewrite (.*) /second;
-    set $a 76;
-    echo $a;
-}
-location /second {
-    echo &apos;second&apos;;
-    echo $a;
-}
-location /third {
-    echo &apos;third&apos;;
-    echo $a;
-}
-</code></pre><p>curl <a href="http://your.domain/proxy3" target="_blank" rel="noopener">http://your.domain/proxy3</a> </p>
-<table>
-<thead>
-<tr>
-<th>case</th>
-<th>result</th>
-<th>reason</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>有break</td>
-<td>输出35</td>
-</tr>
-<tr>
-<td>没有break</td>
-<td>输出second 76</td>
-<td>因为4条指令顺序执行，rewrite (.*) /second是最后一条rewrite指令，生效。set $a 76生效。因此在POST-REWRITE阶段转到location /second</td>
-</tr>
-</tbody>
-</table>
-<h4 id="2-if"><a href="#2-if" class="headerlink" title="2. if"></a>2. if</h4><pre><code>Syntax: if (condition) {...}
-Default: ---
-Context: server, location
-</code></pre><p>指定的condition参数被判断。如果为true，在if里面的模块指令被执行，请求进入到if指令里面的配置。在if指令里面的配置继承于上一层的配置。<br>condition可以是下面几种情况：</p>
-<pre><code>1. 一个变量名; 如果变量是空字符串或0，则false
-2. 使用= !=运算符比较
-3. 使用~(区分大小写) ~*(不区分大小写) 正则表达式包含capture，可以使用$1...$9来使用捕获的值。!~ !~*也可以使用.如果正则表达式包含} ;的话，整个正则表达式要放在单引号或双引号里面。
-4. 检查文件是否存在 -f !-f
-5. 检查目录是否存在 -d !-d
-6. 检查文件，目录，软链是否存在 -e !-e
-7. 检查是否可执行文件 -x !-x
-</code></pre><p>举例：</p>
-<pre><code>if ($http_user_agent ~ MSIE) {
-       rewrite ^(.*)$ /msie/$1 break;
-}
-
-if ($http_cookie ~* &quot;id=([^;]+)(?:;|$)&quot;) {
-    set $id $1;
-}
-
-if ($request_method = POST) {
-    return 405;
-}
-
-if ($slow) {
-    limit_rate 10k;
-}
-
-if ($invalid_referer) {
-    return 403;
-}
-</code></pre><h4 id="3-return"><a href="#3-return" class="headerlink" title="3. return"></a>3. return</h4><pre><code>Syntax: return code [text];
-        return code URL;
-        return URL;
-</code></pre><p> 停止处理，并将code返回给客户端。非标准code444 关闭连接并且不发送响应头。<br> 从版本0.8.42开始，可以指定一个URL（对于301，302，303和307）或者响应体（其他code）。一个响应体和重定向的URL可以包含变量。<br> 另外，URL可以指定为单个参数，这样就是302临时跳转。这样一个参数需要以http://, https://, $scheme开头。</p>
-<h4 id="4-rewrite"><a href="#4-rewrite" class="headerlink" title="4. rewrite"></a>4. rewrite</h4><pre><code>Syntax: rewrite regex replacement [flag];
-Default: ---
-Context: server, location, if
-</code></pre><p>如果指定的正则表达式匹配了一个请求的URI，URI被指定的replacement改变。</p>
-<p>配置文件中多个rewrite指令时，按照出现顺序依次执行，只执行最后一个。可以使用[flags]终止指令的处理。</p>
-<p>如果replacement以<code>http:// https://</code> 开头，那么处理将会停止，并重定向返回给客户端。</p>
-<p>可选参数flag，可以是下面几个中的某一个:</p>
-<pre><code>last:
-    停止处理ngx_http_rewrite_module模块的指令集，然后使用改变后的URI去查找新的location。
-    【注释】即遇到last以后，执行阶段从rewrite阶段回到了find-config阶段。
-break:
-    停止处理ngx_http_rewrite_module模块的指令集。
-    【注释】遇到break以后，执行阶段从rewrite阶段转到下一个阶段。如果是server-rewrite则转到find-config, 如果是rewrite则转到post-rewrite。
-redirect:
-    返回一个302临时跳转。当replacement不是以http://, https://开头的时候使用
-permanent:
-    返回一个301永久跳转。
-</code></pre><p>last其实就相当于一个新的url，对nginx进行了一次请求，需要走一遍大多数的处理过程，最重要的是会做一次find config，提供了一个可以转到其他location的配置中处理的机会，</p>
-<p>而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理。</p>
-<h4 id="5-rewrite-log"><a href="#5-rewrite-log" class="headerlink" title="5. rewrite_log"></a>5. rewrite_log</h4><pre><code>Syntax: rewrite_log on | off;
-Default: rewrite_log off;
-Context: http,server,location,if
-</code></pre><p>开启或关闭<code>ngx_http_rewrite_module</code>模块指令处理结果到error_log文件，日志级别notice.</p>
-<h2 id="三-例子"><a href="#三-例子" class="headerlink" title="三. 例子"></a>三. 例子</h2><ol>
-<li><p>echo $a被if继承。因此输出45</p>
-<pre><code>location /proxy3 {
-     echo $a;
-     set $a 35;
-     if ($a = 35) {
-         set $a 45;
-     }
-}
-</code></pre></li>
-<li><p>echo $a被if继承，但if指令里面有echo指令，根据配置的基本规则，if里面的echo指令有效。因此输出43 【todo】配置的基本原则是毛线？？？</p>
-<pre><code>location /proxy3 {
-     echo $a;
-     set $a 35;
-     set $b 43;
-     if ($a = 35) {
-         set $a 45;
-         echo $b;
-     }
-}
-</code></pre></li>
-<li><p>由于if处于rewrite阶段，执行if以后依然处于rewrite阶段，因此if{}后面的模块指令依然执行。<br>因此输出67;</p>
-<pre><code>location /proxy3 {
-     echo $a;
-     set $a 35;
-     if ($a = 35) {
-         set $a 45;
-     }
-     set $a 67;
-}
-</code></pre></li>
-<li><p>演示rewrite</p>
-<pre><code>location /proxy3 {
-    #rewrite (.*) http://your.domain/third;
-    rewrite (.*) /third;
-    set $a 67;
-    echo $a;
-}
-set $a 99;
-location /third {
-    echo $a;
-}
-</code></pre><p>如果rewrite后面是/third 则输出67<br>如果是http:// 则输出99。<br>解释：<br>set $a 99 发生在server-rewrite阶段<br>之后在find-config阶段，找到location /proxy3<br>在location /proxy3里面 如果是<code>rewrite http://...</code>那么直接跳转。类似 rewrite (.<em>) /third redirect;<br>如果是rewrite (.</em>) /third呢 则还会继续执行接下来的rewrite阶段的指令，set $a 67将会被执行。然后在post-rewrite阶段调转到location /third</p>
-</li>
-<li><p>rewrite中带有flag</p>
-<pre><code>location /proxy3 {
-      set $a 35;
-      if ($a = 35) {
-          set $a 73;
-          rewrite (.*) /main break;
-      }
-      rewrite (.*) /second;
-      set $a 76;
-      echo &apos;proxy3&apos;;
-      echo $uri;
-      echo $a;
-  }
-  location /main {
-      echo &apos;main&apos;;
-      echo $a;
-  }
-  location /second {
-      echo &apos;second&apos;;
-      echo $a;
-  }
-</code></pre><p> 如果是<code>rewrite (.*) main break</code> 。 则输出proxy3 /main 73</p>
-<p> 如果是<code>rewrite (.*) main; break;</code>，则输出proxy3 /main 73<br> 原因是而break则是在一个请求处理过程中将原来的url(包括uri和args)改写之后，在继续进行后面的处理，这个重写之后的请求始终都是在同一个location中处理；</p>
-<p> 如果是<code>rewrite (.*) main last</code>，则输出main 35</p>
-<p> 如果是<code>rewrite (.*) main</code> 不加break,last, 则rewrite (.*) /second; set $a 76执行 输出 second 76</p>
-</li>
-</ol>
-<ol start="6">
-<li><p>多个rewrite只有最后一个起作用</p>
-<pre><code>location /proxy3 {
-    rewrite (.*) /third;
-    set $a 35;
-    if ($a = 35) {
-        rewrite (.*) /main;
-    }
-    rewrite (.*) /second; 
-    set $a 76;
-    echo $a;
-}
-</code></pre></li>
-</ol>
-<h2 id="四-几点事实："><a href="#四-几点事实：" class="headerlink" title="四. 几点事实："></a>四. 几点事实：</h2><ol>
-<li>rewrite 指令被称为 action directives. 下一层级的location不会从上一级中继承。</li>
-<li>server 作用域中的 rewrite 模块指令也不会向下传递到 location 作 用域，但是这些指令会在 SERVER_REWRITE 阶段 (先于 REWRITE 阶段) 被执行.</li>
-<li>rewrite 模块提供的指令的执行顺序和其在配置文件中的定义顺序一致</li>
-<li><p>if 指令在nginx内部创建了一个无名location，if条件为真时，nginx使用这个无名location作用域的配置处理当前请求。 </p>
-</li>
-<li><p>rewrite模块<br>rewrite 模块是一个 phase handler， 其初始化函数 <code>ngx_http_rewrite_init</code> 在 SERVER REWRITE 和 REWRITE 阶段 注册了相同的处理函数<code>ngx_http_rewrite_handler</code>。其中，SERVER REWRITE 阶段 的处理函数用于执行 server 作用域中的 rewrite 模块指令，而 REWRITE 阶 段的处理函数用于执行 location 和 if 作用域的 rewrite 模块指令。</p>
-</li>
-<li><p>POST REWRITE 是 Nginx 内部定义的阶段，通过检查请求 uri 是否被 rewrite 模块修改 (r-&gt;uri_changed)，判断是否需要使用修改后的 uri 重新开始 FIND CONFIG 以重新匹配合适的 location。比如在 location 中有配置如 rewrite … last; 且 rewrite 成功和请求 uri 匹配成功时。</p>
-</li>
-</ol>
-<ol start="7">
-<li>指令执行顺序</li>
-</ol>
-<p>nginx大部分模块提供的配置指令的生效顺序和其在配置文件中的顺序并没有什么关系。但有些是有关系的，比如</p>
-<pre><code>1. http core模块中使用正则表达式的location。跟顺序有关
-2. rewrite模块中提供的if，break，return，rewrite指令
-</code></pre><h2 id="五-参考文章"><a href="#五-参考文章" class="headerlink" title="五. 参考文章"></a>五. 参考文章</h2><p><a href="http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/" target="_blank" rel="noopener">http://ialloc.org/posts/2015/07/28/ngx-notes-http-evil-if-1/</a><br><a href="http://nginx.org/en/docs/http/ngx_http_rewrite_module.html" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_rewrite_module.html</a><br><a href="https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/" target="_blank" rel="noopener">https://blog.martinfjordvald.com/2012/08/understanding-the-nginx-configuration-inheritance-model/</a><br><a href="http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/" target="_blank" rel="noopener">http://ialloc.org/posts/2013/07/18/ngx-notes-conf-parsing/</a><br><a href="http://blog.csdn.net/brainkick/article/details/7475770" target="_blank" rel="noopener">http://blog.csdn.net/brainkick/article/details/7475770</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="ckw1x704q003w5enugce6tfro" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
 
     </footer>
   </div>
@@ -1361,6 +1164,14 @@ location /third {
       <ul>
         
           <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/17/分布式-全序广播/">分布式-全序广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
           </li>
         
@@ -1370,14 +1181,6 @@ location /third {
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
-          </li>
-        
-          <li>
-            <a href="/2019/03/20/golang-包导入/">golang包导入</a>
           </li>
         
       </ul>
