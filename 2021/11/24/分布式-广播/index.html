@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>分布式-广播 | Keything的日志</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="概述本文将介绍什么是广播、为什么有广播、广播有哪些分类、如何实现广播，广播有哪些应用。 为什么要有广播？构建分布式的难点在于不可避免的并发以及提供全局控制，这可以通过group communication来降低难度。相比点对点通信，group communication原语提供了更高的保证。 broadcast protocols 广播协议将消息发送给组内全部节点。组内成员可以是固定的，也可以加入">
+<meta name="keywords" content="分布式">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式-广播">
+<meta property="og:url" content="http://keything.github.io/2021/11/24/分布式-广播/index.html">
+<meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="概述本文将介绍什么是广播、为什么有广播、广播有哪些分类、如何实现广播，广播有哪些应用。 为什么要有广播？构建分布式的难点在于不可避免的并发以及提供全局控制，这可以通过group communication来降低难度。相比点对点通信，group communication原语提供了更高的保证。 broadcast protocols 广播协议将消息发送给组内全部节点。组内成员可以是固定的，也可以加入">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/receivingAndDelivering.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/FIFOBroadcast.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/CausalBroadcast.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/TotalOrderBroadcast.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/TotalOrderBroadcast2.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/BroadcastAlgo.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/EagerReliableBroadcast.jpg">
+<meta property="og:image" content="http://keything.github.io/2021/11/24/分布式-广播/FIFOBroadcastAlgo.jpg">
+<meta property="og:updated_time" content="2021-11-24T12:52:09.322Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="分布式-广播">
+<meta name="twitter:description" content="概述本文将介绍什么是广播、为什么有广播、广播有哪些分类、如何实现广播，广播有哪些应用。 为什么要有广播？构建分布式的难点在于不可避免的并发以及提供全局控制，这可以通过group communication来降低难度。相比点对点通信，group communication原语提供了更高的保证。 broadcast protocols 广播协议将消息发送给组内全部节点。组内成员可以是固定的，也可以加入">
+<meta name="twitter:image" content="http://keything.github.io/2021/11/24/分布式-广播/receivingAndDelivering.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Keything的日志</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://keything.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-分布式-广播" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/24/分布式-广播/" class="article-date">
+  <time datetime="2021-11-24T12:52:09.000Z" itemprop="datePublished">2021-11-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      分布式-广播
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文将介绍什么是广播、为什么有广播、广播有哪些分类、如何实现广播，广播有哪些应用。</p>
+<h2 id="为什么要有广播？"><a href="#为什么要有广播？" class="headerlink" title="为什么要有广播？"></a>为什么要有广播？</h2><p>构建分布式的难点在于不可避免的并发以及提供全局控制，这可以通过<code>group communication</code>来降低难度。相比点对点通信，<code>group communication</code>原语提供了更高的保证。</p>
+<p><code>broadcast protocols</code> 广播协议将消息发送给组内全部节点。组内成员可以是固定的，也可以加入或离开。</p>
+<p>broadcast 是一个 <code>group communication</code> ，total order broadcast是一种broadcast。</p>
+<p>当应用给组内全部节点发送消息时，可以使用一种算法去broadcast。</p>
+<h2 id="broadcast和delivery理解"><a href="#broadcast和delivery理解" class="headerlink" title="broadcast和delivery理解"></a>broadcast和delivery理解</h2><p>broadcast和delivery 是更高维度的概念。send/receive是点对点的维度。<br><img src="//keything.github.io/2021/11/24/分布式-广播/receivingAndDelivering.jpg" alt=""></p>
+<h2 id="广播的分类"><a href="#广播的分类" class="headerlink" title="广播的分类"></a>广播的分类</h2><p>total order broadcast protocol 要满足下面四个属性：</p>
+<ul>
+<li>validity (正确性)：如果一个正确的进程广播了一条消息，那么其他所有正确的进程都接收到这条消息</li>
+<li>uniform agreement: 如果一个进程接收到消息m，那么所有正确的进程都接收到消息m</li>
+<li>uniform integrity: 一个进程最多接收一次消息m</li>
+<li>uniform total order: 如果进程p和q都接收到消息m和m’，当且仅当q接收消息m早于m’时，进程p接收消息m早于m’</li>
+</ul>
+<p>满足前三个属性的叫reliable broadcast。简要概括可靠广播：没有时间保证，所有消息都被没有错误的节点接收。</p>
+<p>根据节点接收消息的顺序不同，可以得到几种广播：FIFO、causal、Total order Broadcast。</p>
+<h3 id="FIFO-广播"><a href="#FIFO-广播" class="headerlink" title="FIFO 广播"></a>FIFO 广播</h3><p>定义：如果同一个节点发送的消息m1和m2，m1早于m2，那么接收上m1要早于m2。<br>如下图黑线所示。但可能出现节点C接收m2早于m1，那么符合FIFO（m1早于m3)，但不符合因果（因为节点B是接收m1后才广播m2）。<br><img src="//keything.github.io/2021/11/24/分布式-广播/FIFOBroadcast.jpg" alt=""></p>
+<h3 id="Causal-广播"><a href="#Causal-广播" class="headerlink" title="Causal 广播"></a>Causal 广播</h3><p>定义：如果一个消息的广播 happens before 另外一个消息，那么所有节点的接收顺序也要保持这个顺序；如果两个消息并发，那么一个节点可以以任意接收。</p>
+<p>如下图所示 broadcast(m1) -&gt; broadcast(m2) 并且 broadcast(m1) -&gt; broadcast(m3)，那么有效的顺序是:<br>(m1,m2,m3) 或 （m1,m3,m2)<br><img src="//keything.github.io/2021/11/24/分布式-广播/CausalBroadcast.jpg" alt=""></p>
+<h3 id="Total-Order-广播，又叫atomic-broadcast-原子广播"><a href="#Total-Order-广播，又叫atomic-broadcast-原子广播" class="headerlink" title="Total Order 广播，又叫atomic broadcast 原子广播"></a>Total Order 广播，又叫atomic broadcast 原子广播</h3><p>定义：保证节点的一致性，确保所有节点以相同顺序接收消息。<br><img src="//keything.github.io/2021/11/24/分布式-广播/TotalOrderBroadcast.jpg" alt=""><br><img src="//keything.github.io/2021/11/24/分布式-广播/TotalOrderBroadcast2.jpg" alt=""></p>
+<h2 id="广播算法"><a href="#广播算法" class="headerlink" title="广播算法"></a>广播算法</h2><p>广播算法可以分成两步骤：</p>
+<ol>
+<li>尽最大努力可靠的广播，通过重发丢失的消息</li>
+<li>基于可靠广播，保证接收顺序</li>
+</ol>
+<h3 id="可靠广播"><a href="#可靠广播" class="headerlink" title="可靠广播"></a>可靠广播</h3><h4 id="尝试1：广播节点直接给其他节点发送消息"><a href="#尝试1：广播节点直接给其他节点发送消息" class="headerlink" title="尝试1：广播节点直接给其他节点发送消息"></a>尝试1：广播节点直接给其他节点发送消息</h4><p>当消息丢失 并且 发送节点崩溃时，将会有节点无法收到该消息。<br><img src="//keything.github.io/2021/11/24/分布式-广播/BroadcastAlgo.jpg" alt=""></p>
+<p>为了改善这种情况，我们需要依赖其他节点的帮助。已经收到消息的节点，可以将其全部消息广播给其他节点。但是该算法并不高效：没有错误时，每个消息要发送O(n^2)次，每个节点至少收到n-1次消息。</p>
+<p>有很多算法可以进行优化。比如 <a href="https://github.com/keything/paper_learning/blob/main/%5B1990%5DBroadcast-Protocols-for-Distributed-Systems.md" target="_blank" rel="noopener">Broadcast Protocols for Distributed Systems</a>中的trans protocol<br><img src="//keything.github.io/2021/11/24/分布式-广播/EagerReliableBroadcast.jpg" alt="">。当然最有名的是 <code>gossip protocols</code>。</p>
+<p>基于可靠广播（使用eager reliable broadcast or gossip protocol），我们可以构建FIFO,causal,total order 广播。</p>
+<h3 id="FIFO-broadcast-algo"><a href="#FIFO-broadcast-algo" class="headerlink" title="FIFO broadcast algo"></a>FIFO broadcast algo</h3><p><img src="//keything.github.io/2021/11/24/分布式-广播/FIFOBroadcastAlgo.jpg" alt=""></p>
+<p>sendSeq 是发送节点自增的序号；delivered：一个发送节点是一个向量，记录接收节点已经接收的发送节点的数据。buffer：记录收到的节点，直到能够被delivere。</p>
+<p>算法核心：对于每个发送，检查是否有预期seq匹配的，如果有则deliver m 给application；反之则等待消息接收。</p>
+<h3 id="Causal-broadcast-algo"><a href="#Causal-broadcast-algo" class="headerlink" title="Causal broadcast algo"></a>Causal broadcast algo</h3><h3 id="Total-broadcast-algo"><a href="#Total-broadcast-algo" class="headerlink" title="Total broadcast algo"></a>Total broadcast algo</h3><p>采用共识算法</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
+<li><a href="https://www.youtube.com/watch?v=x-D8iFU1d-o&amp;list=PLeKd45zvjcDFUEv_ohr_HdUFe97RItdiB&amp;index=11" target="_blank" rel="noopener">Dr. Martin Kleppmann 的Distributed Systems</a></li>
+<li><a href="http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=DA32EDFFF7FE22C9B1B1CE7B36D2C6EC?doi=10.1.1.121.3113&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener">Broadcast Protocols for Distributed Systems</a></li>
+<li><a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.110.6701&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener">total order broadcast and multicase algorithms taxonomy and survey</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/24/分布式-广播/" data-id="ckwdj16s0005nsrnuic8dvww3" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2021/11/19/分布式-CAP理论/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">分布式-CAP理论</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Laravel/">Laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/">Redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/composer/">composer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp/">cpp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elasticsearch/">elasticsearch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/faiss/">faiss</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/git/">git</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/go-source-code/">go.source.code</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/golang/">golang</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/laravel/">laravel</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mac/">mac</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/machine-learning/">machine-learning</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memcache/">memcache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/mysql/">mysql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nginx/">nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nosql/">nosql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/octave/">octave</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php/">php</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/php源码学习/">php源码学习</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spark/">spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tcp/">tcp</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thrift/">thrift</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/11/">November 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">May 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/04/">April 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">March 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">January 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">November 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/10/">October 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">July 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">May 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/01/">January 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">November 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">October 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/09/">September 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/08/">August 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">May 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/03/">March 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">December 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">November 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/16/Spark-DataSource-Hive Tables/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/29/golang继承/">golang继承</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2021 Keything<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

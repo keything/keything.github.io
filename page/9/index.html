@@ -62,6 +62,116 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-memcache启动及telnet命令" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/04/17/memcache启动及telnet命令/" class="article-date">
+  <time datetime="2016-04-17T05:00:01.000Z" itemprop="datePublished">2016-04-17</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/04/17/memcache启动及telnet命令/">2. Memcache启动及Telnet命令</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="1-Memcached启动选项"><a href="#1-Memcached启动选项" class="headerlink" title="1. Memcached启动选项"></a>1. Memcached启动选项</h2><ol>
+<li>“p:”   小写p，memcached监听的tcp端口。默认端口为11211, 该选项的参数赋值给settings.port</li>
+<li>“m:”  小写m。memcached能够使用的最大内存值，默认是64MB。参数单位为MB。该参数赋值给settings.maxbytes</li>
+<li>“v”    小写v。输出memcached运行时的一些信息。-v -vv -vvv输出的信息依次增加。该选项会增加settings.verbose的值</li>
+<li>“d”    以守护进程的形式运行memcached</li>
+<li>“f:”    item的扩容因子。默认值为1.25。该选项的参数值可以是小数但必须大于1.0。该选项参数将赋值给settings.factor</li>
+<li>“n:”   设置最小的item能存储多少字节的数据。该选项参数赋值给settings.chunk_size.</li>
+<li>“C:”  大写C。memcached默认是使用CAS的，本选项是禁用CAS。本选项会将settings.use_cas赋值为false</li>
+<li>“B:”  memcached支持文本协议和二进制协议。该选项的参数用于指定使用的协议。默认情况下是根据客户端的命令而自动判断(也叫协商)，参数只能取auto、binary、ascii这三个字符串值。将参数将赋值给settings.binding_protocol</li>
+<li>“I:”   大写i。slab分配器中，每一个页的大小。这个选项的参数是一个数值表示页的大小。默认单位是B也可以在数值后面带K或者M(大小写都行)，表示KB和MB。页的大小小于1KB或者大于128MB都是不允许的。不推荐使用该选项。本选项参数会赋值给settings.item_size_max</li>
+<li>“P:”  大写P。指定pid文件。存放当前mc进程的pid</li>
+<li>“t:”    该选项的参数用于指定worker线程的个数，不建议超过64个。如果不设置该选项默认有4个线程。该参数会赋值给settings.num_threads</li>
+<li>“c:”   小写c。最多允许多少个客户端同时在线(这个值不等价于listen函数的第二个参数)，该选项和后面的b选项有所不同。 默认值为1024个。该选项参数赋值给settings.maxconns。</li>
+<li>“u:”  小写u。当以root用户启动memcached的时候需要指定memcached的所属用户，其他用户启动memcached不需要此选项</li>
+</ol>
+<p>举例</p>
+<pre><code>memcached -d -p 11211 -P /var/run/memcached.pid -c 4096 -t 4 -m 1024 -u root -v
+</code></pre><h2 id="2-一些高级telnet命令"><a href="#2-一些高级telnet命令" class="headerlink" title="2. 一些高级telnet命令"></a>2. 一些高级telnet命令</h2><p>stats slabs<br>查看 memcache的slab class的状态，能够知道数据分布的范围，每个slab有多少页</p>
+<p>stats cachedump 1 0<br>第三个字段是slab的标识<br>第四个字段表示拉取的该slab下的数据，第四个字段0表示不受限制（但实际上只会拉取1M的数据， 并不会全拉）</p>
+<h2 id="3-基础Memcached命令"><a href="#3-基础Memcached命令" class="headerlink" title="3. 基础Memcached命令"></a>3. 基础Memcached命令</h2><p>Memcached 有 4 种类型的命令:</p>
+<pre><code>1. 存储命令(set/add /replace/append/prepend)
+指示服务器储存一些由键值标识的 数据。客户端发送一行命令,后面跟着数据区块;然后,客户端等待接收服务器回传 的命令行,指示成功与否。
+2. 读取命令(get/bget/gets)指示服务器返回与所给键值相符合的数据(一个请求中右 一个或多个键值)。客户端发送一行命令,包括所有请求的键值;服务器每找到一项内容,都会发送回客户端一行关于这项内容的信息,紧跟着是对应的数据区块;直到服务器以一行“END”回应命令结束。
+3. 状态命令(stat)被用于查询服务器的运行状态和其他内部数据。 
+4. 其他命令,如 flush_all,version,quit 等。
+
+
+COMMAND    DESCRIPTION    EXAMPLE
+get    Reads a value    get mykey
+set    Set a key unconditionally    set mykey 0 60 5
+add    Add a new key    add newkey 0 60 5
+replace    Overwrite existing key    replace key 0 60 5
+append    Append data to existing key    append key 0 60 15
+prepend    Prepend data to existing key    prepend key 0 60 15
+incr    Increments numerical key value by given number    incr mykey 2
+decr    Decrements numerical key value by given number    decr mykey 5
+delete    Deletes an existing key    delete mykey
+flush_all    Invalidate specific items immediately    flush_all
+Invalidate all items in n seconds    flush_all 900
+stats    Prints general statistics    stats
+Prints memory statistics    stats slabs
+Prints memory statistics    stats malloc
+Print higher level allocation statistics    stats items
+stats detail
+stats sizes
+Resets statistics    stats reset
+version    Prints server version.    version
+verbosity    Increases log level    verbosity
+quit    Terminate telnet session    quit
+</code></pre><h3 id="stats命令详解"><a href="#stats命令详解" class="headerlink" title="stats命令详解"></a>stats命令详解</h3><pre><code>pid    memcache服务器的进程ID
+uptime    服务器已经运行的秒数
+time    服务器当前的unix时间戳
+version    memcache版本
+pointer_size    当前操作系统的指针大小（32位系统一般是32bit）
+rusage_user    进程的累计用户时间
+rusage_system    进程的累计系统时间
+curr_items    服务器当前存储的items数量
+total_items    从服务器启动以后存储的items总数量
+bytes    当前服务器存储items占用的字节数
+curr_connections    当前打开着的连接数
+total_connections    从服务器启动以后曾经打开过的连接数
+connection_structures    服务器分配的连接构造数
+cmd_get    get命令（获取）总请求次数
+cmd_set    set命令（保存）总请求次数
+get_hits    总命中次数
+get_misses    总未命中次数
+evictions    为获取空闲内存而删除的items数（分配给memcache的空间用满后需要删除旧的items来得到空间分配给新的items）
+bytes_read    总读取字节数（请求字节数）
+bytes_written    总发送字节数（结果字节数）
+limit_maxbytes    分配给memcache的内存大小（字节）
+threads    当前线程数
+</code></pre><p>参考文章<br><a href="http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/" target="_blank" rel="noopener">http://blog.mimvp.com/2015/01/memcache-start-telnet-command-xiangjie/</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/04/17/memcache启动及telnet命令/" data-id="ckwdj16qw003esrnunnc3g2nw" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-memcache概述" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/04/17/memcache概述/" class="article-date">
@@ -112,7 +222,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="ckw5yuflg003mtznuv57m9s1e" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache概述/" data-id="ckwdj16qz003isrnubu3niuhp" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -195,7 +305,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckw5yufky002atznuq79rlw9t" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/15/gitflow工作流/" data-id="ckwdj16q70027srnu8cj3xu4t" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -254,7 +364,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckw5yuflx004stznuptplnlor" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/03/11/svn迁移git-完美保留日志/" data-id="ckwdj16rm004osrnumwe732sh" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
@@ -306,7 +416,7 @@ e. restart zsh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckw5yufm10055tznu7va9sgux" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/02/07/zsh基础知识/" data-id="ckwdj16rr0050srnu32bdnnw6" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -627,7 +737,7 @@ set @@tx_isolation=&apos;read-committed&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckw5yuflk003xtznu3j696opx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/09/mysql-锁的问题/" data-id="ckwdj16r2003msrnubxeqjw69" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -689,7 +799,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckw5yufkr001utznuskh2xg1w" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/04/escape-character/" data-id="ckwdj16q40020srnuoxlt9xdu" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -749,7 +859,7 @@ http%3A%2F%2Fwww.baidu.com%2Fhelo%3Dfw+fwe%26str%3Dsfa
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckw5yuflc003dtznu0ve5li3h" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装storm/" data-id="ckwdj16qr0037srnu2if889od" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -849,7 +959,7 @@ hbase(main):013:0&gt; drop &apos;test&apos;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="ckw5yufla0036tznum2h39kn4" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hbase/" data-id="ckwdj16qu003bsrnui1fvprzi" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
@@ -955,147 +1065,10 @@ start-yarn.sh
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="ckw5yufl90033tznuzd8chctw" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/01/03/mac安装hadoop/" data-id="ckwdj16qn002ysrnuq6zgsaar" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-git基本操作" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2015/12/20/git基本操作/" class="article-date">
-  <time datetime="2015-12-20T05:02:01.000Z" itemprop="datePublished">2015-12-20</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/12/20/git基本操作/">git基本操作</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-初始化"><a href="#0-初始化" class="headerlink" title="0. 初始化"></a>0. 初始化</h2><pre><code>git init --bare 创建一个仓库
-
-git clone user@host:/path/repo.git
-</code></pre><h2 id="1-Git-用户配置"><a href="#1-Git-用户配置" class="headerlink" title="1. Git 用户配置"></a>1. Git 用户配置</h2><pre><code>1. 用户和邮箱
-
-        git config --global user.name &quot;Example Surname&quot;
-        git config --global user.email &quot;your.email@gmail.com&quot;
-
-2. 设置提交的分支
-
-    simple只是将当前激活态的提交
-    matching则是全部提交
-    建议使用simple
-
-        git config --global push.default simple 
-
-3. 设置高亮
-
-
-        git config --global color.ui true 
-        git config --global color.status auto 
-        git config --global color.branch auto
-
-4. 默认的编辑器
-
-        git config --global core.editor vim
-        git config --global merge.tool vimdiff
-        git config --global alias.d &apos;difftool -y&apos;
-
-
-        git config --global alias.staged &apos;diff --cached&apos;
-        git config --global alias.st &apos;status&apos;
-5. 设置git status时显示中文
-
-    git config --global core.quotepath false
-</code></pre><h2 id="2-设置忽略文件"><a href="#2-设置忽略文件" class="headerlink" title="2. 设置忽略文件"></a>2. 设置忽略文件</h2><pre><code>.gitignore
-</code></pre><h2 id="3-基本操作"><a href="#3-基本操作" class="headerlink" title="3. 基本操作"></a>3. 基本操作</h2><pre><code>add rm commit branch push pull log status
-</code></pre><h2 id="4-恢复文件"><a href="#4-恢复文件" class="headerlink" title="4. 恢复文件"></a>4. 恢复文件</h2><pre><code>从stage阶段恢复一个文件
-
-    git reset HEAD xxx_file_
-
-从modify恢复一个文件
-
-    git checkout -- xxx_file
-
-
-    git commit -m &apos;message&apos;
-    git commit --amend -m &quot;new message&quot;
-</code></pre><h2 id="5-从仓库中删除一个文件"><a href="#5-从仓库中删除一个文件" class="headerlink" title="5. 从仓库中删除一个文件"></a>5. 从仓库中删除一个文件</h2><pre><code>git rm -r --cached xxxfile
-git rm xxfile 二者区别
-</code></pre><h2 id="6-远程操作"><a href="#6-远程操作" class="headerlink" title="6. 远程操作"></a>6. 远程操作</h2><pre><code>Git remote add xxx_name yyy_url
-git remote rm xxx_name
-Git push repo_name xxx_branch
-</code></pre><h2 id="7-分支操作"><a href="#7-分支操作" class="headerlink" title="7. 分支操作"></a>7. 分支操作</h2><pre><code>Git branch
-git checkout -b xx_branch
-git branch -a // 包含远程分支
-</code></pre><h2 id="8-分支之间的区别"><a href="#8-分支之间的区别" class="headerlink" title="8. 分支之间的区别"></a>8. 分支之间的区别</h2><pre><code>Git diff master your_branch
-</code></pre><h2 id="9-标签-tag"><a href="#9-标签-tag" class="headerlink" title="9. 标签 tag"></a>9. 标签 tag</h2><pre><code>Git tag
-git tag 1.7.1 // 创建轻量的tag
-git show 1.7.1
-
-git tag 1.6.1 -m &quot;release 1.6.1&quot;
-git checkout &lt;tag_name&gt;
-git push origin [tag_name]
-git push origin tag &lt;tag_name&gt;
-git tag -d &lt;tag_name&gt;
-git push origin :refs/tags/1.6.1
-</code></pre><h2 id="10-储藏"><a href="#10-储藏" class="headerlink" title="10. 储藏"></a>10. 储藏</h2><pre><code>Git stash
-git stash pop
-git stash
-git stash list
-git stash apply stash@{0}
-git stash drop stash@{0}
-git stash clear
-</code></pre><h2 id="11-通过git-reset-移动HEAD指针"><a href="#11-通过git-reset-移动HEAD指针" class="headerlink" title="11. 通过git reset 移动HEAD指针"></a>11. 通过git reset 移动HEAD指针</h2><pre><code>git reset --mixed HEAD~2
-
-git reflog
-
-git reset --soft HEAD~2
-
-git reset --hard HEAD~2
-</code></pre><h2 id="12-恢复丢失的提交"><a href="#12-恢复丢失的提交" class="headerlink" title="12. 恢复丢失的提交"></a>12. 恢复丢失的提交</h2><pre><code>git reflog: is a mechanism to record the movements of the HEAD pointer and the branches
-</code></pre><h2 id="13-远程分支删除"><a href="#13-远程分支删除" class="headerlink" title="13. 远程分支删除"></a>13. 远程分支删除</h2><pre><code>remote and local tracking branches
- git branch -r // list all remote branches
-
- git branch -d -r origin/[remote_branch] // delete remote branch from origin
-
- git branch origin :branch_name
- git push origin --delete branch_name
-</code></pre><h2 id="14-解决冲突"><a href="#14-解决冲突" class="headerlink" title="14. 解决冲突"></a>14. 解决冲突</h2><pre><code>git mergetool
-
-    &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD Change in the first repository 
-    ======= Change in the second repository 
-    &gt;&gt;&gt;&gt;&gt;&gt;&gt; b29196692f5ebfd10d8a9ca1911c8b08127c85f8
-</code></pre><h2 id="15-git-log"><a href="#15-git-log" class="headerlink" title="15. git log"></a>15. git log</h2><pre><code>git log --since=1.days --graph --pretty=format:&quot;%cn %d--&gt;%s&quot;
-</code></pre><h2 id="16-git-archive"><a href="#16-git-archive" class="headerlink" title="16. git archive"></a>16. git archive</h2><pre><code>git archive &lt;COMMIT_ID&gt; &gt; destFile.tar.gz
-将提交id为COMMIT_ID的版本提取出来，以tar.gz的格式将其保存到destFile.tar.gz中
-
-其中COMMIT_ID可以替换为分支名，就是将当前分支的最新版本提取出来保存到目标文件
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2015/12/20/git基本操作/" data-id="ckw5yufkv0024tznuulugpuze" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/git/">git</a></li></ul>
 
     </footer>
   </div>
@@ -1132,7 +1105,7 @@ git reset --hard HEAD~2
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 11.11px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1154,6 +1127,10 @@ git reset --hard HEAD~2
       <ul>
         
           <li>
+            <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
           </li>
         
@@ -1167,10 +1144,6 @@ git reset --hard HEAD~2
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>

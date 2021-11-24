@@ -62,6 +62,102 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-3PHP变量之基本数据类型之哈希表" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/09/20/3PHP变量之基本数据类型之哈希表/" class="article-date">
+  <time datetime="2016-09-20T11:57:23.000Z" itemprop="datePublished">2016-09-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/09/20/3PHP变量之基本数据类型之哈希表/">3. PHP中哈希表实现与数组的顺序遍历</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="PHP中哈希表实现"><a href="#PHP中哈希表实现" class="headerlink" title="PHP中哈希表实现"></a>PHP中哈希表实现</h2><p>哈希表的相关概念可以看<a href="http://www.php-internals.com/book/?p=chapt03/03-01-01-hashtable" target="_blank" rel="noopener">TIPI中哈希表介绍</a>，也可以直接看算法导论中哈希表的介绍。</p>
+<h3 id="哈希表"><a href="#哈希表" class="headerlink" title="哈希表"></a>哈希表</h3><p>PHP中的哈希表实现在Zend/zend_hash.c中。HashTable结构体用于保存整个哈希表需要的基本信息，Bucket结构体用于保存具体的数据内容，如下：</p>
+<pre><code>typedef struct _hashtable { 
+    uint nTableSize;        // hash Bucket的大小，最小为8，以2x增长。
+    uint nTableMask;        // nTableSize-1 ， 索引取值的优化
+    uint nNumOfElements;    // hash Bucket中当前存在的元素个数，count()函数会直接返回此值 
+    ulong nNextFreeElement; // 下一个数字索引的位置
+    Bucket *pInternalPointer;   // 当前遍历的指针（foreach比for快的原因之一）pInternalPointer指向当前的内部指针的位置, 在对数组进行顺序遍历的时候, 这个指针指明了当前的元素.当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历.
+
+
+    Bucket *pListHead;          // 存储数组头元素指针
+    Bucket *pListTail;          // 存储数组尾元素指针
+    Bucket **arBuckets;         // 存储hash数组
+    dtor_func_t pDestructor;    // 在删除元素时执行的回调函数，用于资源的释放
+    zend_bool persistent;       //指出了Bucket内存分配的方式。如果persisient为TRUE，则使用操作系统本身的内存分配函数为Bucket分配内存，否则使用PHP的内存分配函数。
+    unsigned char nApplyCount; // 标记当前hash Bucket被递归访问的次数（防止多次递归）
+    zend_bool bApplyProtection;// 标记当前hash桶允许不允许多次访问，不允许时，最多只能递归3次
+#if ZEND_DEBUG
+    int inconsistent;
+#endif
+} HashTable;
+</code></pre><h3 id="数据容器：槽位"><a href="#数据容器：槽位" class="headerlink" title="数据容器：槽位"></a>数据容器：槽位</h3><pre><code>typedef struct bucket {
+    ulong h;            // 对char *key进行hash后的值，或者是用户指定的数字索引值
+    uint nKeyLength;    // hash关键字的长度，如果数组索引为数字，此值为0
+    void *pData;        // 指向value，一般是用户数据的副本，如果是指针数据，则指向pDataPtr
+    void *pDataPtr;     //如果是指针数据，此值会指向真正的value，同时上面pData会指向此值
+    struct bucket *pListNext;   // 整个hash表的下一元素
+    struct bucket *pListLast;   // 整个哈希表该元素的上一个元素
+    struct bucket *pNext;       // 存放在同一个hash Bucket内的下一个元素
+    struct bucket *pLast;       // 同一个哈希bucket的上一个元素
+
+    char arKey[1];   // 保存当前值所对于的key字符串，这个字段只能定义在最后，实现变长结构体            
+} Bucket;
+</code></pre><p>在PHP中可以使用字符串或者数字作为数组的索引，数字索引直接就可以作为哈希表的索引，数字无需进行哈希处理。h字段后面的nKeyLength字段是作为key长度的标示，如果索引是数字的话，则nKeyLength为0.在PHP数组中如果索引字符串可以被转换成数字也会被转换成数字索引。所以在php中’19’ ‘20’这样的字符索引和数字索引19，20没有区别。</p>
+<p>上面结构体的最后一个字段用来保存key的字符串，而这个字段却申明为只有一个字符的数组， 其实这里是一种长见的<a href="http://stackoverflow.com/a/4690976/319672" target="_blank" rel="noopener">变长结构体</a>，主要的目的是增加灵活性。</p>
+<p>一张图来解释<img src="http://www.php-internals.com/images/book/chapt03/03-01-02-zend_hashtable.png" alt="Zend引擎哈希表结构和关系 来自tipi"></p>
+<p>详细解释：</p>
+<ul>
+<li>PHP的Zend引擎中哈希表处理冲突使用的是拉链</li>
+<li>HashTable结构体中存储的是哈希表的整体信息，Bucket中存储的是真正的数据</li>
+<li>Bucket结构体维护了两个双向链表，pNext和pLast指针分别指向本槽位所在的链表关系。比如相同hash值的两个key分别是k1,k2,先插入k1再插入k2，那么k2-&gt;pNext = k1; k1-&gt;pLast = k2;</li>
+<li>pListHead和pListTail维护了整个哈希表的头元素指针和最后一个元素的指针。</li>
+<li>关于pListNext和pListLast<ul>
+<li>当在线性(顺序)遍历的时候, 就会从pListHead开始, 顺着Bucket中的pListNext/pListLast, 根据移动pInternalPointer, 来实现对所有元素的线性遍历。</li>
+<li>数组添加元素的时候，依次添加元素。比如两个key，先添加k1再添加k2，则k1-&gt;pListNext=k2, k2-&gt;pListLast=k1。</li>
+<li>也就是说PHP中遍历数组的顺序是和元素的添加先后顺序相关的。</li>
+<li>哈希表的Bucket结构通过pListNext和pListLast维护了哈希表插入元素的先后顺序。</li>
+</ul>
+</li>
+<li>pListNext和pListLast指针指向的是整个哈希表所有的数据之间的链接关系。</li>
+</ul>
+<p>参考文章：</p>
+<ol>
+<li><a href="http://www.laruence.com/2009/08/23/1065.html" target="_blank" rel="noopener">深入理解PHP之数组(遍历顺序)</a></li>
+<li><a href="http://www.laruence.com/2008/11/20/630.html" target="_blank" rel="noopener">深入理解PHP原理之foreach</a></li>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-00-variables-structure" target="_blank" rel="noopener">变量的结构和类型</a></li>
+<li><a href="http://www.php-internals.com/book/?p=chapt03/03-01-02-hashtable-in-php" target="_blank" rel="noopener">PHP的哈希表实现</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/09/20/3PHP变量之基本数据类型之哈希表/" data-id="ckwdj16p90009srnumb6aiewt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-5PHP预定义变量REQUEST-GET-POST等处理过程" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" class="article-date">
@@ -150,7 +246,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="ckw5yufjy0009tznu3ipfdjzy" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/20/5PHP预定义变量REQUEST-GET-POST等处理过程/" data-id="ckwdj16pf000esrnub6sezbsw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -242,7 +338,7 @@ extern ZEND_API zend_executor_globals executor_globals;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="ckw5yufjt0004tznuxpzoy4n8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/19/1PHP变量之存储结构/" data-id="ckwdj16p30005srnu806tkug5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -474,7 +570,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="ckw5yufke0011tznuhplsbd8t" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之用户代码的执行/" data-id="ckwdj16pp0011srnuiwrt0pf5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -557,7 +653,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="ckw5yufk9000mtznu6abyv79r" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/18/PHP源码之准备工作和背景知识/" data-id="ckwdj16pn000wsrnu7cquh68u" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php源码学习/">php源码学习</a></li></ul>
@@ -633,7 +729,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="ckw5yuflq004ctznujarktmak" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/10/php原理好文章列表/" data-id="ckwdj16rf0047srnucfp02s0u" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -684,7 +780,7 @@ STANDARD_SAPI_MODULE_PROPERTIES
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="ckw5yuflo0045tznuugs4ahwu" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php一些bug列表/" data-id="ckwdj16rd0045srnuidetm39h" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -775,7 +871,7 @@ Program terminated with signal 7, Bus error
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="ckw5yuflr004etznuf9ajdfxs" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php中程序加载一个不停变化的文件出现bus-error/" data-id="ckwdj16rg0049srnuz1pmqio8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -839,7 +935,7 @@ $ ulimit -c unlimited
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="ckw5yuflt004itznu2nwgf8q7" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/09/07/php如何生成coredump/" data-id="ckwdj16rh004bsrnuwi2lnxre" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -906,87 +1002,10 @@ execute stmt1 using @a;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="ckw5yufka000rtznul22iftsc" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="ckwdj16po000ysrnupd7erfrr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-linux定时任务" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/08/17/linux定时任务/" class="article-date">
-  <time datetime="2016-08-17T08:11:49.000Z" itemprop="datePublished">2016-08-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/08/17/linux定时任务/">linux定时任务</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="34-1-Cron"><a href="#34-1-Cron" class="headerlink" title="34.1. Cron"></a>34.1. Cron</h2><p>Cron是一个守护进程，根据分时日月周的组合来执行任务。<br>Cron假设系统是可用的。如果系统不可用，那么定时任务不会执行。为了安排one-time tasks，可以参考 at and batch.</p>
-<p>为了执行Cron服务，<code>crond</code>服务必须执行。<br>可以使用命令<code>rpm -q vixie-cron</code>命令查看是否安装。可以使用命令 <code>service crond status</code>查看状态</p>
-<h3 id="34-1-1-配置定时任务"><a href="#34-1-1-配置定时任务" class="headerlink" title="34.1.1 配置定时任务"></a>34.1.1 配置定时任务</h3><pre><code>SHELL=/bin/bash 
-PATH=/sbin:/bin:/usr/sbin:/usr/bin 
-MAILTO=root HOME=/  
-# run-parts 
-01 * * * * root run-parts /etc/cron.hourly 
-02 4 * * * root run-parts /etc/cron.daily 
-22 4 * * 0 root run-parts /etc/cron.weekly 
-42 4 1 * * root run-parts /etc/cron.monthly
-</code></pre><p>前四行用于配置定时任务执行时的环境变量。<code>SHELL</code>变量告诉系统使用哪个shell，<code>PATH</code>变量定义了执行命令的路径。<code>MAILTO</code>定义了定时任务的输出结果被email给谁，如果MAILTO=””，则不发送邮件。<code>HOME</code>变量用于home目录。</p>
-<p>在<code>/etc/crontab/</code>文件中任务的格式如下：<br>    <code>minute hour day month dayofweek command</code></p>
-<ul>
-<li>minute – 从0到59的任何数字</li>
-<li>hour   – 从0到23的任何数字</li>
-<li>day    – 从0到31的任何一天</li>
-<li>month  – 从1到12的任何数字（或者月份的缩写，如jan或feb）</li>
-<li>dayofweek – 从0到7的数字，其中0或7代表星期天（或者缩写，如mon或sun）</li>
-<li>command – 要执行的命令</li>
-</ul>
-<p>几种取值情况</p>
-<ul>
-<li><code>*</code>：代表任何有效值</li>
-<li><code>-</code>：指定一个数字的范围，如1-3代表整数1，2，3。</li>
-<li><code>,</code>: 一个以逗号分隔的列表，如3,4,5,8代表四个特定的数字。</li>
-<li><code>/</code>: 用于指定步进的值（step value）。 The value of an integer can be skipped within a range by following the range with /<integer>. For example, 0-59/2 can be used to define every other minute in the minute field. Step values can also be used with an asterisk. For instance, the value */3 can be used in the month field to run the task every third month.</integer></li>
-</ul>
-<p>正如在/etc/crontab文件中，run-parts脚本执行/etc/cron.hourly/，/etc/cron.daily/, /etc/cron.weekly/, and /etc/cron.monthly/目录下的文件。在这些目录下面必须是shell脚本。</p>
-<p>如果定时任务不是每小时，每天，每周，每月，那么定时任务可以加到/ect/cron.d/目录下，这个目录下文件的格式与/etc/crontab是一样的。</p>
-<p>除了root以外的用户，可以使用crontab工具配置定时任务。所有用户定义的crontab都存在/var/spool/cron/目录下，并且使用创建他们的用户名来执行。使用crontab -e可以编辑。</p>
-<p>cron守护进程每分钟会检查/etc/crontab文件，/ect/cron.d/目录的变化，如果有变化则加载到内存。因此如果crontab文件改变了不需要重启守护进程。</p>
-<h3 id="34-1-2-控制访问cron权限"><a href="#34-1-2-控制访问cron权限" class="headerlink" title="34.1.2 控制访问cron权限"></a>34.1.2 控制访问cron权限</h3><p>/etc/cron.allow和/etc/cron.deny文件用于严格控制cron进程的访问。文件格式：一行一个用户名，不需要出现空格。如果访问控制文件修改了，crond不需要重启。</p>
-<p>root用户什么时候都可以使用cron，而不用考虑访问控制文件中的用户名<br>如果cron.allow文件存在，只有users列表中的用户允许访问；忽略cron.deny文件<br>如果cron.allow文件不存在，只有cron.deny中用户不允许访问。</p>
-<h3 id="34-1-3-开始和停止服务"><a href="#34-1-3-开始和停止服务" class="headerlink" title="34.1.3 开始和停止服务"></a>34.1.3 开始和停止服务</h3><p>使用service crond start 开启。<br>使用service crond stop 关闭。</p>
-<h2 id="34-2-At和Batch"><a href="#34-2-At和Batch" class="headerlink" title="34.2 At和Batch"></a>34.2 At和Batch</h2><p>cron用于规划重复的任务，at命令用于规划一次性任务（one-time task)，batch用于在系统负载小于0.8的时候执行一次性任务。</p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><ol>
-<li><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-autotasks-at-batch.html" target="_blank" rel="noopener">cron</a></li>
-<li><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-autotasks-at-batch.html" target="_blank" rel="noopener">at and batch</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="ckw5yufl7002ytznu0wkw4c1b" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
 
     </footer>
   </div>
@@ -1023,7 +1042,7 @@ MAILTO=root HOME=/
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 11.11px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1045,6 +1064,10 @@ MAILTO=root HOME=/
       <ul>
         
           <li>
+            <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/19/分布式-CAP理论/">分布式-CAP理论</a>
           </li>
         
@@ -1058,10 +1081,6 @@ MAILTO=root HOME=/
         
           <li>
             <a href="/2019/04/29/golang继承/">golang继承</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/28/spark-Quick-Start/">spark quick start</a>
           </li>
         
       </ul>
