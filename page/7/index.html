@@ -62,6 +62,73 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Prepared-Statement防止sql注入原理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/08/18/Prepared-Statement防止sql注入原理/" class="article-date">
+  <time datetime="2016-08-18T09:54:54.000Z" itemprop="datePublished">2016-08-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/08/18/Prepared-Statement防止sql注入原理/">为什么使用Prepared Statement?</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <ol>
+<li><p>查询执行的基础<br>MySQL发送一个请求的时候，MySQL到底做了什么：</p>
+<p> a. 客户端发送一条查询给服务器<br> b. 服务器先检查<code>查询缓存</code>，如果命中了缓存，则like返回存储在缓存中的结果。否则进入下一阶段<br> c. 服务器端进行SQL解析，预处理，再由优化器生成对应的执行计划<br> d. MySQL根据优化器生成的执行计划，调用存储引擎的API来执行查询<br> e. 将结果返回给客户端。</p>
+<p> 即：SQL执行过程包括以下阶段：查询缓存是否命中-&gt;词法解析-&gt;语法分析-&gt;语义分析-&gt;查询优化-&gt;执行。</p>
+</li>
+<li><p>硬解析</p>
+<p> <code>词法分析</code>-&gt;<code>语法分析</code>这两个阶段我们称之为硬解析。词法分析识别SQL中每个词，语法分析解析SQL是否符合SQL语法（如关键字顺序是否正确），并得到一颗语法树。对于只是参数不同，其他均相同的SQL，他们执行时间不同但是硬解析时间是相同的。</p>
+</li>
+<li><p>查询优化器<br> 现在语法树被认为是合法了，并且由优化器将其转化成执行计划。一条查询可以有很多种执行方式，最后返回相同的结果。<br>优化器的作用：就是找到这其中最好的执行计划</p>
+</li>
+<li><p>Prepare的目的<br> Prepare的出现就是为了优化硬解析的问题。Prepare在服务器端执行过程如下：</p>
+<p> a. Prepare接受客户端带<code>?</code>的SQL，硬解析得到语法树stmt-&gt;lex， 缓存在线程所在的preparestatement cache中。此cache是一个HASH MAP. Key为stmt-&gt;id. 然后返回客户端stmt-&gt;id等信息。<br> b. Execute 接收客户端stmt-&gt;id和参数等信息。注意这里客户端不需要再发sql过来。服务器根据stmt-&gt;id在preparestatement cache中查找得到硬解析后的stmt, 并设置参数，就可以继续后面的优化和执行了</p>
+</li>
+<li><p>Prepared Statements的好处：<br> a. 安全<br> Prepared Statements通过sql逻辑与数据分离来增加安全，sql逻辑与数据的分离能够防止普通类型的SQL注入攻击（sql injection attck)。<br> b. 性能<br> prepare经过语法解析器和预处理生成了解析树。通过prepare方式，当执行多次时，就不会有额外的负担了。</p>
+</li>
+<li><p>Prepared 实例</p>
+</li>
+</ol>
+<p>表结构</p>
+<pre><code>CREATE TABLE `z` (
+    `a` int(11) NOT NULL,
+    `b` int(11) DEFAULT NULL,
+    PRIMARY KEY (`a`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+</code></pre><p>Prepare</p>
+<pre><code>prepare stmt1 from &apos;select * from z where a = ?&apos;;
+set @a = 20;
+execute stmt1 using @a;
+</code></pre><p><a href="http://www.cnblogs.com/justfortaste/p/3920140.html" target="_blank" rel="noopener">MySQL prepare原理</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/08/18/Prepared-Statement防止sql注入原理/" data-id="ckwfqztms000tg7nusgwyna85" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-linux定时任务" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/08/17/linux定时任务/" class="article-date">
@@ -127,7 +194,7 @@ MAILTO=root HOME=/
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="ckwdj16qm002vsrnui0o7ewvy" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/17/linux定时任务/" data-id="ckwfqztnp002ug7nuipndoryc" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -322,7 +389,7 @@ cluster-require-full-coverage &lt;yes/no&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="ckwdj16ps0018srnuf2cfbxni" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/08/10/RedisCluster总结/" data-id="ckwfqztmw0013g7nuns3l6r94" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -401,7 +468,7 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="ckwdj16r3003osrnuqyz0kfmx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/28/mysql锁/" data-id="ckwfqzto5003sg7nu4bhwb3ue" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -462,7 +529,7 @@ if not found any row:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="ckwdj16pr0016srnuctjw89l3" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/16/Redis与Memcache作为缓存时的比较/" data-id="ckwfqztmu000yg7nuf1k4xetj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
@@ -574,7 +641,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="ckwdj16rx005fsrnu6zi140pp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/12/缓存替换/" data-id="ckwfqztoy005lg7nu26slcwlq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -618,7 +685,7 @@ instantaneous_ops_per_sec:3590
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="ckwdj16rq004ysrnutry81cvm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/09/内核参数-tcp-syncookies/" data-id="ckwfqztow005dg7nuvcidf8eo" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tcp/">tcp</a></li></ul>
@@ -777,7 +844,7 @@ net.ipv4.tcp_max_tw_buckets = 5000
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="ckwdj16ri004esrnu2h62mocd" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/07/03/php的memcache客户端的几点说明/" data-id="ckwfqztoh004hg7nuxrumya5b" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -850,7 +917,7 @@ AND address LIKE &apos;%Main Street%&apos;;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="ckwdj16pg000gsrnut6t8x2cw" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/26/Index-Condition-Pushdown-优化/" data-id="ckwfqztmn000hg7nu5a8f7iv0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li></ul>
@@ -931,181 +998,10 @@ redis-cli info|grep used_memory:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="ckwdj16pq0013srnu4g3ozwg4" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/06/10/Redis内存优化-聚合数据类型的特殊编码/" data-id="ckwfqztmv0010g7nur1nsmfdl" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-php发送邮件" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/25/php发送邮件/" class="article-date">
-  <time datetime="2016-05-25T08:31:31.000Z" itemprop="datePublished">2016-05-25</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/25/php发送邮件/">php发送邮件</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>php manual中关于mail的介绍很简单，</p>
-<pre><code>@param to 电子邮件收件人或收件人列表
-@param subjct 电子邮件的主题 也就是收件人或收件人列表
-@param message 所要发送的消息 
-@return true if the mail was successfully accepted fro delivery, FALSE otherwise
-bool mail ( string $to , string $subject , string $message [, string $additional_headers [, string $additional_parameters ]] )
-</code></pre><h2 id="0-我的代码"><a href="#0-我的代码" class="headerlink" title="0. 我的代码"></a>0. 我的代码</h2><p>根据邮件协议，使用基本的php代码进行编写，直接包含这个类即可使用</p>
-<h2 id="1-发送html"><a href="#1-发送html" class="headerlink" title="1. 发送html"></a>1. 发送html</h2><ol>
-<li>发送html就是将正文的message以文本格式发送<h2 id="2-发送附件"><a href="#2-发送附件" class="headerlink" title="2. 发送附件"></a>2. 发送附件</h2></li>
-<li><p>附件需要以multipart/form-data的格式进行组装，这儿与web上传form表单的格式一样。例子如下</p>
-<pre><code>--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
-Content-Transfer-Encoding: base64
-
-54eV5YevQm9keQoKCgo=
-
---==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
-X-Attachment-Id: 15259
-Content-Transfer-Encoding: base64
-Content-Type: application/octet-stream; name=&quot;keything.txt&quot;
-Content-Disposition: attachment; filename=&quot;keything.txt&quot;
-
-54eV5Yev
-
---==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx--
-</code></pre></li>
-<li>我们所发出的数据就如上面文本所示，因此要将其组装</li>
-</ol>
-<ol start="3">
-<li><p>class KTMail</p>
-<pre><code>&lt;?php
-class KTMail
-{
-    const UTF8_PREFIX  = &apos;=?UTF-8?B?&apos;;
-    const UTF8_POSTFIX = &apos;?=&apos;;
-    const RN = &quot;\r\n&quot;;
-    /**
-     * @param from: who send this mail
-     * @param to: who receive this mail
-     * @param subject: the title of mail
-     * @param body: the content of mail
-     * @param attachment_fname: the file name of attachement
-     * @param attachment_fdata: the file content of attachment
-     * @return true if send succeed, FALSE otherwise
-     * TODO if attachment_fname is chinese, it will be messay code.
-     */
-    public static function sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata)
-    {
-        // a random string 
-        $semi_rand = md5(time()); 
-        $mime_boundary = &apos;==Mime_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
-        $part_boundary = &apos;==Part_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
-
-        // header 
-        $headers = [];
-        $headers[] = &apos;MIME-Version: 1.0&apos;;
-        $headers[] = &apos;Content-Type: multipart/mixed; boundary=&apos; . $mime_boundary;
-        $headers[] = &apos;From: &apos; . $from;
-        $headers_raw = implode(self::RN, $headers);
-
-        // Message Body
-        $msg = [];
-        $msg[] = &apos;--&apos; . $mime_boundary;
-        $msg[] = &apos;Content-Transfer-Encoding: base64&apos; . self::RN;
-        $msg[] =  chunk_split(base64_encode($body));
-
-        // Attachment
-        $msg[] = &apos;--&apos; . $mime_boundary;
-        $msg[] = &apos;X-Attachment-Id: &apos; . rand(1000, 99999);
-        $msg[] = &apos;Content-Transfer-Encoding: base64&apos;;
-        $msg[] = &apos;Content-Type: application/octet-stream;&apos; . &apos; name=&quot;&apos; . $attachment_fname . &apos;&quot;&apos;;
-        $msg[] = &apos;Content-Disposition: attachment; filename=&quot;&apos;. $attachment_fname . &apos;&quot;&apos; . self::RN;
-        $msg[] = chunk_split(base64_encode($attachment_fdata));
-        $msg[] = &apos;--&apos; . $mime_boundary . &apos;--&apos;;
-
-        $msg_raw = implode(self::RN, $msg);
-        error_log($msg_raw, 3, &apos;/tmp/sendmail.log&apos;);
-
-        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
-
-        return mail($to, $real_subject, $msg_raw, $headers_raw);
-    }
-    public static function sendWithHtml($from, $to, $subject, $body)
-    {
-        // header 
-        $headers = array();
-        $headers[] = &apos;MIME-Version: 1.0&apos;;
-        $headers[] = &apos;Content-type: text/html; charset=utf-8&apos;;
-        $headers[] = &apos;From: &apos; . $from;
-        $headers_raw = implode(self::RN, $headers);
-
-        // Message Body
-        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
-        $msg_raw = $body;
-
-        return mail($to, $real_subject, $msg_raw, $headers_raw);
-    }
-}
-</code></pre></li>
-<li><p>测试用例</p>
-<pre><code>&lt;?php
-include (&apos;ktmail.php&apos;);
-$from = &apos;local@a.cn&apos;;
-$to = &apos;your-email&apos;;
-$subject = &apos;keything.net&apos;;
-$body = &apos;keything.net&apos;;
-$attachment_fname = &apos;keything.txt&apos;;
-$attachment_fdata = &apos;keything&apos;;
-$attach_res = KTMail::sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata);
-echo &apos;attach_res = &apos; . var_export($attach_res, true).&quot;\n&quot;;
-
-$html_body = &apos;
-    &lt;html&gt;
-        &lt;head&gt; keything &lt;/head&gt;
-        &lt;body&gt; 
-            keything body 
-            &lt;table border=&quot;1&quot;&gt;
-                &lt;tr&gt;
-                    &lt;td&gt;row 1, cell 1&lt;/td&gt;
-                    &lt;td&gt;row 1, cell 2&lt;/td&gt;
-                &lt;/tr&gt;
-                &lt;tr&gt;
-                    &lt;td&gt;row 2, cell 1&lt;/td&gt;
-                    &lt;td&gt;row 2, cell 2&lt;/td&gt;
-                &lt;/tr&gt;
-            &lt;/table&gt;
-        &lt;/body&gt;
-        &lt;/head&gt;
-    &lt;/html&gt;
-    &apos;;
-$html_res = KTMail::sendWithHtml($from, $to, $subject, $html_body);
-echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
-</code></pre></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckwdj16rn004qsrnuqa7r0a2g" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
 
     </footer>
   </div>
@@ -1142,7 +1038,7 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 13.33px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1164,6 +1060,10 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
       <ul>
         
           <li>
+            <a href="/2021/11/26/分布式-全序广播与共识/">分布式-全序广播与共识</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
           </li>
         
@@ -1177,10 +1077,6 @@ echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
         
           <li>
             <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
           </li>
         
       </ul>

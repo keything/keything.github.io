@@ -62,6 +62,69 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-cpp异常处理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/05/28/cpp异常处理/" class="article-date">
+  <time datetime="2017-05-28T08:52:56.000Z" itemprop="datePublished">2017-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/05/28/cpp异常处理/">cpp异常处理</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在C++语言中，异常处理包括：</p>
+<ul>
+<li><p>throw表达式（throw expression），异常检测部分使用throw表达式来表示它遇到了无法处理的问题；我们说throw引发了异常</p>
+</li>
+<li><p>try语句块（try block），异常处理部分使用try语句块处理异常。try语句块以关键字try开始，并以catch 子句结束；</p>
+</li>
+<li><p>一套异常类（exception class），用于在throw表达式和相关的catch子句之间传递异常的具体信息；</p>
+</li>
+</ul>
+<p>标准异常</p>
+<p>C++标准定义了一组类，用于报告标准库函数遇到的问题。这些异常类也可以在用户编写的程序中使用；分别定义在4个头文件中：</p>
+<ul>
+<li>exception头文件定义了最通用的异常类 exception。它只报告异常的发生，不提供任何额外的信息；</li>
+<li><p>stdexcept头文件定义了几种常见的异常类</p>
+<ul>
+<li>exception 最常见的问题</li>
+<li>runtime_error 只有在运行时才能检测中的问题</li>
+<li>range_error 运行时错误，生成的结果超出了有意义的值域范围</li>
+<li>…</li>
+</ul>
+</li>
+<li><p>new 头文件定义了bad_alloc异常类型，将在12.1.2节介绍</p>
+</li>
+<li>type_info头文件中定义了bad_cast异常类型；将在19.2节介绍</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2017/05/28/cpp异常处理/" data-id="ckwfqztn3001mg7nu7h0e37l3" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-cpp-class-copy-vector" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2017/05/13/cpp-class-copy-vector/" class="article-date">
@@ -136,7 +199,7 @@ int main()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="ckwdj16px001ksrnud2dbp8y8" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/13/cpp-class-copy-vector/" data-id="ckwfqztn1001hg7nubz08i928" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -300,7 +363,7 @@ int main()
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="ckwdj16py001nsrnu960jshbd" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/05/02/composer概述/" data-id="ckwfqztn0001fg7nuf98i8ao8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/composer/">composer</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
@@ -350,7 +413,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="ckwdj16pd000csrnuvb7cps04" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/04/04/C-编译错误汇总/" data-id="ckwfqztmd0008g7nuq8fvqexh" class="article-share-link">Share</a>
       
       
     </footer>
@@ -446,7 +509,7 @@ public:
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckwdj16rw005dsrnuvokxizcm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/自动化测试/" data-id="ckwfqztoz005ng7nu2o7rx8e9" class="article-share-link">Share</a>
       
       
     </footer>
@@ -673,7 +736,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="ckwdj16rk004jsrnuxskhf8oi" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/03/31/spark-learn/" data-id="ckwfqztoj004mg7nuansrft8a" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -711,7 +774,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="ckwdj16rp004tsrnufi4y7sfx" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-demo/" data-id="ckwfqztoo004wg7nulqmv0uti" class="article-share-link">Share</a>
       
       
     </footer>
@@ -757,7 +820,7 @@ record: mmmmm
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="ckwdj16rp004vsrnu0zawjodi" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/16/thrift-install/" data-id="ckwfqztom004tg7nu6e9v6v65" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
@@ -910,7 +973,7 @@ log4cplus.appender.M.layout.ConversionPattern=%d{%m/%d/%y %H:%M:%S} [%t] %-5p %c
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckwdj16qp0032srnukvw8u6nm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2017/01/02/log4cplus介绍/" data-id="ckwfqztnq002xg7nu5o65sn8o" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp/">cpp</a></li></ul>
@@ -1025,149 +1088,10 @@ df.show
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="ckwdj16qt0039srnubgp9ge7y" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/11/27/mac安装hive/" data-id="ckwfqztnt0032g7nushmii7kf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mac/">mac</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="thrift-Thrift网络栈" class="article article-type-thrift" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/11/12/Thrift网络栈/" class="article-date">
-  <time datetime="2016-11-12T08:29:53.000Z" itemprop="datePublished">2016-11-12</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/11/12/Thrift网络栈/">Thrift network stack</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="Thrift-network-stack"><a href="#Thrift-network-stack" class="headerlink" title="Thrift network stack"></a>Thrift network stack</h3><p>本文翻译自<a href="http://thrift.apache.org/docs/concepts" target="_blank" rel="noopener">Thrift network stack</a></p>
-<p>Apache Thrift网络栈的简要描述</p>
-<pre><code>+-------------------------------------------+
-| Server                                    |
-| (single-threaded, event-driven etc)       |
-+-------------------------------------------+
-| Processor                                 |
-| (compiler generated)                      |
-+-------------------------------------------+
-| Protocol                                  |
-| (JSON, compact etc)                       |
-+-------------------------------------------+
-| Transport                                 |
-| (raw TCP, HTTP etc)                       |
-+-------------------------------------------+
-</code></pre><h3 id="传输"><a href="#传输" class="headerlink" title="传输"></a>传输</h3><p>传输层提供了读写网络的简单抽象。这使得Thrift可以与系统的底层传输解耦（如序列化/反序列化）。<br>下面是传输层接口暴露的一些方法：</p>
-<ul>
-<li>open</li>
-<li>close</li>
-<li>read</li>
-<li>write</li>
-<li>flush</li>
-</ul>
-<p>除了上面的传输接口外，Thrift还使用<code>ServerTransport</code>接口来接受或创建原始的传输对象。正如名字所写的，服务器端端使用<code>ServerTransport</code>为到来的连接创建一个传输对象（Transport objects)。</p>
-<ul>
-<li>open</li>
-<li>listen</li>
-<li>accept</li>
-<li>close</li>
-</ul>
-<p>大多数支持Thrift支持的语言的可选的一些传输如下：</p>
-<ul>
-<li>file: read/write to/from a file on disk</li>
-<li>http: as the name suggests</li>
-</ul>
-<p>###协议<br>协议的抽象定义了将内存中结构映射为有线格式（wire-format）的机制。换句话说，协议指明了数据如何使用底层的传输来进行编解码。因此协议实现控制了编码格式，并负责序列化和反序列化。协议举例，如JSON,XML,plain text, compact binary 。</p>
-<p>下面是协议接口：</p>
-<pre><code>writeMessageBegin(name, type, seq)
-writeMessageEnd()
-writeStructBegin(name)
-writeStructEnd()
-writeFieldBegin(name, type, id)
-writeFieldEnd()
-writeFieldStop()
-writeMapBegin(ktype, vtype, size)
-writeMapEnd()
-writeListBegin(etype, size)
-writeListEnd()
-writeSetBegin(etype, size)
-writeSetEnd()
-writeBool(bool)
-writeByte(byte)
-writeI16(i16)
-writeI32(i32)
-writeI64(i64)
-writeDouble(double)
-writeString(string)
-
-name, type, seq = readMessageBegin()
-                  readMessageEnd()
-name = readStructBegin()
-       readStructEnd()
-name, type, id = readFieldBegin()
-                 readFieldEnd()
-k, v, size = readMapBegin()
-             readMapEnd()
-etype, size = readListBegin()
-              readListEnd()
-etype, size = readSetBegin()
-              readSetEnd()
-bool = readBool()
-byte = readByte()
-i16 = readI16()
-i32 = readI32()
-i64 = readI64()
-double = readDouble()
-string = readString()
-</code></pre><p>Thrift协议是面向流的。没有必要需要任何明确的框架。举例，开始序列化的时候，不需要知道字符串的长度或列表中的个数。大多数支持Thrift语言可选的协议：</p>
-<ul>
-<li>binary：相当简单的二进制编码–字段的长度和类型都编码为字节</li>
-<li>compact：在<a href="https://issues.apache.org/jira/browse/THRIFT-110" target="_blank" rel="noopener">THRIFT-100</a>中描述</li>
-<li>json</li>
-</ul>
-<p>###处理器（Processor）</p>
-<p>一个处理器有两个能力：从输入流读取数据，将数据写入到输出流。协议对象（protocal objects）代表输入流和输出流。处理器接口可以非常简单：</p>
-<pre><code>interface TProcessor {
-    bool process(TProtocol in, TProtocol out) throws TException
-}
-</code></pre><p>特定服务处理器(service-specific)的实现是由compiler生成的。本质上处理器processor使用输入协议从wire读取数据，将处理过程委托给用户自己实现的handler，然后使用输出协议将数据写入wire。</p>
-<h3 id="服务"><a href="#服务" class="headerlink" title="服务"></a>服务</h3><p>一个server将上面描述的所有的不同的特性聚合在一起：</p>
-<ul>
-<li>创建一个传输 transport</li>
-<li>为传输创建一个input/output协议</li>
-<li>基于Input/output协议创建一个处理器processor</li>
-<li>等待输入连接，并将其交给processor</li>
-</ul>
-<h3 id="其他文章"><a href="#其他文章" class="headerlink" title="其他文章"></a>其他文章</h3><p><a href="http://thrift.apache.org/docs/features" target="_blank" rel="noopener">Thrift Feature</a></p>
-<p><a href="http://thrift.apache.org/docs/idl" target="_blank" rel="noopener">Thrift interface description language</a></p>
-<p><a href="http://thrift.apache.org/docs/install/" target="_blank" rel="noopener">Thrift install</a></p>
-<p><a href="http://thrift.apache.org/docs/types" target="_blank" rel="noopener">Thrift types</a></p>
-<p><a href="http://dongxicheng.org/search-engine/thrift-guide/" target="_blank" rel="noopener"></a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/11/12/Thrift网络栈/" data-id="ckwdj16pu001dsrnulaseauru" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thrift/">thrift</a></li></ul>
 
     </footer>
   </div>
@@ -1204,7 +1128,7 @@ string = readString()
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 13.33px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1226,6 +1150,10 @@ string = readString()
       <ul>
         
           <li>
+            <a href="/2021/11/26/分布式-全序广播与共识/">分布式-全序广播与共识</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
           </li>
         
@@ -1239,10 +1167,6 @@ string = readString()
         
           <li>
             <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
           </li>
         
       </ul>

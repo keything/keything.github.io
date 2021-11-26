@@ -62,6 +62,85 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-hive的TRANSFORM操作" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/09/23/hive的TRANSFORM操作/" class="article-date">
+  <time datetime="2018-09-23T15:03:39.000Z" itemprop="datePublished">2018-09-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/09/23/hive的TRANSFORM操作/">hive的TRANSFORM操作</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="Transform-Map-Reduce-Syntax"><a href="#Transform-Map-Reduce-Syntax" class="headerlink" title="Transform/Map-Reduce Syntax"></a>Transform/Map-Reduce Syntax</h2><p>hive语言中内置的特性是支持用户自定义mappers/redulers的。 用户可以使用<code>TRANSFROM</code> 子句来内嵌mapper/reduer脚本的。 </p>
+<p>By default, columns will be transformed to STRING and delimited by TAB before feeding to the user script; similarly, all NULL values will be converted to the literal string \N in order to differentiate NULL values from empty strings. The standard output of the user script will be treated as TAB-separated STRING columns, any cell containing only \N will be re-interpreted as a NULL, and then the resulting STRING column will be cast to the data type specified in the table declaration in the usual way. User scripts can output debug information to standard error which will be shown on the task detail page on hadoop. These defaults can be overridden with ROW FORMAT ….</p>
+<p>注意：</p>
+<p>Formally, MAP … and REDUCE … are syntactic transformations of SELECT TRANSFORM ( … ). In other words, they serve as comments or notes to the reader of the query. BEWARE: Use of these keywords may be dangerous as (e.g.) typing “REDUCE” does not force a reduce phase to occur and typing “MAP” does not force a new map phase!</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">clusterBy: CLUSTER BY colName (&apos;,&apos; colName)*</span><br><span class="line">distributeBy: DISTRIBUTE BY colName (&apos;,&apos; colName)*</span><br><span class="line">sortBy: SORT BY colName (ASC | DESC)? (&apos;,&apos; colName (ASC | DESC)?)*</span><br><span class="line"> </span><br><span class="line">rowFormat</span><br><span class="line">  : ROW FORMAT</span><br><span class="line">    (DELIMITED [FIELDS TERMINATED BY char]</span><br><span class="line">               [COLLECTION ITEMS TERMINATED BY char]</span><br><span class="line">               [MAP KEYS TERMINATED BY char]</span><br><span class="line">               [ESCAPED BY char]</span><br><span class="line">               [LINES SEPARATED BY char]</span><br><span class="line">     |</span><br><span class="line">     SERDE serde_name [WITH SERDEPROPERTIES</span><br><span class="line">                            property_name=property_value,</span><br><span class="line">                            property_name=property_value, ...])</span><br><span class="line"> </span><br><span class="line">outRowFormat : rowFormat</span><br><span class="line">inRowFormat : rowFormat</span><br><span class="line">outRecordReader : RECORDREADER className</span><br><span class="line"> </span><br><span class="line">query:</span><br><span class="line">  FROM (</span><br><span class="line">    FROM src</span><br><span class="line">    MAP expression (&apos;,&apos; expression)*</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_map_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line">    ( clusterBy? | distributeBy? sortBy? ) src_alias</span><br><span class="line">  )</span><br><span class="line">  REDUCE expression (&apos;,&apos; expression)*</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_reduce_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line"> </span><br><span class="line">  FROM (</span><br><span class="line">    FROM src</span><br><span class="line">    SELECT TRANSFORM &apos;(&apos; expression (&apos;,&apos; expression)* &apos;)&apos;</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_map_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br><span class="line">    ( clusterBy? | distributeBy? sortBy? ) src_alias</span><br><span class="line">  )</span><br><span class="line">  SELECT TRANSFORM &apos;(&apos; expression (&apos;,&apos; expression)* &apos;)&apos;</span><br><span class="line">    (inRowFormat)?</span><br><span class="line">    USING &apos;my_reduce_script&apos;</span><br><span class="line">    ( AS colName (&apos;,&apos; colName)* )?</span><br><span class="line">    (outRowFormat)? (outRecordReader)?</span><br></pre></td></tr></table></figure>
+<p>转化的例子1：</p>
+<p><code>FROM (
+  FROM pv_users
+  MAP pv_users.userid, pv_users.date
+  USING &#39;map_script&#39;
+  AS dt, uid
+  CLUSTER BY dt) map_output
+INSERT OVERWRITE TABLE pv_users_reduced
+  REDUCE map_output.dt, map_output.uid
+  USING &#39;reduce_script&#39;
+  AS date, count;
+FROM (
+  FROM pv_users
+  SELECT TRANSFORM(pv_users.userid, pv_users.date)
+  USING &#39;map_script&#39;
+  AS dt, uid
+  CLUSTER BY dt) map_output
+INSERT OVERWRITE TABLE pv_users_reduced
+  SELECT TRANSFORM(map_output.dt, map_output.uid)
+  USING &#39;reduce_script&#39;
+  AS date, count;</code></p>
+<p>转化的例子2：</p>
+<p><code>FROM (
+  FROM src
+  SELECT TRANSFORM(src.key, src.value) ROW FORMAT SERDE &#39;org.apache.hadoop.hive.contrib.serde2.TypedBytesSerDe&#39;
+  USING &#39;/bin/cat&#39;
+  AS (tkey, tvalue) ROW FORMAT SERDE &#39;org.apache.hadoop.hive.contrib.serde2.TypedBytesSerDe&#39;
+  RECORDREADER &#39;org.apache.hadoop.hive.contrib.util.typedbytes.TypedBytesRecordReader&#39;
+) tmap
+INSERT OVERWRITE TABLE dest1 SELECT tkey, tvalue</code></p>
+<p>将TRANSFORM的输出打出来</p>
+<p>脚本的输出默认是string，如果想进行类型转换的需要进行如下操作。</p>
+<p><code>SELECT TRANSFORM(stuff)
+USING &#39;script&#39;
+AS thing1, thing2</code></p>
+<p>类型转化<br><code>SELECT TRANSFORM(stuff)
+USING &#39;script&#39;
+AS (thing1 INT, thing2 INT)</code></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2018/09/23/hive的TRANSFORM操作/" data-id="ckwfqztnk002mg7nu1fx7rmw6" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-hive权威指南学习笔记" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2018/09/23/hive权威指南学习笔记/" class="article-date">
@@ -225,7 +304,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="ckwdj16qk002rsrnuwp3w6hxa" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hive权威指南学习笔记/" data-id="ckwfqztnm002og7nuvjqfu5c0" class="article-share-link">Share</a>
       
       
     </footer>
@@ -294,7 +373,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="ckwdj16qh002lsrnuwy04g9wl" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/23/hadoop权威指南第四版学习笔记/" data-id="ckwfqztnj002kg7nusljzb2tn" class="article-share-link">Share</a>
       
       
     </footer>
@@ -356,7 +435,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/09/22/spark的sql学习/" data-id="ckwdj16rk004lsrnu0hmqa6ve" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/09/22/spark的sql学习/" data-id="ckwfqztok004og7nurzm4htqy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/spark/">spark</a></li></ul>
@@ -395,7 +474,7 @@ WHERE a.symbol = &#39;AAPL&#39; AND b.symbol = &#39;IBM&#39; AND c.symbol = &#39
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/07/27/机器学习-chapter1-梯度下降/" data-id="ckwdj16rv005asrnu2acq1thp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/07/27/机器学习-chapter1-梯度下降/" data-id="ckwfqztox005ig7nug0bu9pan" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/machine-learning/">machine-learning</a></li></ul>
@@ -450,7 +529,7 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="ckwdj16pz001psrnubvm29tie" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/05/28/cpp-libconfig/" data-id="ckwfqztn2001kg7nu662658l5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cpp-lib/">cpp-lib</a></li></ul>
@@ -488,7 +567,7 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="ckwdj16q3001ysrnuo3bwejl1" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/04/10/faiss-tutorial/" data-id="ckwfqztn7001wg7nu367z0m1z" class="article-share-link">Share</a>
       
       
     </footer>
@@ -598,7 +677,7 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="ckwdj16q2001wsrnuhzhmven5" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/04/10/faiss-install/" data-id="ckwfqztn6001ug7nutdmychc3" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/faiss/">faiss</a></li></ul>
@@ -637,7 +716,7 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="ckwdj16ru0058srnujhz9hxx9" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/03/06/开发中容易出现的特殊字符编码/" data-id="ckwfqztox005gg7nuddlh25oe" class="article-share-link">Share</a>
       
       
     </footer>
@@ -674,54 +753,10 @@ int main() {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/24/octave操作记录/" data-id="ckwdj16r8003ysrnu7w18n3z6" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2018/02/24/octave操作记录/" data-id="ckwfqztoa0041g7nu66zab9xz" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/octave/">octave</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-awk使用技巧" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2018/02/23/awk使用技巧/" class="article-date">
-  <time datetime="2018-02-23T15:09:12.000Z" itemprop="datePublished">2018-02-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/02/23/awk使用技巧/">awk使用技巧</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <ol>
-<li>shell 变量传递给 awk</li>
-</ol>
-<p>举例：将shell的变量shellVarm传递给awk，在awk中变量名叫awkVarm</p>
-<p>该shell语句的目的是：如果第一列等于a的话，则打印</p>
-<pre><code>shellVarm=a; echo &quot;a b\na d\nc m&quot; | awk -v awkVarm=${shellVarm} &apos;$1==awkVarm {print $2}&apos;
-</code></pre>
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2018/02/23/awk使用技巧/" data-id="ckwdj16pv001gsrnujym69eqd" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/">linux</a></li></ul>
 
     </footer>
   </div>
@@ -758,7 +793,7 @@ int main() {
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 13.33px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -780,6 +815,10 @@ int main() {
       <ul>
         
           <li>
+            <a href="/2021/11/26/分布式-全序广播与共识/">分布式-全序广播与共识</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
           </li>
         
@@ -793,10 +832,6 @@ int main() {
         
           <li>
             <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
           </li>
         
       </ul>

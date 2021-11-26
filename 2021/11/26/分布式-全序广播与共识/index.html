@@ -5,15 +5,20 @@
   
 
   
-  <title>Archives: 2018/3 | Keything的日志</title>
+  <title>分布式-全序广播与共识 | Keything的日志</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Keything的日志">
-<meta property="og:url" content="http://keything.github.io/archives/2018/03/index.html">
+  <meta name="description" content="概述本文将简要概括全序广播与共识，清楚的理解这两个概念，将有助于理解raft、paxos等共识算法。 全序广播的要点是：消息按照相同的顺序发送到所有节点，有且只有一次。 仔细想想，这相当于进行多轮的共识过程：在每一轮，节点提出他们接下来要发送的消息，然后决定下一个消息的全局顺序。  主从复制与共识主从复制是single master replication，master接收信息并广播给从节点，可以">
+<meta name="keywords" content="分布式">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式-全序广播与共识">
+<meta property="og:url" content="http://keything.github.io/2021/11/26/分布式-全序广播与共识/index.html">
 <meta property="og:site_name" content="Keything的日志">
+<meta property="og:description" content="概述本文将简要概括全序广播与共识，清楚的理解这两个概念，将有助于理解raft、paxos等共识算法。 全序广播的要点是：消息按照相同的顺序发送到所有节点，有且只有一次。 仔细想想，这相当于进行多轮的共识过程：在每一轮，节点提出他们接下来要发送的消息，然后决定下一个消息的全局顺序。  主从复制与共识主从复制是single master replication，master接收信息并广播给从节点，可以">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2021-11-26T02:10:44.811Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Keything的日志">
+<meta name="twitter:title" content="分布式-全序广播与共识">
+<meta name="twitter:description" content="概述本文将简要概括全序广播与共识，清楚的理解这两个概念，将有助于理解raft、paxos等共识算法。 全序广播的要点是：消息按照相同的顺序发送到所有节点，有且只有一次。 仔细想想，这相当于进行多轮的共识过程：在每一轮，节点提出他们接下来要发送的消息，然后决定下一个消息的全局顺序。  主从复制与共识主从复制是single master replication，master接收信息并广播给从节点，可以">
   
     <link rel="alternate" href="/atom.xml" title="Keything的日志" type="application/atom+xml">
   
@@ -60,40 +65,107 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main">
-  
-  
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2018" class="archive-year">2018</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/03/06/开发中容易出现的特殊字符编码/" class="archive-article-date">
-  <time datetime="2018-03-06T05:25:02.000Z" itemprop="datePublished">Mar 6</time>
+        <section id="main"><article id="post-分布式-全序广播与共识" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/11/26/分布式-全序广播与共识/" class="article-date">
+  <time datetime="2021-11-26T02:10:44.000Z" itemprop="datePublished">2021-11-26</time>
 </a>
-      
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2018/03/06/开发中容易出现的特殊字符编码/">开发中容易出现的特殊字符编码</a>
+    <h1 class="article-title" itemprop="name">
+      分布式-全序广播与共识
     </h1>
   
 
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文将简要概括全序广播与共识，清楚的理解这两个概念，将有助于理解raft、paxos等共识算法。</p>
+<p>全序广播的要点是：消息按照相同的顺序发送到所有节点，有且只有一次。 仔细想想，这相当于进行多轮的共识过程：在每一轮，节点提出他们接下来要发送的消息，然后决定下一个消息的全局顺序。 </p>
+<h2 id="主从复制与共识"><a href="#主从复制与共识" class="headerlink" title="主从复制与共识"></a>主从复制与共识</h2><p>主从复制是single master replication，master接收信息并广播给从节点，可以对标为一种fixed-sequencer的total order broadcast的实现方式（即[<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.110.6701&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener">1</a>]中的section4.1 fixed sequencer）。</p>
+<p>但当主节点出故障时，我们需要重新选主。选主就涉及到共识，通过选举的方式将某个从节点提升为新的主节点。 同时还需要考虑脑裂，我们需要共识算法来选出一位主节点。 但如果共识算法是全序广播的话，又需要主节点，陷入奇怪循环。 如何解决呢？ </p>
+<h3 id="Epoch-and-Quorum"><a href="#Epoch-and-Quorum" class="headerlink" title="Epoch and Quorum"></a>Epoch and Quorum</h3><p>目前讨论的共识协议在内部使用了某种形式的主节点，虽然主节点不是固定的。 相反，他们都采用了一种弱化的保证：协议定义一个世代编号（epoch number，对应raft中的term、paxos中ballot number) .</p>
+<ul>
+<li>如果当前主节点失效，那么开始新的一轮选举， 选举赋予一个单调递增的epoch号。如果两个不同主节点对应于不同epoch号码，则具有更高epoch号码的主节点将获胜</li>
+<li>在主节点作出任何决定之前，必须首先检查是否存在比它更高的epoch号码，否则就会产生冲突的决定<ul>
+<li>节点不能依靠自己所掌握的信息来决策。比如出现分区，老的主节点在分区的小集群上，新的主节点在多数集群上产生，这时候老的主节点其实已经失效。 </li>
+<li>这里面实际有两轮不同的投票：首先是投票决定谁是主节点，然后是对主节点的提议进行投票。</li>
+<li>在raft的读取中，这是 read index. </li>
+</ul>
+</li>
+</ul>
+<h3 id="投票过程与两阶段提交2PC"><a href="#投票过程与两阶段提交2PC" class="headerlink" title="投票过程与两阶段提交2PC"></a>投票过程与两阶段提交2PC</h3><ul>
+<li>2PC的协调者并不是依赖选举产生</li>
+<li>容错共识算法只需要收到多数节点的投票结果即可通过决议，而2PC则要求每个参与者都必须做出“是”才能最终通过。 </li>
+</ul>
+<h2 id="共识算法与全序广播"><a href="#共识算法与全序广播" class="headerlink" title="共识算法与全序广播"></a>共识算法与全序广播</h2><p>全序关系广播的要点是：所有节点按照相同顺序接收消息，有且只有一次。 如果仔细想想，这其实相当于进行了多轮的共识过程。在每一轮中，节点提出他们接下来想要发送的消息，然后决定要以全序的方式接收的下一个消息。 </p>
+<p>所以，全序关系广播相当于持续的多轮共识（每一轮共识的决定对应于一条消息的接收）：</p>
+<ul>
+<li>由于共识的一致性属性（agreement property)，所有节点以相同顺序接收相同消息</li>
+<li>由于诚实性，消息不能重复</li>
+<li>由于合法性，消息不会被破坏，也不会凭空捏造</li>
+<li>由于可终止性，消息不会丢失。 </li>
+</ul>
+<h3 id="对标到raft协议中的日志复制"><a href="#对标到raft协议中的日志复制" class="headerlink" title="对标到raft协议中的日志复制"></a>对标到raft协议中的日志复制</h3><p>raft协议中的日志复制是否可以对标全序广播</p>
+<p>我们看一下全序广播：</p>
+<ul>
+<li>尽最大努力可靠的广播，通过重发丢失的消息</li>
+<li>基于可靠广播，保证接收顺序</li>
+</ul>
+<p>total order broadcast protocol 要满足下面四个属性：</p>
+<ul>
+<li>validity (正确性)：如果一个正确的进程广播了一条消息，那么其他所有正确的进程都接收到这条消息</li>
+<li>uniform agreement: 如果一个进程接收到消息m，那么所有正确的进程都接收到消息m</li>
+<li>uniform integrity: 一个进程最多接收一次消息m</li>
+<li>uniform total order: 如果进程p和q都接收到消息m和m’，当且仅当q接收消息m早于m’时，进程p接收消息m早于m’</li>
+</ul>
+<p>综上所述， raft的日志保证是满足上述属性的。</p>
+<ul>
+<li>尽最大努力可靠的广播：如果失败，则一直发送 附加条目rpc</li>
+<li>基于可靠广播，保证接收顺序：接收到一条信息，leader会广播，然后作出决定 是否可以提交。 </li>
+</ul>
+<p>raft的实现中：</p>
+<ol>
+<li>leader 处理不一致是 通过强制跟随者直接复制自己的日志来解决的。 leader从来不会覆盖或者删除自己的日志。 </li>
+<li>安全性保证：当出现分区（或leader崩溃）时，只有拥有最新已提交记录的候选者才能成为leader。 </li>
+</ol>
+<h2 id="特别注意："><a href="#特别注意：" class="headerlink" title="特别注意："></a>特别注意：</h2><p>在&lt;数据密集型应用系统设计&gt;中 将delivery翻译为发送，这实际是错误的。 在<a href="https://keything.github.io/2021/11/24/%E5%88%86%E5%B8%83%E5%BC%8F-%E5%B9%BF%E6%92%AD/">分布式-广播</a>中介绍了，广播协议中 broadcast/deliver 对应的是发送和接收。 全序广播实际是指接收者要保持全序，与发送者的顺序无关。 </p>
+<h2 id="参考："><a href="#参考：" class="headerlink" title="参考："></a>参考：</h2><ul>
+<li>&lt;数据密集型应用系统设计&gt; chap9 一致性与共识</li>
+<li><a href="https://github.com/maemual/raft-zh_cn/blob/master/raft-zh_cn.md#53-%E6%97%A5%E5%BF%97%E5%A4%8D%E5%88%B6" target="_blank" rel="noopener">寻找一种易于理解的一致性算法</a></li>
+</ul>
 
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2021/11/26/分布式-全序广播与共识/" data-id="ckwfqztos0053g7nu6ql5r9jv" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2021/11/24/分布式-广播/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">分布式-广播</div>
+    </a>
+  
+</nav>
+
+  
+</article>
 
 </section>
         

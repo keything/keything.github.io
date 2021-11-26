@@ -62,6 +62,177 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-php发送邮件" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/25/php发送邮件/" class="article-date">
+  <time datetime="2016-05-25T08:31:31.000Z" itemprop="datePublished">2016-05-25</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/25/php发送邮件/">php发送邮件</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0-概述"><a href="#0-概述" class="headerlink" title="0. 概述"></a>0. 概述</h2><p>php manual中关于mail的介绍很简单，</p>
+<pre><code>@param to 电子邮件收件人或收件人列表
+@param subjct 电子邮件的主题 也就是收件人或收件人列表
+@param message 所要发送的消息 
+@return true if the mail was successfully accepted fro delivery, FALSE otherwise
+bool mail ( string $to , string $subject , string $message [, string $additional_headers [, string $additional_parameters ]] )
+</code></pre><h2 id="0-我的代码"><a href="#0-我的代码" class="headerlink" title="0. 我的代码"></a>0. 我的代码</h2><p>根据邮件协议，使用基本的php代码进行编写，直接包含这个类即可使用</p>
+<h2 id="1-发送html"><a href="#1-发送html" class="headerlink" title="1. 发送html"></a>1. 发送html</h2><ol>
+<li>发送html就是将正文的message以文本格式发送<h2 id="2-发送附件"><a href="#2-发送附件" class="headerlink" title="2. 发送附件"></a>2. 发送附件</h2></li>
+<li><p>附件需要以multipart/form-data的格式进行组装，这儿与web上传form表单的格式一样。例子如下</p>
+<pre><code>--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+Content-Transfer-Encoding: base64
+
+54eV5YevQm9keQoKCgo=
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx
+X-Attachment-Id: 15259
+Content-Transfer-Encoding: base64
+Content-Type: application/octet-stream; name=&quot;keything.txt&quot;
+Content-Disposition: attachment; filename=&quot;keything.txt&quot;
+
+54eV5Yev
+
+--==Mime_Multipart_Boundary_x69c8f8864502559be8e17a0cb379ff0cx--
+</code></pre></li>
+<li>我们所发出的数据就如上面文本所示，因此要将其组装</li>
+</ol>
+<ol start="3">
+<li><p>class KTMail</p>
+<pre><code>&lt;?php
+class KTMail
+{
+    const UTF8_PREFIX  = &apos;=?UTF-8?B?&apos;;
+    const UTF8_POSTFIX = &apos;?=&apos;;
+    const RN = &quot;\r\n&quot;;
+    /**
+     * @param from: who send this mail
+     * @param to: who receive this mail
+     * @param subject: the title of mail
+     * @param body: the content of mail
+     * @param attachment_fname: the file name of attachement
+     * @param attachment_fdata: the file content of attachment
+     * @return true if send succeed, FALSE otherwise
+     * TODO if attachment_fname is chinese, it will be messay code.
+     */
+    public static function sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata)
+    {
+        // a random string 
+        $semi_rand = md5(time()); 
+        $mime_boundary = &apos;==Mime_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+        $part_boundary = &apos;==Part_Multipart_Boundary_x&apos; . $semi_rand . &apos;x&apos;;
+
+        // header 
+        $headers = [];
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-Type: multipart/mixed; boundary=&apos; . $mime_boundary;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $msg = [];
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos; . self::RN;
+        $msg[] =  chunk_split(base64_encode($body));
+
+        // Attachment
+        $msg[] = &apos;--&apos; . $mime_boundary;
+        $msg[] = &apos;X-Attachment-Id: &apos; . rand(1000, 99999);
+        $msg[] = &apos;Content-Transfer-Encoding: base64&apos;;
+        $msg[] = &apos;Content-Type: application/octet-stream;&apos; . &apos; name=&quot;&apos; . $attachment_fname . &apos;&quot;&apos;;
+        $msg[] = &apos;Content-Disposition: attachment; filename=&quot;&apos;. $attachment_fname . &apos;&quot;&apos; . self::RN;
+        $msg[] = chunk_split(base64_encode($attachment_fdata));
+        $msg[] = &apos;--&apos; . $mime_boundary . &apos;--&apos;;
+
+        $msg_raw = implode(self::RN, $msg);
+        error_log($msg_raw, 3, &apos;/tmp/sendmail.log&apos;);
+
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+    public static function sendWithHtml($from, $to, $subject, $body)
+    {
+        // header 
+        $headers = array();
+        $headers[] = &apos;MIME-Version: 1.0&apos;;
+        $headers[] = &apos;Content-type: text/html; charset=utf-8&apos;;
+        $headers[] = &apos;From: &apos; . $from;
+        $headers_raw = implode(self::RN, $headers);
+
+        // Message Body
+        $real_subject = self::UTF8_PREFIX . base64_encode($subject) . self::UTF8_POSTFIX;
+        $msg_raw = $body;
+
+        return mail($to, $real_subject, $msg_raw, $headers_raw);
+    }
+}
+</code></pre></li>
+<li><p>测试用例</p>
+<pre><code>&lt;?php
+include (&apos;ktmail.php&apos;);
+$from = &apos;local@a.cn&apos;;
+$to = &apos;your-email&apos;;
+$subject = &apos;keything.net&apos;;
+$body = &apos;keything.net&apos;;
+$attachment_fname = &apos;keything.txt&apos;;
+$attachment_fdata = &apos;keything&apos;;
+$attach_res = KTMail::sendWithAttach($from, $to, $subject, $body, $attachment_fname, $attachment_fdata);
+echo &apos;attach_res = &apos; . var_export($attach_res, true).&quot;\n&quot;;
+
+$html_body = &apos;
+    &lt;html&gt;
+        &lt;head&gt; keything &lt;/head&gt;
+        &lt;body&gt; 
+            keything body 
+            &lt;table border=&quot;1&quot;&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 1, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 1, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;row 2, cell 1&lt;/td&gt;
+                    &lt;td&gt;row 2, cell 2&lt;/td&gt;
+                &lt;/tr&gt;
+            &lt;/table&gt;
+        &lt;/body&gt;
+        &lt;/head&gt;
+    &lt;/html&gt;
+    &apos;;
+$html_res = KTMail::sendWithHtml($from, $to, $subject, $html_body);
+echo &apos;html_res = &apos; . var_export($html_res, true).&quot;\n&quot;;
+</code></pre></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/25/php发送邮件/" data-id="ckwfqztof004cg7nujpf2e74s" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/php/">php</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-nginx模块执行顺序" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/05/08/nginx模块执行顺序/" class="article-date">
@@ -272,7 +443,7 @@ location /baz {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="ckwdj16rb0043srnummb8pr2h" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/08/nginx模块执行顺序/" data-id="ckwfqztob0043g7nuebjp0j44" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -519,7 +690,105 @@ location /third {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="ckwdj16rb0040srnu0wvkdz5f" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/05/nginx-rewrite详解/" data-id="ckwfqzto8003zg7nu2sbltwfd" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
+  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
+<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
+
+location [ = | ~ | ~* | ^~ ] uri { ... }
+location @name { ... }
+
+Default:
+
+—
+
+Context:
+
+server, location
+</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
+<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
+<ol>
+<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
+<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
+<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
+<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
+<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
+<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
+<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
+</ol>
+<p>location检查的策略：</p>
+<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
+2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
+对于匹配正则location并不是所有情况都进行，有两种情况是例外：
+1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
+2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
+
+   简要概述：
+    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
+如下图所示：
+</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
+<p>举例说明：</p>
+<pre><code>location = / {
+    [ configuration A ]
+}
+
+location / {
+    [ configuration B ]
+}
+
+location /documents/ {
+    [ configuration C ]
+}
+
+location ^~ /images/ {
+    [ configuration D ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration E ]
+}
+
+请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
+</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
+<p>参考文章</p>
+<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="ckwfqzto6003ug7numfu83mdr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -619,105 +888,7 @@ server {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="ckwdj16r6003tsrnug8796nu4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-nginx-location匹配" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/05/04/nginx-location匹配/" class="article-date">
-  <time datetime="2016-05-04T10:00:01.000Z" itemprop="datePublished">2016-05-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/04/nginx-location匹配/">nginx-location匹配</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>这篇文字是对官方文档中location[1]:<a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a> 的解读。</p>
-<h2 id="一-语法"><a href="#一-语法" class="headerlink" title="一. 语法"></a>一. 语法</h2><pre><code>Syntax:
-
-location [ = | ~ | ~* | ^~ ] uri { ... }
-location @name { ... }
-
-Default:
-
-—
-
-Context:
-
-server, location
-</code></pre><h2 id="二-解释"><a href="#二-解释" class="headerlink" title="二. 解释"></a>二. 解释</h2><p>根据请求URI进行配置。</p>
-<p>与归一化的URI进行匹配。 归一化包括：1）将已经编码为%XX格式的URI解码为普通格式; 2）解析references到相对路径. 和..; 3）将多个连接的斜杠/ 变为单个斜杠/。</p>
-<ol>
-<li>一个location可以是前缀字符串，也可以是正则表达式。</li>
-<li>正则表达式由 ~*（大小写不敏感） 或 ~（大小写敏感）指定。</li>
-<li>为了找到与给定请求相匹配的location，nginx首先检查<code>前缀字符串（前缀location）</code>定义的location。在这些前缀字符串中，选择<code>最长匹配的前缀</code>并将其记住。</li>
-<li>之后检查<code>`正则表达式</code>，检查正则表达式是按照其在配置文件中的顺序检查，当正则表达式第一次匹配后，就停止正则表达式的匹配，对应的正则的location的配置就会被使用。 </li>
-<li>如果没有与正则表达式相匹配的location，那么最长前缀location就被使用。</li>
-<li>如果最长匹配前缀location有^~的修饰符，那么就不会检查正则表达式。</li>
-<li>同时，可以使用=修饰符，该修饰符定义了URI和location的准确匹配。如果一个准确的match被找到，那么搜索停止。</li>
-</ol>
-<p>location检查的策略：</p>
-<pre><code>1. 首先检查指定了前缀的location块 普通的location块。
-2. 其次检查带正则的location块 顺序匹配，一旦匹配到第一个就停止后面的匹配。
-对于匹配正则location并不是所有情况都进行，有两种情况是例外：
-1）普通location前面指定了^~ 告诉nginx只要普通location一旦匹配上，则不需要继续正则匹配。匹配上了普通location就不进行正则匹配。
-2）普通location恰好严格匹配上，不是最大前缀匹配，则不再继续匹配正则。
-
-   简要概述：
-    正则 location 匹配让步普通 location 的严格精确匹配结果；但覆盖普通 location 的最大前缀匹配结果
-如下图所示：
-</code></pre><p><img src="/images/nginx_location_match.png" alt="location_match"></p>
-<p>举例说明：</p>
-<pre><code>location = / {
-    [ configuration A ]
-}
-
-location / {
-    [ configuration B ]
-}
-
-location /documents/ {
-    [ configuration C ]
-}
-
-location ^~ /images/ {
-    [ configuration D ]
-}
-
-location ~* \.(gif|jpg|jpeg)$ {
-    [ configuration E ]
-}
-
-请求/ 匹配配置A，/index.html匹配配置B，/documents匹配配置C，/images/1.gif匹配配置D，/documents/1.jpg匹配配置E
-</code></pre><p>注意：@前缀定义了一个命名location。这样一个location不是用于正则请求处理，而是用于请求的重定向。他们不能嵌套在location中，也不能包含嵌套的location。</p>
-<p>参考文章</p>
-<p><a href="http://nginx.org/en/docs/http/ngx_http_core_module.html#location" target="_blank" rel="noopener">http://nginx.org/en/docs/http/ngx_http_core_module.html#location</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/05/04/nginx-location匹配/" data-id="ckwdj16r7003vsrnu0ete2lwu" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/05/04/nginx配置-最小配置/" data-id="ckwfqzto7003xg7nuasqap90n" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
@@ -813,7 +984,7 @@ passwd       .bashrc   ---&gt;  &lt;data&gt;                &lt;data&gt;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="ckwdj16rs0053srnungeuos8s" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/28/unix-inode-学习/" data-id="ckwfqztoq004yg7nuth8a3so4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -862,7 +1033,7 @@ client---&gt; lvs ------  node2
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="ckwdj16pk000osrnu4xa501hm" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/26/Lvs学习笔记/" data-id="ckwfqztmp000jg7nuu4hzxue8" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/基础知识/">基础知识</a></li></ul>
@@ -931,7 +1102,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="ckwdj16r4003qsrnurmvcvlyp" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/18/memcache获取所有的key及value/" data-id="ckwfqzto3003pg7nupjuuiw7e" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -978,7 +1149,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="ckwdj16r0003lsrnu515iqdbd" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache参考文章/" data-id="ckwfqztny003eg7nuqwvccgro" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -1091,114 +1262,7 @@ foreach ($allSlabs as $server =&gt; $slabs) {
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="ckwdj16qy003hsrnu6crlckjx" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-memcached详细解释" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/04/17/memcached详细解释/" class="article-date">
-  <time datetime="2016-04-17T06:00:01.000Z" itemprop="datePublished">2016-04-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/17/memcached详细解释/">3. Memcached详细解释</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="流程概述"><a href="#流程概述" class="headerlink" title="流程概述"></a>流程概述</h2><ol>
-<li>数据存储：保存数据A到mc时，需要先分配空间Item给数据A。</li>
-<li>数据查找：对于获取数据，通过Hash表进行查找。</li>
-<li>数据过期：通过LRU队列进行过期处理</li>
-</ol>
-<h2 id="数据存储"><a href="#数据存储" class="headerlink" title="数据存储"></a>数据存储</h2><p>为了解释是如何分配空间Item的，那么就要先讲一下Mc的整体结构。</p>
-<p>Mc声明了一个slabclass_t的结构体类型，一个slabclass_t类型数组slabclass(全局变量）。数组的每一个元素是一个slab链表。每一个slab链表所分配的内存大小不同。</p>
-<p>我们在启动的时候就还会看到这个</p>
-<pre><code>memcached -p 11211 -m 44m -vv -f1.25
-slab class   1: chunk size        96 perslab   10922
-slab class   2: chunk size       120 perslab    8738
-....
-slab class  12: chunk size      1184 perslab     885
-.... 
-slab class  41: chunk size    771184 perslab       1
-slab class  42: chunk size   1048576 perslab       1
-</code></pre><p>如何分配</p>
-<ol>
-<li><p>在do_item_alloc中获取item</p>
-<ol>
-<li>首先根据LRU队列，选择过期的item，返回该item，使用该item</li>
-<li>如果都没有过期，那么分配新的slab。实际上就是分配新的page，然后根据chunk size进行内存切割。选择一个item，返回该item。【注意】即使启动参数-m 44M限定的最大内存使用完毕，如果某一个slabclass没有slab，那么依然可以分配一个page，就会出现内存大于44m的情况。在do_slabs_newslab函数中</li>
-<li><p>如果都没有过期，并且不能够分配新的slab，那么就会强行霸占没有过期的item。返回该item</p>
-<p>有一篇大牛的文章（2009年）中提到了相同的问题。 <a href="http://timyang.net/data/Memcached-lru-evictions/" target="_blank" rel="noopener">http://timyang.net/data/Memcached-lru-evictions/</a> </p>
-</li>
-</ol>
-</li>
-<li><p>场景：<br> 我以下面的方式启动</p>
-<pre><code>memcached -p 11211 -m 44m -vv -f1.25
-</code></pre></li>
-</ol>
-<p>下面的方式写入数据</p>
-<pre><code>for (i = 0; i &lt; 10922 * 44m; i++)
-{
-    set( i, &apos;1&apos;, 0); // 写入长度为1，0代表过期时间
-}
-</code></pre><p>这样的话44m空间全部用完。当我们再次写入长度为1000的，将会写入到 slab class 12中。但是我们知道44m空间，已经用完，但实际上我们发现slab class 12可以写入。这儿刚好验证了【注意】中的内容</p>
-<p>##LRU队列：</p>
-<p>上面讲述了如何分配item，那么分配以后的item如何进行管理和查找呢，就需要LRU队列和Hash表。LRU队列管理Item，LRU队列是一个双向链表，个数与subclass的个数相同。同一个subclass的所有item都归同一个LRU队列管理。</p>
-<p>在item.c中</p>
-<pre><code>static item *heads[LARGEST_ID];
-static item *tails[LARGEST_ID];
-static crawler crawlers[LARGEST_ID];
-static itemstats_t itemstats[LARGEST_ID];
-static unsigned int sizes[LARGEST_ID];
-</code></pre><p>通过LRU队列的操作，可以更清楚明白LRU队列的作用：</p>
-<ol>
-<li>插入：插入到LRU队列的头部</li>
-<li>更新：在LRU队列中，排的越靠后就认为越少被使用的item，那么其被淘汰的概率就越大，所以新的item（访问时间新）要排在不那么新的item前面，所以插入在头部是必须的。<br>do_item_update就是先把item从LRU队列中删除，再插入LRU队列，更新time字段（time表示最后访问时间）</li>
-</ol>
-<h2 id="Hash表"><a href="#Hash表" class="headerlink" title="Hash表"></a>Hash表</h2><ol>
-<li>当item分配并赋值以后，需要注册到LRU队列和Hash表中。注册到Hash表以后，将方便我们进行查询。利用item的数据部分（data字段）和键长（nkey字段）进行hash。Hash表的结构是常见的拉链结构。</li>
-<li>Hash表的扩展<br> Hash表的长度并不是不变的。当Hash表中的Item数量达到了Hash表长度的1.5倍时，那么就会扩展哈希表的长度，然后重新进行Hash<br> 由于这一步耗时，是通过专门的线程 迁移线程进行的。</li>
-<li>Hash表与Item的关系<br> Item在分配以后，会通过do_item_link do_\item_unlink将Item注册到Hash表和LRU队列中</li>
-</ol>
-<h2 id="过期失效处理"><a href="#过期失效处理" class="headerlink" title="过期失效处理"></a>过期失效处理</h2><ol>
-<li><p>一个item在两种情况下会过期失效</p>
-<pre><code>item的expire时间戳到了
-用户使用flush_all将全部item变成过期失效
-</code></pre></li>
-<li><p>懒惰删除<br> 只有在进行get时，才会进行判断，然后进行删除</p>
-</li>
-</ol>
-<h2 id="重要原则："><a href="#重要原则：" class="headerlink" title="重要原则："></a>重要原则：</h2><ol>
-<li>按照预定大小，将分配的slab分割成特定长度的块</li>
-<li>分配给某个slab的内存不能给其他slab使用。已经分配出去的slab不会被回收或者重新分配，因为这种原理，也就出现了【注意】里面所描述的情况</li>
-<li>item里面不仅仅存放缓存对象的value，还包括key，expire，time，flag等详细信息。其中time表示最后一次访问时间，expire表示过期时间。</li>
-</ol>
-<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><p>场景1：<br>    一开始大量长度为1kb，全部占用，之后存储大量10kb，只有一个slab，那么10kb大量访问，那么就会出现没到过期时间，数据全部失效。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://keything.github.io/2016/04/17/memcached详细解释/" data-id="ckwdj16qv003dsrnut8at5an0" class="article-share-link">Share</a>
+      <a data-url="http://keything.github.io/2016/04/17/memcache常见问题/" data-id="ckwfqzto0003jg7nutjjr0p1o" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memcache/">memcache</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nosql/">nosql</a></li></ul>
@@ -1238,7 +1302,7 @@ static unsigned int sizes[LARGEST_ID];
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 12.22px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
+      <a href="/tags/Laravel/" style="font-size: 10px;">Laravel</a> <a href="/tags/Redis/" style="font-size: 10px;">Redis</a> <a href="/tags/composer/" style="font-size: 10px;">composer</a> <a href="/tags/cpp/" style="font-size: 12.22px;">cpp</a> <a href="/tags/cpp-lib/" style="font-size: 10px;">cpp-lib</a> <a href="/tags/elasticsearch/" style="font-size: 11.11px;">elasticsearch</a> <a href="/tags/faiss/" style="font-size: 10px;">faiss</a> <a href="/tags/git/" style="font-size: 12.22px;">git</a> <a href="/tags/go-source-code/" style="font-size: 10px;">go.source.code</a> <a href="/tags/golang/" style="font-size: 16.67px;">golang</a> <a href="/tags/laravel/" style="font-size: 11.11px;">laravel</a> <a href="/tags/linux/" style="font-size: 14.44px;">linux</a> <a href="/tags/mac/" style="font-size: 13.33px;">mac</a> <a href="/tags/machine-learning/" style="font-size: 10px;">machine-learning</a> <a href="/tags/memcache/" style="font-size: 15.56px;">memcache</a> <a href="/tags/mysql/" style="font-size: 13.33px;">mysql</a> <a href="/tags/nginx/" style="font-size: 13.33px;">nginx</a> <a href="/tags/nosql/" style="font-size: 18.89px;">nosql</a> <a href="/tags/octave/" style="font-size: 10px;">octave</a> <a href="/tags/php/" style="font-size: 20px;">php</a> <a href="/tags/php源码学习/" style="font-size: 17.78px;">php源码学习</a> <a href="/tags/redis/" style="font-size: 12.22px;">redis</a> <a href="/tags/spark/" style="font-size: 12.22px;">spark</a> <a href="/tags/tcp/" style="font-size: 10px;">tcp</a> <a href="/tags/thrift/" style="font-size: 13.33px;">thrift</a> <a href="/tags/分布式/" style="font-size: 13.33px;">分布式</a> <a href="/tags/基础知识/" style="font-size: 15.56px;">基础知识</a>
     </div>
   </div>
 
@@ -1260,6 +1324,10 @@ static unsigned int sizes[LARGEST_ID];
       <ul>
         
           <li>
+            <a href="/2021/11/26/分布式-全序广播与共识/">分布式-全序广播与共识</a>
+          </li>
+        
+          <li>
             <a href="/2021/11/24/分布式-广播/">分布式-广播</a>
           </li>
         
@@ -1273,10 +1341,6 @@ static unsigned int sizes[LARGEST_ID];
         
           <li>
             <a href="/2021/11/14/分布式-事务/">分布式-事务</a>
-          </li>
-        
-          <li>
-            <a href="/2019/04/29/golang继承/">golang继承</a>
           </li>
         
       </ul>
